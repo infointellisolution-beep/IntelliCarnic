@@ -1,5 +1,6 @@
 @php
     $modalArticulo = $modalArticulo ?? null;
+    $familias = $familias ?? collect();
 @endphp
 
 <div class="form-grid">
@@ -8,12 +9,21 @@
         <input type="text" class="input-modern" name="codigo" value="{{ old('codigo', $modalArticulo->codigo ?? '') }}" required>
     </div>
     <div class="input-group">
-        <label>Descripción</label>
-        <input type="text" class="input-modern" name="descripcion" value="{{ old('descripcion', $modalArticulo->descripcion ?? '') }}" required>
+        <label>Código cliente</label>
+        <input type="text" class="input-modern" name="codigo_cliente" value="{{ old('codigo_cliente', $modalArticulo->codigo_cliente ?? '') }}" placeholder="Código interno o del cliente" required>
     </div>
     <div class="input-group">
-        <label>Categoría</label>
-        <input type="text" class="input-modern" name="categoria" value="{{ old('categoria', $modalArticulo->categoria ?? '') }}" placeholder="Ej. Informática > Monitores">
+        <label>Familia</label>
+        <select class="input-modern" name="familia_id" required>
+            <option value="">Selecciona una familia</option>
+            @foreach($familias as $familia)
+                <option value="{{ $familia->id }}" @selected((string) old('familia_id', $modalArticulo->familia_id ?? '') === (string) $familia->id)>{{ $familia->nombre }}</option>
+            @endforeach
+        </select>
+    </div>
+    <div class="input-group">
+        <label>Descripción</label>
+        <input type="text" class="input-modern" name="descripcion" value="{{ old('descripcion', $modalArticulo->descripcion ?? '') }}" required>
     </div>
     <div class="input-group">
         <label>Precio sin IVA</label>
@@ -28,8 +38,8 @@
         <input type="number" step="0.01" min="0" class="input-modern" name="pvp" value="{{ old('pvp', $modalArticulo->pvp ?? '') }}" placeholder="Se calcula si lo dejas vacío">
     </div>
     <div class="input-group">
-        <label>Stock</label>
-        <input type="number" min="0" class="input-modern" name="stock" value="{{ old('stock', $modalArticulo->stock ?? 0) }}" required>
+        <label>Peso / stock</label>
+        <input type="number" step="0.001" min="0" class="input-modern" name="stock" value="{{ old('stock', $modalArticulo->stock ?? 0) }}" required>
     </div>
     <div class="input-group">
         <label>Estado</label>

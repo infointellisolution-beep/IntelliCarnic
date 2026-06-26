@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Articulo;
+use App\Models\Familia;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -15,11 +16,15 @@ class ArticuloController extends Controller
         $search = request()->string('search')->trim()->toString();
 
         $articulos = Articulo::query()
+            ->with('familia')
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($subQuery) use ($search) {
                     $subQuery->where('codigo', 'like', "%{$search}%")
+                        ->orWhere('codigo_cliente', 'like', "%{$search}%")
                         ->orWhere('descripcion', 'like', "%{$search}%")
-                        ->orWhere('categoria', 'like', "%{$search}%");
+                        ->orWhereHas('familia', function ($familiaQuery) use ($search) {
+                            $familiaQuery->where('nombre', 'like', "%{$search}%");
+                        });
                 });
             })
             ->get()
@@ -27,20 +32,29 @@ class ArticuloController extends Controller
             ->values();
 
         $catalogoArticulos = Articulo::query()
+            ->with('familia')
             ->orderBy('descripcion', 'asc')
             ->get();
 
-        return view('articulos.index', compact('articulos', 'catalogoArticulos', 'search'));
+        $familias = Familia::query()
+            ->withCount('articulos')
+            ->orderBy('nombre', 'asc')
+            ->get();
+
+        return view('articulos.index', compact('articulos', 'catalogoArticulos', 'familias', 'search'));
     }
 
     public function create(): View
     {
         return view('articulos.create', [
             'articulo' => new Articulo([
+                'familia_id' => null,
+                'codigo_cliente' => null,
                 'iva' => 21,
                 'stock' => 0,
                 'estado' => 'activo',
             ]),
+            'familias' => Familia::query()->orderBy('nombre', 'asc')->get(),
             'action' => route('articulos.store'),
             'method' => 'POST',
             'pageTitle' => 'Nuevo artículo',
@@ -67,6 +81,7 @@ class ArticuloController extends Controller
     {
         return view('articulos.edit', [
             'articulo' => $articulo,
+            'familias' => Familia::query()->orderBy('nombre', 'asc')->get(),
             'action' => route('articulos.update', $articulo),
             'method' => 'PUT',
             'pageTitle' => 'Editar artículo',
@@ -103,23 +118,23 @@ class ArticuloController extends Controller
         $data = $request->validate([
             'stock_articulo_id' => ['required', 'exists:articulos,id'],
             'movimiento' => ['required', Rule::in(['sumar', 'restar'])],
-            'cantidad' => ['required', 'integer', 'min:1'],
+            'cantidad' => ['required', 'numeric', 'min:0.001'],
             'motivo' => ['nullable', 'string', 'max:255'],
         ]);
 
         $articulo = Articulo::query()->findOrFail($data['stock_articulo_id']);
-        $cantidad = (int) $data['cantidad'];
+        $cantidad = (float) $data['cantidad'];
 
         if ($data['movimiento'] === 'restar' && $cantidad > $articulo->stock) {
             return redirect()
                 ->route('articulos.index')
-                ->withErrors(['cantidad' => 'No hay stock suficiente para restar esa cantidad.'])
+                ->withErrors(['cantidad' => 'No hay stock suficiente para restar ese peso.'])
                 ->withInput();
         }
 
         $articulo->stock = $data['movimiento'] === 'sumar'
-            ? $articulo->stock + $cantidad
-            : $articulo->stock - $cantidad;
+            ? round(((float) $articulo->stock + $cantidad), 3)
+            : round(((float) $articulo->stock - $cantidad), 3);
 
         $articulo->estado = $articulo->stock <= 0 ? 'sin_stock' : 'activo';
         $articulo->save();
@@ -138,16 +153,15 @@ class ArticuloController extends Controller
                 'max:50',
                 Rule::unique('articulos', 'codigo')->ignore($articuloId),
             ],
+            'codigo_cliente' => ['required', 'string', 'max:50'],
+            'familia_id' => ['required', 'exists:familias,id'],
             'descripcion' => ['required', 'string', 'max:255'],
-            'categoria' => ['nullable', 'string', 'max:120'],
             'precio_sin_iva' => ['required', 'numeric', 'min:0'],
             'iva' => ['required', 'numeric', 'min:0', 'max:100'],
             'pvp' => ['nullable', 'numeric', 'min:0'],
-            'stock' => ['required', 'integer', 'min:0'],
+            'stock' => ['required', 'numeric', 'min:0'],
             'estado' => ['required', Rule::in(['activo', 'sin_stock', 'inactivo'])],
         ]);
-
-        $data['categoria'] = $data['categoria'] ?: null;
 
         return $data;
     }

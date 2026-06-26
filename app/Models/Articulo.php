@@ -13,8 +13,9 @@ class Articulo extends Model
 
     protected $fillable = [
         'codigo',
+        'codigo_cliente',
+        'familia_id',
         'descripcion',
-        'categoria',
         'precio_sin_iva',
         'iva',
         'pvp',
@@ -28,7 +29,12 @@ class Articulo extends Model
             'precio_sin_iva' => 'decimal:2',
             'iva' => 'decimal:2',
             'pvp' => 'decimal:2',
-            'stock' => 'integer',
+            'stock' => 'decimal:3',
         ];
+    }
+
+    public function familia()
+    {
+        return $this->belongsTo(Familia::class);
     }
 }

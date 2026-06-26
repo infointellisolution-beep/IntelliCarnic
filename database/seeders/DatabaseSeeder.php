@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Articulo;
+use App\Models\Familia;
 use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -22,13 +23,25 @@ class DatabaseSeeder extends Seeder
             'email' => 'test@example.com',
         ]);
 
+        DB::table('familias')->delete();
         DB::table('articulos')->delete();
+
+        $familiaMonitores = Familia::query()->create([
+            'nombre' => 'Monitores',
+            'descripcion' => 'Pantallas y monitores para informática.',
+        ]);
+
+        $familiaPerifericos = Familia::query()->create([
+            'nombre' => 'Periféricos',
+            'descripcion' => 'Teclados, ratones y accesorios.',
+        ]);
 
         Articulo::query()->insert([
             [
                 'codigo' => 'ART-001',
+                'codigo_cliente' => 'MON-4K-27',
+                'familia_id' => $familiaMonitores->id,
                 'descripcion' => 'Monitor Dell 27" 4K',
-                'categoria' => 'Informática > Monitores',
                 'precio_sin_iva' => 350.00,
                 'iva' => 21,
                 'pvp' => 423.50,
@@ -39,8 +52,9 @@ class DatabaseSeeder extends Seeder
             ],
             [
                 'codigo' => 'ART-002',
+                'codigo_cliente' => 'KEY-MECH-01',
+                'familia_id' => $familiaPerifericos->id,
                 'descripcion' => 'Teclado Mecánico Keychron',
-                'categoria' => 'Informática > Periféricos',
                 'precio_sin_iva' => 85.00,
                 'iva' => 21,
                 'pvp' => 102.85,
@@ -51,8 +65,9 @@ class DatabaseSeeder extends Seeder
             ],
             [
                 'codigo' => 'ART-003',
+                'codigo_cliente' => 'MOUSE-MX3',
+                'familia_id' => $familiaPerifericos->id,
                 'descripcion' => 'Ratón Logitech MX Master 3',
-                'categoria' => 'Informática > Periféricos',
                 'precio_sin_iva' => 90.00,
                 'iva' => 21,
                 'pvp' => 108.90,

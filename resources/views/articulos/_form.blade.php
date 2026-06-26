@@ -26,7 +26,7 @@
     </div>
 
     <div style="padding: 1.5rem;">
-        @include('articulos._fields', ['modalArticulo' => $articulo])
+        @include('articulos._fields', ['modalArticulo' => $articulo, 'familias' => $familias])
     </div>
 
     <div style="padding: 1.25rem 1.5rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; gap: 1rem; align-items: center; flex-wrap: wrap;">

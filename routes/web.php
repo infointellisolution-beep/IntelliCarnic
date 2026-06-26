@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ArticuloController;
+use App\Http\Controllers\FamiliaController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -18,6 +19,7 @@ Route::post('/login', function () {
 
 Route::resource('articulos', ArticuloController::class)->except(['show']);
 Route::post('/articulos/stock-ajuste', [ArticuloController::class, 'adjustStock'])->name('articulos.stock-adjust');
+Route::post('/familias', [FamiliaController::class, 'store'])->name('familias.store');
 
 Route::get('/vender', function () {
     return view('vender.index');

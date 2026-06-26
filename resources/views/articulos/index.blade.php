@@ -3,6 +3,12 @@
 @section('title', 'Artículos e Inventario')
 
 @section('header-actions')
+    <button type="button" class="btn-modern btn-secondary js-familia-create-open" style="width: auto; text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">
+        <i class="fa-solid fa-folder-plus"></i> Nueva Familia
+    </button>
+    <button type="button" class="btn-modern btn-secondary js-familias-list-open" style="width: auto; text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">
+        <i class="fa-solid fa-folder-tree"></i> Ver Familias
+    </button>
     <button type="button" class="btn-modern btn-secondary js-stock-open" style="width: auto; text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">
         <i class="fa-solid fa-boxes-stacked"></i> Ajuste de Stock
     </button>
@@ -18,15 +24,29 @@
     $modalArticulo = $modalArticuloId ? $articulos->firstWhere('id', (int) $modalArticuloId) : null;
     $shouldOpenModal = $errors->any() && (old('codigo') !== null || $modalArticulo !== null);
     $shouldOpenStockModal = $errors->any() && old('stock_articulo_id') !== null;
+    $shouldOpenFamiliaModal = $errors->any() && old('familia_nombre') !== null;
     $modalAction = $modalArticulo ? route('articulos.update', $modalArticulo) : route('articulos.store');
     $catalogoModalArticulos = $catalogoArticulos->map(function ($articulo) {
         return [
             'id' => $articulo->id,
             'codigo' => $articulo->codigo,
+            'codigo_cliente' => $articulo->codigo_cliente,
             'descripcion' => $articulo->descripcion,
-            'categoria' => $articulo->categoria,
+            'familia_id' => $articulo->familia_id,
+            'familia_nombre' => $articulo->familia?->nombre,
             'stock' => $articulo->stock,
             'estado' => $articulo->estado,
+            'precio_sin_iva' => $articulo->precio_sin_iva,
+            'iva' => $articulo->iva,
+            'pvp' => $articulo->pvp,
+        ];
+    })->values();
+    $familiasCatalogo = $familias->map(function ($familia) {
+        return [
+            'id' => $familia->id,
+            'nombre' => $familia->nombre,
+            'descripcion' => $familia->descripcion,
+            'articulos_count' => $familia->articulos?->count() ?? 0,
         ];
     })->values();
 @endphp
@@ -46,6 +66,68 @@
     </div>
 @endif
 
+<div class="modal-overlay" id="familia-modal" aria-hidden="true" @if($shouldOpenFamiliaModal) data-open="true" @endif>
+    <div class="modal-backdrop js-familia-modal-close" role="presentation"></div>
+    <div class="modal-dialog modal-dialog-details" role="dialog" aria-modal="true" aria-labelledby="familia-modal-title">
+        <div class="modal-header">
+            <div>
+                <div class="hero-kicker"><i class="fa-solid fa-folder-plus"></i> Familias</div>
+                <h2 class="hero-title" id="familia-modal-title" style="font-size: 1.5rem; margin-top: 0.25rem;">Crear familia</h2>
+            </div>
+            <button type="button" class="modal-close js-familia-modal-close" aria-label="Cerrar modal">&times;</button>
+        </div>
+
+        <form action="{{ route('familias.store') }}" method="POST" class="modal-form">
+            @csrf
+            <div class="modal-body">
+                <div class="input-group">
+                    <label>Nombre de la familia</label>
+                    <input type="text" class="input-modern" name="familia_nombre" value="{{ old('familia_nombre') }}" placeholder="Ej. Informática" required>
+                </div>
+                <div class="input-group">
+                    <label>Descripción</label>
+                    <input type="text" class="input-modern" name="familia_descripcion" value="{{ old('familia_descripcion') }}" placeholder="Descripción opcional">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div style="color: var(--text-muted); font-size: 0.9rem;">Cada artículo deberá pertenecer a una familia.</div>
+                <div class="flex-gap" style="width: auto;">
+                    <button type="button" class="btn-modern btn-secondary js-familia-modal-close" style="width: auto;">Cancelar</button>
+                    <button type="submit" class="btn-modern btn-accent" style="width: auto;">Guardar familia</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="familias-list-modal" aria-hidden="true">
+    <div class="modal-backdrop js-familias-list-close" role="presentation"></div>
+    <div class="modal-dialog modal-dialog-details" role="dialog" aria-modal="true" aria-labelledby="familias-list-title">
+        <div class="modal-header">
+            <div>
+                <div class="hero-kicker"><i class="fa-solid fa-list"></i> Familias registradas</div>
+                <h2 class="hero-title" id="familias-list-title" style="font-size: 1.5rem; margin-top: 0.25rem;">Ver familias</h2>
+            </div>
+            <button type="button" class="modal-close js-familias-list-close" aria-label="Cerrar modal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="familias-grid">
+                @forelse ($familias as $familia)
+                    <div class="familia-card">
+                        <div class="familia-card-head">
+                            <div class="familia-card-title">{{ $familia->nombre }}</div>
+                            <span class="familia-card-badge">{{ $familia->articulos_count }} artículos</span>
+                        </div>
+                        <div class="familia-card-desc">{{ $familia->descripcion ?: 'Sin descripción' }}</div>
+                    </div>
+                @empty
+                    <div class="stock-empty">Todavía no hay familias registradas.</div>
+                @endforelse
+            </div>
+        </div>
+    </div>
+</div>
+
 <section class="stats-grid">
     <article class="stat-card">
         <div class="stat-card-header">
@@ -61,11 +143,11 @@
         <div class="stat-card-header">
             <div>
                 <div class="stat-label">Stock total</div>
-                <div class="stat-value">{{ number_format($articulos->sum('stock')) }}</div>
+                <div class="stat-value">{{ number_format($articulos->sum('stock'), 3) }}</div>
             </div>
             <div class="stat-card-icon green"><i class="fa-solid fa-warehouse"></i></div>
         </div>
-        <div class="stat-note">Unidades disponibles</div>
+        <div class="stat-note">Peso total disponible</div>
     </article>
     <article class="stat-card">
         <div class="stat-card-header">
@@ -93,7 +175,7 @@
     <div class="toolbar">
         <form class="toolbar-search input-group" style="margin-bottom: 0;" method="GET" action="{{ route('articulos.index') }}">
             <div style="display: flex; gap: 0.75rem; align-items: center;">
-                <input type="text" class="input-modern" name="search" value="{{ $currentSearch }}" placeholder="Buscar por código, descripción o categoría...">
+                <input type="text" class="input-modern" name="search" value="{{ $currentSearch }}" placeholder="Buscar por código, código cliente, descripción o familia...">
                 <button type="submit" class="btn-modern btn-secondary" style="width: auto;">Buscar</button>
                 @if($currentSearch !== '')
                     <a href="{{ route('articulos.index') }}" class="btn-modern btn-secondary" style="width: auto; text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">Limpiar</a>
@@ -125,8 +207,10 @@
                     $articuloModalData = [
                         'id' => $articulo->id,
                         'codigo' => $articulo->codigo,
+                        'codigo_cliente' => $articulo->codigo_cliente,
                         'descripcion' => $articulo->descripcion,
-                        'categoria' => $articulo->categoria,
+                        'familia_id' => $articulo->familia_id,
+                        'familia_nombre' => $articulo->familia?->nombre,
                         'precio_sin_iva' => $articulo->precio_sin_iva,
                         'iva' => $articulo->iva,
                         'pvp' => $articulo->pvp,
@@ -138,14 +222,15 @@
                     <td style="font-weight: 700;">{{ $articulo->codigo }}</td>
                     <td>
                         <div style="font-weight: 600;">{{ $articulo->descripcion }}</div>
-                        <div style="font-size: 0.82rem; color: var(--text-muted);">{{ $articulo->categoria ?: 'Sin categoría' }}</div>
+                        <div style="font-size: 0.82rem; color: var(--text-muted);">Código cliente: {{ $articulo->codigo_cliente ?? 'Sin código' }}</div>
+                        <div style="font-size: 0.82rem; color: var(--text-muted);">{{ $articulo->familia?->nombre ?: 'Sin familia' }}</div>
                     </td>
                     <td>${{ number_format($articulo->precio_sin_iva, 2) }}</td>
                     <td>{{ number_format($articulo->iva, 0) }}%</td>
                     <td style="font-weight: 700;">${{ number_format($articulo->pvp, 2) }}</td>
                     <td>
                         <span class="badge {{ $articulo->stock > 10 ? 'badge-success' : ($articulo->stock > 0 ? 'badge-warning' : 'badge-danger') }}">
-                            {{ $articulo->stock }} un.
+                            {{ number_format($articulo->stock, 3) }} kg
                         </span>
                     </td>
                     <td>
@@ -210,7 +295,7 @@
                 <div class="stock-selected-card" id="stock-selected-card">
                     <div class="stock-selected-label">Producto seleccionado</div>
                     <div class="stock-selected-name" id="stock-selected-name">Selecciona un artículo para ajustar stock</div>
-                    <div class="stock-selected-meta" id="stock-selected-meta">Código, categoría y stock actual se mostrarán aquí.</div>
+                    <div class="stock-selected-meta" id="stock-selected-meta">Código, código cliente, familia y peso actual se mostrarán aquí.</div>
                 </div>
 
                 <input type="hidden" name="stock_articulo_id" id="stock-articulo-id" value="{{ old('stock_articulo_id') }}">
@@ -225,7 +310,7 @@
                     </div>
                     <div class="input-group">
                         <label>Cantidad</label>
-                        <input type="number" min="1" class="input-modern" name="cantidad" id="stock-cantidad" value="{{ old('cantidad') }}" required>
+                        <input type="number" step="0.001" min="0.001" class="input-modern" name="cantidad" id="stock-cantidad" value="{{ old('cantidad') }}" required>
                     </div>
                     <div class="input-group" style="grid-column: 1 / -1;">
                         <label>Motivo</label>
@@ -235,7 +320,7 @@
             </div>
 
             <div class="modal-footer">
-                <div style="color: var(--text-muted); font-size: 0.9rem;">Ajusta stock con búsqueda rápida y operación sumar o restar.</div>
+                <div style="color: var(--text-muted); font-size: 0.9rem;">Ajusta peso con búsqueda rápida y operación sumar o restar.</div>
                 <div class="flex-gap" style="width: auto;">
                     <button type="button" class="btn-modern btn-secondary js-stock-modal-close" style="width: auto;">Cancelar</button>
                     <button type="submit" class="btn-modern btn-accent" style="width: auto;">Aplicar ajuste</button>
@@ -264,14 +349,19 @@
                 </div>
 
                 <div class="detail-metric">
+                    <div class="detail-metric-label">Código cliente</div>
+                    <div class="detail-metric-value" id="detalle-codigo-cliente">CL-1001</div>
+                </div>
+
+                <div class="detail-metric">
                     <div class="detail-metric-label">Descripción</div>
                     <div class="detail-metric-value" id="detalle-descripcion">Monitor Dell 27" 4K</div>
                 </div>
 
                 <div class="detail-list">
                     <div class="detail-list-item">
-                        <div><strong>Categoría</strong><span>Clasificación comercial</span></div>
-                        <strong id="detalle-categoria">Informática &gt; Monitores</strong>
+                        <div><strong>Familia</strong><span>Clasificación comercial</span></div>
+                        <strong id="detalle-familia">Informática</strong>
                     </div>
                     <div class="detail-list-item">
                         <div><strong>Precio sin IVA</strong><span>Base de cálculo</span></div>
@@ -323,7 +413,7 @@
             <input type="hidden" name="_method" id="articulo-modal-method" value="{{ $modalArticulo ? 'PUT' : '' }}" @unless($modalArticulo) disabled @endunless>
 
             <div class="modal-body">
-                @include('articulos._fields', ['modalArticulo' => $modalArticulo])
+                @include('articulos._fields', ['modalArticulo' => $modalArticulo, 'familias' => $familias])
             </div>
 
             <div class="modal-footer">
@@ -338,6 +428,7 @@
 </div>
 <script>
     window.articulosCatalogo = @json($catalogoModalArticulos);
+    window.familiasCatalogo = @json($familiasCatalogo);
 </script>
 <script src="/js/articulos-modal.js"></script>
 @endsection
