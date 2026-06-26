@@ -7,11 +7,17 @@
         <h2>Bienvenido</h2>
         <p>Inicia sesión en tu nuevo TPV</p>
 
+        @if ($errors->any())
+            <div class="card" style="margin-bottom: 1rem; border-color: rgba(239, 68, 68, 0.35); background: #fef2f2; color: #7f1d1d; text-align: left;">
+                {{ $errors->first() }}
+            </div>
+        @endif
+
         <form action="{{ route('login.post') }}" method="POST">
             @csrf
             <div class="input-group">
                 <label for="email">Usuario o Email</label>
-                <input type="text" id="email" name="email" class="input-modern" placeholder="admin@demo.com" required>
+                <input type="text" id="email" name="email" class="input-modern" placeholder="admin@intellicarnic.local" value="{{ old('email') }}" required>
             </div>
             
             <div class="input-group">

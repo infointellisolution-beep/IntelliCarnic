@@ -3,5 +3,5 @@
 @section('title', 'Editar artículo')
 
 @section('content')
-    @include('articulos._form')
+    @include('articulos._form', ['familias' => $familias, 'settings' => $settings])
 @endsection

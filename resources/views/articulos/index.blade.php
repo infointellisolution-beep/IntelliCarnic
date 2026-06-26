@@ -208,6 +208,7 @@
                         'id' => $articulo->id,
                         'codigo' => $articulo->codigo,
                         'codigo_cliente' => $articulo->codigo_cliente,
+                        'aplica_iva' => $articulo->aplica_iva,
                         'descripcion' => $articulo->descripcion,
                         'familia_id' => $articulo->familia_id,
                         'familia_nombre' => $articulo->familia?->nombre,

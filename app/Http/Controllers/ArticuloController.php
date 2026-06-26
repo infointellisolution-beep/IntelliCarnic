@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Articulo;
 use App\Models\Familia;
+use App\Models\Setting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -41,7 +42,9 @@ class ArticuloController extends Controller
             ->orderBy('nombre', 'asc')
             ->get();
 
-        return view('articulos.index', compact('articulos', 'catalogoArticulos', 'familias', 'search'));
+        $settings = Setting::values();
+
+        return view('articulos.index', compact('articulos', 'catalogoArticulos', 'familias', 'search', 'settings'));
     }
 
     public function create(): View
@@ -50,11 +53,13 @@ class ArticuloController extends Controller
             'articulo' => new Articulo([
                 'familia_id' => null,
                 'codigo_cliente' => null,
+                'aplica_iva' => true,
                 'iva' => 21,
                 'stock' => 0,
                 'estado' => 'activo',
             ]),
             'familias' => Familia::query()->orderBy('nombre', 'asc')->get(),
+            'settings' => Setting::values(),
             'action' => route('articulos.store'),
             'method' => 'POST',
             'pageTitle' => 'Nuevo artículo',
@@ -70,6 +75,9 @@ class ArticuloController extends Controller
             $data['pvp'] = round((float) $data['precio_sin_iva'] * (1 + ((float) $data['iva'] / 100)), 2);
         }
 
+        $settings = Setting::values();
+        $data = $this->applyTaxRules($data, $settings);
+
         Articulo::create($data);
 
         return redirect()
@@ -82,6 +90,7 @@ class ArticuloController extends Controller
         return view('articulos.edit', [
             'articulo' => $articulo,
             'familias' => Familia::query()->orderBy('nombre', 'asc')->get(),
+            'settings' => Setting::values(),
             'action' => route('articulos.update', $articulo),
             'method' => 'PUT',
             'pageTitle' => 'Editar artículo',
@@ -96,6 +105,9 @@ class ArticuloController extends Controller
         if ($data['pvp'] === null) {
             $data['pvp'] = round((float) $data['precio_sin_iva'] * (1 + ((float) $data['iva'] / 100)), 2);
         }
+
+        $settings = Setting::values();
+        $data = $this->applyTaxRules($data, $settings);
 
         $articulo->update($data);
 
@@ -155,13 +167,31 @@ class ArticuloController extends Controller
             ],
             'codigo_cliente' => ['required', 'string', 'max:50'],
             'familia_id' => ['required', 'exists:familias,id'],
+            'aplica_iva' => ['nullable', 'boolean'],
             'descripcion' => ['required', 'string', 'max:255'],
             'precio_sin_iva' => ['required', 'numeric', 'min:0'],
-            'iva' => ['required', 'numeric', 'min:0', 'max:100'],
             'pvp' => ['nullable', 'numeric', 'min:0'],
             'stock' => ['required', 'numeric', 'min:0'],
             'estado' => ['required', Rule::in(['activo', 'sin_stock', 'inactivo'])],
         ]);
+
+        return $data;
+    }
+
+    private function applyTaxRules(array $data, array $settings): array
+    {
+        $ivaRate = (float) ($settings['iva_global_rate'] ?? 21);
+        $ivaGlobalEnabled = (bool) ((int) ($settings['iva_global_enabled'] ?? 1));
+        $aplicaIva = $ivaGlobalEnabled ? true : (bool) ($data['aplica_iva'] ?? false);
+
+        $data['aplica_iva'] = $aplicaIva;
+        $data['iva'] = $aplicaIva ? $ivaRate : 0;
+
+        if ($data['pvp'] === null || $data['pvp'] === '') {
+            $data['pvp'] = $aplicaIva
+                ? round((float) $data['precio_sin_iva'] * (1 + ($ivaRate / 100)), 2)
+                : round((float) $data['precio_sin_iva'], 2);
+        }
 
         return $data;
     }

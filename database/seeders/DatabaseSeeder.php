@@ -4,10 +4,12 @@ namespace Database\Seeders;
 
 use App\Models\Articulo;
 use App\Models\Familia;
+use App\Models\Setting;
 use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -16,11 +18,22 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        Setting::setValue('unidad_peso', 'kg');
+        Setting::setValue('iva_global_enabled', '1');
+        Setting::setValue('iva_global_rate', '21');
 
-        User::factory()->create([
-            'name' => 'Test User',
+        User::query()->updateOrCreate([
+            'email' => 'admin@gmail.com',
+        ], [
+            'name' => 'Administrador',
+            'password' => Hash::make('admin123'),
+        ]);
+
+        User::query()->updateOrCreate([
             'email' => 'test@example.com',
+        ], [
+            'name' => 'Test User',
+            'password' => Hash::make('password'),
         ]);
 
         DB::table('familias')->delete();
@@ -41,6 +54,7 @@ class DatabaseSeeder extends Seeder
                 'codigo' => 'ART-001',
                 'codigo_cliente' => 'MON-4K-27',
                 'familia_id' => $familiaMonitores->id,
+                'aplica_iva' => 1,
                 'descripcion' => 'Monitor Dell 27" 4K',
                 'precio_sin_iva' => 350.00,
                 'iva' => 21,
@@ -54,6 +68,7 @@ class DatabaseSeeder extends Seeder
                 'codigo' => 'ART-002',
                 'codigo_cliente' => 'KEY-MECH-01',
                 'familia_id' => $familiaPerifericos->id,
+                'aplica_iva' => 1,
                 'descripcion' => 'Teclado Mecánico Keychron',
                 'precio_sin_iva' => 85.00,
                 'iva' => 21,
@@ -67,6 +82,7 @@ class DatabaseSeeder extends Seeder
                 'codigo' => 'ART-003',
                 'codigo_cliente' => 'MOUSE-MX3',
                 'familia_id' => $familiaPerifericos->id,
+                'aplica_iva' => 1,
                 'descripcion' => 'Ratón Logitech MX Master 3',
                 'precio_sin_iva' => 90.00,
                 'iva' => 21,

@@ -1,0 +1,198 @@
+@extends('layouts.app')
+
+@section('title', 'Configuración')
+
+@section('header-actions')
+    <form action="{{ route('logout') }}" method="POST" style="margin: 0;">
+        @csrf
+        <button type="submit" class="btn-modern btn-secondary" style="width: auto; display: inline-flex; align-items: center; justify-content: center;">
+            <i class="fa-solid fa-right-from-bracket"></i> Salir
+        </button>
+    </form>
+@endsection
+
+@section('content')
+@php
+    $activeTab = request()->query('tab', 'general');
+@endphp
+
+<section class="page-hero">
+    <div class="hero-top">
+        <div>
+            <div class="hero-kicker"><i class="fa-solid fa-gear"></i> Configuración del negocio</div>
+            <p class="hero-copy">Ajusta la unidad de peso, el comportamiento del IVA y administra usuarios con credenciales reales.</p>
+        </div>
+    </div>
+</section>
+
+@if(session('status'))
+    <div class="card" style="margin-bottom: 1rem; background: #ecfdf5; border-color: #bbf7d0; color: #166534;">
+        {{ session('status') }}
+    </div>
+@endif
+
+@if($errors->any())
+    <div class="card" style="margin-bottom: 1rem; border-color: rgba(239, 68, 68, 0.35); background: #fef2f2; color: #7f1d1d;">
+        <strong>Revisa los datos.</strong>
+        <ul style="margin: 0.5rem 0 0; padding-left: 1.2rem;">
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
+
+<div class="config-tabs">
+    <a href="{{ route('configuracion.index', ['tab' => 'general']) }}" class="config-tab {{ $activeTab === 'general' ? 'is-active' : '' }}">General</a>
+    <a href="{{ route('configuracion.index', ['tab' => 'users']) }}" class="config-tab {{ $activeTab === 'users' ? 'is-active' : '' }}">Usuarios</a>
+</div>
+
+@if($activeTab === 'general')
+    <div class="config-grid">
+        <form class="card" action="{{ route('configuracion.general.update') }}" method="POST">
+            @csrf
+            <div class="hero-kicker"><i class="fa-solid fa-sliders"></i> General</div>
+            <h2 class="hero-title" style="font-size: 1.5rem; margin-top: 0.25rem;">Parámetros del negocio</h2>
+
+            <div class="form-grid" style="margin-top: 1.25rem;">
+                <div class="input-group">
+                    <label>Unidad de peso</label>
+                    <select class="input-modern" name="unidad_peso" required>
+                        <option value="kg" @selected(($settings['unidad_peso'] ?? 'kg') === 'kg')>Kilogramos</option>
+                        <option value="lb" @selected(($settings['unidad_peso'] ?? 'kg') === 'lb')>Libras</option>
+                    </select>
+                </div>
+                <div class="input-group" style="display: flex; align-items: center; gap: 0.65rem; padding-top: 1.8rem;">
+                    <input type="checkbox" id="iva_global_enabled" name="iva_global_enabled" value="1" @checked((int) ($settings['iva_global_enabled'] ?? 1) === 1)>
+                    <label for="iva_global_enabled" style="margin: 0; color: var(--text-main);">Aplicar IVA global al catálogo</label>
+                </div>
+                <div class="input-group">
+                    <label>IVA global (%)</label>
+                    <input type="number" step="0.01" min="0" max="100" class="input-modern" name="iva_global_rate" value="{{ $settings['iva_global_rate'] ?? 21 }}" required>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
+                <button type="submit" class="btn-modern btn-accent" style="width: auto;">Guardar configuración</button>
+            </div>
+        </form>
+    </div>
+@else
+@php
+    $userModal = $users->firstWhere('id', (int) old('user_id'));
+    $userModalAction = $userModal ? route('configuracion.users.update', $userModal) : route('configuracion.users.store');
+    $userModalMethod = $userModal ? 'PUT' : '';
+@endphp
+    <div class="config-grid config-grid-users">
+        <form class="card" action="{{ route('configuracion.users.store') }}" method="POST">
+            @csrf
+            <div class="hero-kicker"><i class="fa-solid fa-user-plus"></i> Usuarios</div>
+            <h2 class="hero-title" style="font-size: 1.5rem; margin-top: 0.25rem;">Crear usuario</h2>
+
+            <div class="form-grid" style="margin-top: 1.25rem;">
+                <div class="input-group">
+                    <label>Nombre</label>
+                    <input type="text" class="input-modern" name="name" required>
+                </div>
+                <div class="input-group">
+                    <label>Email</label>
+                    <input type="email" class="input-modern" name="email" required>
+                </div>
+                <div class="input-group">
+                    <label>Contraseña</label>
+                    <input type="password" class="input-modern" name="password" required>
+                </div>
+                <div class="input-group">
+                    <label>Confirmar contraseña</label>
+                    <input type="password" class="input-modern" name="password_confirmation" required>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
+                <button type="submit" class="btn-modern btn-accent" style="width: auto;">Guardar usuario</button>
+            </div>
+        </form>
+
+        <div class="card">
+            <div class="hero-kicker"><i class="fa-solid fa-users"></i> Usuarios registrados</div>
+            <div class="familias-grid" style="margin-top: 1rem;">
+                @forelse($users as $user)
+                    @php($isProtectedAdmin = strtolower($user->email) === 'admin@gmail.com')
+                    <div class="familia-card">
+                        <div class="familia-card-head">
+                            <div>
+                                <div class="familia-card-title">{{ $user->name }}</div>
+                                <div class="familia-card-desc" style="margin-top: 0.35rem;">{{ $user->email }}</div>
+                            </div>
+                            <span class="familia-card-badge">{{ $isProtectedAdmin ? 'Administrador' : 'ID '.$user->id }}</span>
+                        </div>
+                        <div class="familia-card-desc">Credenciales activas para acceso al sistema.</div>
+                        <div class="flex-gap" style="justify-content: flex-end; margin-top: 0.85rem; gap: 0.5rem;">
+                            <button type="button" class="btn-modern btn-secondary js-user-edit" style="width: auto;" data-user='@json($user)'>Editar</button>
+                            @if(! $isProtectedAdmin)
+                                <form action="{{ route('configuracion.users.destroy', $user) }}" method="POST" onsubmit="return confirm('¿Eliminar este usuario?');" style="margin: 0;">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn-modern btn-secondary" style="width: auto; color: var(--danger);">Eliminar</button>
+                                </form>
+                            @endif
+                        </div>
+                    </div>
+                @empty
+                    <div class="stock-empty">Todavía no hay usuarios registrados.</div>
+                @endforelse
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="user-modal" aria-hidden="true" @if($userModal) data-open="true" @endif>
+        <div class="modal-backdrop js-user-modal-close" role="presentation"></div>
+        <div class="modal-dialog modal-dialog-details" role="dialog" aria-modal="true" aria-labelledby="user-modal-title">
+            <div class="modal-header">
+                <div>
+                    <div class="hero-kicker"><i class="fa-solid fa-user-pen"></i> Usuarios</div>
+                    <h2 class="hero-title" id="user-modal-title" style="font-size: 1.5rem; margin-top: 0.25rem;">Editar usuario</h2>
+                </div>
+                <button type="button" class="modal-close js-user-modal-close" aria-label="Cerrar modal">&times;</button>
+            </div>
+
+            <form id="user-modal-form" action="{{ $userModalAction }}" method="POST" class="modal-form">
+                @csrf
+                <input type="hidden" name="user_id" id="user-modal-id" value="{{ old('user_id', $userModal->id ?? '') }}">
+                <input type="hidden" name="_method" id="user-modal-method" value="{{ $userModalMethod }}">
+
+                <div class="modal-body">
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>Nombre</label>
+                            <input type="text" class="input-modern" name="name" id="user-modal-name" value="{{ old('name', $userModal->name ?? '') }}" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Email</label>
+                            <input type="email" class="input-modern" name="email" id="user-modal-email" value="{{ old('email', $userModal->email ?? '') }}" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Contraseña</label>
+                            <input type="password" class="input-modern" name="password" id="user-modal-password" placeholder="Deja vacío para conservarla">
+                        </div>
+                        <div class="input-group">
+                            <label>Confirmar contraseña</label>
+                            <input type="password" class="input-modern" name="password_confirmation" id="user-modal-password-confirmation" placeholder="Repite la nueva contraseña">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <div style="color: var(--text-muted); font-size: 0.9rem;">La contraseña solo cambia si escribes una nueva.</div>
+                    <div class="flex-gap" style="width: auto;">
+                        <button type="button" class="btn-modern btn-secondary js-user-modal-close" style="width: auto;">Cancelar</button>
+                        <button type="submit" class="btn-modern btn-accent" style="width: auto;">Guardar usuario</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+@endif
+
+<script src="/js/configuracion.js"></script>
+@endsection

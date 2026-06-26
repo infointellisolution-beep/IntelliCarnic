@@ -16,6 +16,7 @@ class Articulo extends Model
         'codigo_cliente',
         'familia_id',
         'descripcion',
+        'aplica_iva',
         'precio_sin_iva',
         'iva',
         'pvp',
@@ -30,6 +31,7 @@ class Articulo extends Model
             'iva' => 'decimal:2',
             'pvp' => 'decimal:2',
             'stock' => 'decimal:3',
+            'aplica_iva' => 'boolean',
         ];
     }
 

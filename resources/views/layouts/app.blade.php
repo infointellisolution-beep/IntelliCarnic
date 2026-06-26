@@ -37,6 +37,11 @@
                         </a>
                     </li>
                     <li>
+                        <a href="{{ route('configuracion.index') }}" class="{{ request()->routeIs('configuracion.*') ? 'active' : '' }}">
+                            <i class="fa-solid fa-gear"></i> Configuración
+                        </a>
+                    </li>
+                    <li>
                         <a href="{{ route('vender.index') }}" class="{{ request()->routeIs('vender.*') ? 'active' : '' }}">
                             <i class="fa-solid fa-cart-shopping"></i> Vender (TPV)
                         </a>
@@ -64,8 +69,8 @@
                         </div>
                     @endif
                     <div class="user-profile">
-                        <span>Usuario</span>
-                        <div class="avatar">U</div>
+                        <span>{{ auth()->user()->name ?? 'Usuario' }}</span>
+                        <div class="avatar">{{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}</div>
                     </div>
                 </header>
 

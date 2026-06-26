@@ -152,6 +152,16 @@ document.addEventListener('DOMContentLoaded', () => {
         field.value = value ?? '';
     };
 
+    const setCheckboxValue = (name, checked) => {
+        const field = modalForm.querySelector(`[name="${name}"]`);
+
+        if (!field) {
+            return;
+        }
+
+        field.checked = Boolean(checked);
+    };
+
     const resetToCreateMode = () => {
         modalTitle.textContent = 'Nuevo artículo';
         modalForm.action = openCreateButtons[0]?.dataset.modalAction || modalForm.action;
@@ -188,6 +198,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             field.value = '';
         });
+
+        setCheckboxValue('aplica_iva', true);
     };
 
     openCreateButtons.forEach((button) => {
@@ -216,6 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setFieldValue('pvp', articulo.pvp);
             setFieldValue('stock', articulo.stock ?? 0);
             setFieldValue('estado', articulo.estado || 'activo');
+            setCheckboxValue('aplica_iva', articulo.aplica_iva ?? true);
 
             openModal();
         });
