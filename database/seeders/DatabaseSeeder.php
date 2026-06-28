@@ -39,59 +39,53 @@ class DatabaseSeeder extends Seeder
         DB::table('familias')->delete();
         DB::table('articulos')->delete();
 
-        $familiaMonitores = Familia::query()->create([
-            'nombre' => 'Monitores',
-            'descripcion' => 'Pantallas y monitores para informática.',
+        $familiaBebidas = Familia::query()->create([
+            'nombre' => 'BEBIDAS',
+            'descripcion' => 'Bebidas frías y calientes.',
+            'color' => '#2563eb'
         ]);
 
-        $familiaPerifericos = Familia::query()->create([
-            'nombre' => 'Periféricos',
-            'descripcion' => 'Teclados, ratones y accesorios.',
+        $familiaCarnes = Familia::query()->create([
+            'nombre' => 'CARNES',
+            'descripcion' => 'Carnes rojas y blancas.',
+            'color' => '#2563eb'
+        ]);
+
+        $familiaPostres = Familia::query()->create([
+            'nombre' => 'POSTRES',
+            'descripcion' => 'Postres y dulces.',
+            'color' => '#2563eb'
         ]);
 
         Articulo::query()->insert([
             [
-                'codigo' => 'ART-001',
-                'codigo_cliente' => 'MON-4K-27',
-                'familia_id' => $familiaMonitores->id,
+                'codigo' => '0001',
+                'codigo_cliente' => 'CARNE-01',
+                'familia_id' => $familiaCarnes->id,
                 'aplica_iva' => 1,
-                'descripcion' => 'Monitor Dell 27" 4K',
-                'precio_sin_iva' => 350.00,
+                'descripcion' => 'Carne de res',
+                'precio_sin_iva' => 123.96,
                 'iva' => 21,
-                'pvp' => 423.50,
-                'stock' => 24,
+                'pvp' => 150.00,
+                'stock' => 10,
                 'estado' => 'activo',
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
-                'codigo' => 'ART-002',
-                'codigo_cliente' => 'KEY-MECH-01',
-                'familia_id' => $familiaPerifericos->id,
+                'codigo' => '0002',
+                'codigo_cliente' => 'POLLO-01',
+                'familia_id' => $familiaCarnes->id,
                 'aplica_iva' => 1,
-                'descripcion' => 'Teclado Mecánico Keychron',
-                'precio_sin_iva' => 85.00,
+                'descripcion' => 'Pollo entero',
+                'precio_sin_iva' => 70.24,
                 'iva' => 21,
-                'pvp' => 102.85,
+                'pvp' => 85.00,
                 'stock' => 5,
                 'estado' => 'activo',
                 'created_at' => now(),
                 'updated_at' => now(),
-            ],
-            [
-                'codigo' => 'ART-003',
-                'codigo_cliente' => 'MOUSE-MX3',
-                'familia_id' => $familiaPerifericos->id,
-                'aplica_iva' => 1,
-                'descripcion' => 'Ratón Logitech MX Master 3',
-                'precio_sin_iva' => 90.00,
-                'iva' => 21,
-                'pvp' => 108.90,
-                'stock' => 0,
-                'estado' => 'sin_stock',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
+            ]
         ]);
     }
 }

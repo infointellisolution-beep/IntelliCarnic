@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/css/custom.css">
+    <link rel="stylesheet" href="/css/vender.css">
 </head>
 <body>
 
@@ -37,8 +38,13 @@
                         </a>
                     </li>
                     <li>
-                        <a href="{{ route('vender.index') }}" class="{{ request()->routeIs('vender.*') ? 'active' : '' }}">
-                            <i class="fa-solid fa-cart-shopping"></i> Vender (TPV)
+                        <a href="{{ route('vender.normal') }}" class="{{ request()->routeIs('vender.normal') ? 'active' : '' }}">
+                            <i class="fa-solid fa-desktop"></i> Venta Normal
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('vender.tactil') }}" class="{{ request()->routeIs('vender.tactil') ? 'active' : '' }}">
+                            <i class="fa-solid fa-hand-pointer"></i> TPV Táctil
                         </a>
                     </li>
                 </ul>
@@ -65,11 +71,16 @@
             <main class="main-content">
                 <!-- Top Bar -->
                 <header class="top-bar">
-                    @hasSection('header-actions')
-                        <div class="top-bar-actions">
-                            @yield('header-actions')
-                        </div>
-                    @endif
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <button id="sidebarToggle" style="background: none; border: none; font-size: 1.25rem; color: var(--text-main); cursor: pointer;">
+                            <i class="fa-solid fa-bars"></i>
+                        </button>
+                        @hasSection('header-actions')
+                            <div class="top-bar-actions">
+                                @yield('header-actions')
+                            </div>
+                        @endif
+                    </div>
                     <div class="user-profile">
                         <span>{{ auth()->user()->name ?? 'Usuario' }}</span>
                         <div class="avatar">{{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}</div>
@@ -85,5 +96,17 @@
         </div>
     @endif
 
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggleBtn = document.getElementById('sidebarToggle');
+            const sidebar = document.querySelector('.sidebar');
+            
+            if (toggleBtn && sidebar) {
+                toggleBtn.addEventListener('click', function() {
+                    sidebar.classList.toggle('collapsed');
+                });
+            }
+        });
+    </script>
 </body>
 </html>

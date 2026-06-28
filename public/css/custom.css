@@ -131,6 +131,14 @@ body {
     display: flex;
     flex-direction: column;
     color: #e2e8f0;
+    transition: width 0.3s ease;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.sidebar.collapsed {
+    width: 0;
+    border-right: none;
 }
 
 .sidebar-header {

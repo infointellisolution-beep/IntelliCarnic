@@ -14,6 +14,7 @@ class Familia extends Model
     protected $fillable = [
         'nombre',
         'descripcion',
+        'color',
     ];
 
     public function articulos()
