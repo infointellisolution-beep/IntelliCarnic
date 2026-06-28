@@ -1112,3 +1112,13 @@ body {
         padding: 1rem;
     }
 }
+
+.empresa-logo-preview {
+    display: block;
+    max-width: 200px;
+    max-height: 120px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    padding: 0.5rem;
+    background: #fff;
+}

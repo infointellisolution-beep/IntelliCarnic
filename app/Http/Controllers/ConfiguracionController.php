@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -38,6 +39,47 @@ class ConfiguracionController extends Controller
         return redirect()
             ->route('configuracion.index')
             ->with('status', 'Configuración general guardada correctamente.');
+    }
+
+    public function updateEmpresa(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'empresa_nombre' => ['nullable', 'string', 'max:255'],
+            'empresa_direccion' => ['nullable', 'string', 'max:500'],
+            'empresa_correo' => ['nullable', 'email', 'max:255'],
+            'empresa_celular' => ['nullable', 'string', 'max:50'],
+        ]);
+
+        Setting::setValue('empresa_nombre', $data['empresa_nombre'] ?? '');
+        Setting::setValue('empresa_direccion', $data['empresa_direccion'] ?? '');
+        Setting::setValue('empresa_correo', $data['empresa_correo'] ?? '');
+        Setting::setValue('empresa_celular', $data['empresa_celular'] ?? '');
+
+        if ($request->boolean('empresa_logo_remove')) {
+            $oldLogo = Setting::getValue('empresa_logo');
+            if ($oldLogo) {
+                Storage::disk('public')->delete($oldLogo);
+            }
+            Setting::setValue('empresa_logo', '');
+        }
+
+        if ($request->hasFile('empresa_logo')) {
+            $request->validate([
+                'empresa_logo' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            ]);
+
+            $oldLogo = Setting::getValue('empresa_logo');
+            if ($oldLogo) {
+                Storage::disk('public')->delete($oldLogo);
+            }
+
+            $path = $request->file('empresa_logo')->store('empresa', 'public');
+            Setting::setValue('empresa_logo', $path);
+        }
+
+        return redirect()
+            ->route('configuracion.index', ['tab' => 'empresa'])
+            ->with('status', 'Información de la empresa guardada correctamente.');
     }
 
     public function storeUser(Request $request): RedirectResponse

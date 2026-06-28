@@ -44,6 +44,7 @@
 
 <div class="config-tabs">
     <a href="{{ route('configuracion.index', ['tab' => 'general']) }}" class="config-tab {{ $activeTab === 'general' ? 'is-active' : '' }}">General</a>
+    <a href="{{ route('configuracion.index', ['tab' => 'empresa']) }}" class="config-tab {{ $activeTab === 'empresa' ? 'is-active' : '' }}">Mi Empresa</a>
     <a href="{{ route('configuracion.index', ['tab' => 'users']) }}" class="config-tab {{ $activeTab === 'users' ? 'is-active' : '' }}">Usuarios</a>
 </div>
 
@@ -74,6 +75,50 @@
 
             <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
                 <button type="submit" class="btn-modern btn-accent" style="width: auto;">Guardar configuración</button>
+            </div>
+        </form>
+    </div>
+@elseif($activeTab === 'empresa')
+    <div class="config-grid">
+        <form class="card" action="{{ route('configuracion.empresa.update') }}" method="POST" enctype="multipart/form-data">
+            @csrf
+            <div class="hero-kicker"><i class="fa-solid fa-building"></i> Mi Empresa</div>
+            <h2 class="hero-title" style="font-size: 1.5rem; margin-top: 0.25rem;">Información de la empresa</h2>
+
+            <div class="form-grid" style="margin-top: 1.25rem;">
+                <div class="input-group">
+                    <label>Nombre de la empresa</label>
+                    <input type="text" class="input-modern" name="empresa_nombre" value="{{ $settings['empresa_nombre'] ?? '' }}" maxlength="255">
+                </div>
+                <div class="input-group">
+                    <label>Dirección</label>
+                    <textarea class="input-modern" name="empresa_direccion" rows="2" maxlength="500">{{ $settings['empresa_direccion'] ?? '' }}</textarea>
+                </div>
+                <div class="input-group">
+                    <label>Correo electrónico</label>
+                    <input type="email" class="input-modern" name="empresa_correo" value="{{ $settings['empresa_correo'] ?? '' }}" maxlength="255">
+                </div>
+                <div class="input-group">
+                    <label>Celular</label>
+                    <input type="text" class="input-modern" name="empresa_celular" value="{{ $settings['empresa_celular'] ?? '' }}" maxlength="50">
+                </div>
+                <div class="input-group">
+                    <label>Logotipo</label>
+                    <input type="file" class="input-modern" name="empresa_logo" accept="image/jpeg,image/png,image/webp" style="padding: 0.5rem;">
+                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">PNG, JPG o WebP. Máximo 2 MB.</div>
+                    @if(! empty($settings['empresa_logo']))
+                        <div style="margin-top: 0.75rem;">
+                            <img src="{{ asset('storage/'.$settings['empresa_logo']) }}" alt="Logotipo" class="empresa-logo-preview">
+                            <label style="display: inline-flex; align-items: center; gap: 0.4rem; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">
+                                <input type="checkbox" name="empresa_logo_remove" value="1"> Eliminar logotipo actual
+                            </label>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
+                <button type="submit" class="btn-modern btn-accent" style="width: auto;">Guardar información</button>
             </div>
         </form>
     </div>

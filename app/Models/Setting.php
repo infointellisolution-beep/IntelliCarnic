@@ -21,6 +21,11 @@ class Setting extends Model
             'unidad_peso' => 'kg',
             'iva_global_enabled' => '1',
             'iva_global_rate' => '21',
+            'empresa_nombre' => '',
+            'empresa_direccion' => '',
+            'empresa_logo' => '',
+            'empresa_correo' => '',
+            'empresa_celular' => '',
         ];
     }
 

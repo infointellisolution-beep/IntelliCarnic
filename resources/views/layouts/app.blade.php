@@ -37,13 +37,15 @@
                         </a>
                     </li>
                     <li>
-                        <a href="{{ route('configuracion.index') }}" class="{{ request()->routeIs('configuracion.*') ? 'active' : '' }}">
-                            <i class="fa-solid fa-gear"></i> Configuración
-                        </a>
-                    </li>
-                    <li>
                         <a href="{{ route('vender.index') }}" class="{{ request()->routeIs('vender.*') ? 'active' : '' }}">
                             <i class="fa-solid fa-cart-shopping"></i> Vender (TPV)
+                        </a>
+                    </li>
+                </ul>
+                <ul class="nav-links" style="margin-top: auto;">
+                    <li>
+                        <a href="{{ route('configuracion.index') }}" class="{{ request()->routeIs('configuracion.*') ? 'active' : '' }}">
+                            <i class="fa-solid fa-gear"></i> Configuración
                         </a>
                     </li>
                 </ul>
