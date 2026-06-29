@@ -42,31 +42,26 @@ Route::get('/dev/run-cmd', function (\Illuminate\Http\Request $request) {
 
     $output = [];
     
-    // Reparar storage link manualmente
+    // Reparar storage manualmente: Copiar archivos físicos porque symlink está deshabilitado
     $publicStorage = public_path('storage');
-    if (file_exists($publicStorage) || is_link($publicStorage)) {
-        if (is_link($publicStorage)) {
-            unlink($publicStorage);
-            $output[] = "Unlinked existing storage link.";
-        } else if (is_dir($publicStorage)) {
-            \Illuminate\Support\Facades\File::deleteDirectory($publicStorage);
-            $output[] = "Deleted existing storage directory.";
-        } else {
-            unlink($publicStorage);
-            $output[] = "Deleted existing storage file.";
-        }
+    $target = storage_path('app/public');
+    
+    // Si era un symlink roto, eliminarlo
+    if (is_link($publicStorage)) {
+        @unlink($publicStorage);
     }
     
-    // Crear el symlink usando la función nativa para evitar que Laravel use exec()
-    $target = storage_path('app/public');
-    if (function_exists('symlink')) {
-        if (@symlink($target, $publicStorage)) {
-            $output[] = "Storage Link: creado correctamente con symlink() nativo.";
-        } else {
-            $output[] = "Storage Link: Error al crear el symlink nativo.";
-        }
-    } else {
-        $output[] = "Storage Link: La función symlink() está deshabilitada en este servidor.";
+    // Asegurar que exista el directorio de destino
+    if (!file_exists($publicStorage)) {
+        mkdir($publicStorage, 0755, true);
+    }
+    
+    // Copiar todo el contenido físicamente
+    try {
+        \Illuminate\Support\Facades\File::copyDirectory($target, $publicStorage);
+        $output[] = "Imágenes copiadas físicamente a la carpeta pública con éxito.";
+    } catch (\Exception $e) {
+        $output[] = "Error al copiar imágenes: " . $e->getMessage();
     }
     
     // Migraciones
