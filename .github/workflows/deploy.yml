@@ -20,11 +20,11 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: '8.3'
           tools: composer
 
       - name: Install Dependencies
-        run: composer install --no-dev --optimize-autoloader
+        run: composer update --no-dev --optimize-autoloader
 
       - name: Deploy to shared hosting via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
