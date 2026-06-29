@@ -36,6 +36,7 @@ jobs:
           protocol: ftps
           server-dir: /public_html/intellicarnic/
           local-dir: ./
+          timeout: 600000
           exclude: |
             **/.git*
             **/.git*/**
