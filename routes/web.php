@@ -42,7 +42,7 @@ Route::get('/dev/run-cmd', function (\Illuminate\Http\Request $request) {
 
     $output = [];
     
-    // Reparar storage link
+    // Reparar storage link manualmente
     $publicStorage = public_path('storage');
     if (file_exists($publicStorage) || is_link($publicStorage)) {
         if (is_link($publicStorage)) {
@@ -56,8 +56,18 @@ Route::get('/dev/run-cmd', function (\Illuminate\Http\Request $request) {
             $output[] = "Deleted existing storage file.";
         }
     }
-    \Illuminate\Support\Facades\Artisan::call('storage:link');
-    $output[] = "Storage Link: " . \Illuminate\Support\Facades\Artisan::output();
+    
+    // Crear el symlink usando la función nativa para evitar que Laravel use exec()
+    $target = storage_path('app/public');
+    if (function_exists('symlink')) {
+        if (@symlink($target, $publicStorage)) {
+            $output[] = "Storage Link: creado correctamente con symlink() nativo.";
+        } else {
+            $output[] = "Storage Link: Error al crear el symlink nativo.";
+        }
+    } else {
+        $output[] = "Storage Link: La función symlink() está deshabilitada en este servidor.";
+    }
     
     // Migraciones
     \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
