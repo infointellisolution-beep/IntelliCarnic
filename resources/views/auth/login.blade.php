@@ -17,7 +17,7 @@
             @csrf
             <div class="input-group">
                 <label for="email">Usuario o Email</label>
-                <input type="text" id="email" name="email" class="input-modern" placeholder="admin@intellicarnic.local" value="{{ old('email') }}" required>
+                <input type="text" id="email" name="email" class="input-modern" placeholder="tunombre@gmail.com" value="{{ old('email') }}" required>
             </div>
             
             <div class="input-group">

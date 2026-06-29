@@ -35,6 +35,7 @@
             'familia_id' => $articulo->familia_id,
             'familia_nombre' => $articulo->familia?->nombre,
             'stock' => $articulo->stock,
+            'stock_minimo' => $articulo->stock_minimo,
             'estado' => $articulo->estado,
             'precio_sin_iva' => $articulo->precio_sin_iva,
             'iva' => $articulo->effective_iva,
@@ -153,7 +154,7 @@
         <div class="stat-card-header">
             <div>
                 <div class="stat-label">Valor inventario</div>
-                <div class="stat-value">${{ number_format($articulos->sum('effective_pvp'), 2) }}</div>
+                <div class="stat-value">${{ number_format($articulos->sum(fn($a) => $a->effective_pvp * $a->stock), 2) }}</div>
             </div>
             <div class="stat-card-icon orange"><i class="fa-solid fa-coins"></i></div>
         </div>
@@ -213,7 +214,9 @@
                         'iva' => $articulo->effective_iva,
                         'pvp' => $articulo->effective_pvp,
                         'stock' => $articulo->stock,
+                        'stock_minimo' => $articulo->stock_minimo,
                         'estado' => $articulo->estado,
+                        'imagen_url' => $articulo->imagen ? asset('storage/' . $articulo->imagen) : null,
                     ];
                 @endphp
                 <tr class="catalog-row">
@@ -227,7 +230,15 @@
                     <td>{{ number_format($articulo->effective_iva, 0) }}%</td>
                     <td style="font-weight: 700;">${{ number_format($articulo->effective_pvp, 2) }}</td>
                     <td>
-                        <span class="badge {{ $articulo->stock > 10 ? 'badge-success' : ($articulo->stock > 0 ? 'badge-warning' : 'badge-danger') }}">
+                        @php
+                            $badgeClass = 'badge-success';
+                            if ($articulo->stock <= 0) {
+                                $badgeClass = 'badge-danger';
+                            } elseif ($articulo->stock <= $articulo->stock_minimo) {
+                                $badgeClass = 'badge-warning';
+                            }
+                        @endphp
+                        <span class="badge {{ $badgeClass }}">
                             {{ number_format($articulo->stock, 3) }} {{ $settings['unidad_peso'] ?? 'kg' }}
                         </span>
                     </td>
@@ -357,6 +368,9 @@
                 </div>
 
                 <div class="detail-list">
+                    <div class="detail-list-item" id="detalle-imagen-container" style="display: none; text-align: center; grid-column: 1 / -1; padding: 1rem 0;">
+                        <img id="detalle-imagen" src="" alt="Imagen del producto" style="max-width: 100%; max-height: 200px; border-radius: 8px; object-fit: contain;">
+                    </div>
                     <div class="detail-list-item">
                         <div><strong>Familia</strong><span>Clasificación comercial</span></div>
                         <strong id="detalle-familia">Informática</strong>
@@ -405,7 +419,7 @@
             </div>
         @endif
 
-        <form id="articulo-modal-form" action="{{ $modalAction }}" method="POST" class="modal-form">
+        <form id="articulo-modal-form" action="{{ $modalAction }}" method="POST" enctype="multipart/form-data" class="modal-form">
             @csrf
             <input type="hidden" name="articulo_id" id="articulo-modal-id" value="{{ old('articulo_id', $modalArticulo->id ?? '') }}">
             <input type="hidden" name="_method" id="articulo-modal-method" value="{{ $modalArticulo ? 'PUT' : '' }}" @unless($modalArticulo) disabled @endunless>

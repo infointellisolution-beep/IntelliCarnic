@@ -25,7 +25,7 @@
         <div class="flex-between" style="margin-bottom: 1rem;">
             <h3 style="margin:0;">Catálogo</h3>
             <div class="input-group" style="margin:0; width: 250px;">
-                <input type="text" class="input-modern" placeholder="Buscar artículo...">
+                <input type="text" id="search-tactil" class="input-modern" placeholder="Buscar artículo..." onkeyup="filterTactilCatalog()">
             </div>
         </div>
         
@@ -47,14 +47,20 @@
             <!-- Grilla de Artículos -->
             <div class="tactil-grid" style="flex: 1; padding-left: 0.5rem;">
                 @foreach($articulos as $articulo)
-                <button class="btn-tactil" style="min-height: 110px;" data-familia-id="{{ $articulo->familia_id }}" onclick='addToCart({!! json_encode($articulo) !!})'>
-                    <!-- Simulamos íconos según el nombre del artículo para la demo -->
-                    @if(stripos($articulo->descripcion, 'carne') !== false)
-                        <div style="font-size: 2rem; color: #f59e0b; margin-bottom: 0.5rem;"><i class="fa-solid fa-burger"></i></div>
-                    @elseif(stripos($articulo->descripcion, 'pollo') !== false)
-                        <div style="font-size: 2rem; color: #ef4444; margin-bottom: 0.5rem;"><i class="fa-solid fa-drumstick-bite"></i></div>
+                <button class="btn-tactil" style="min-height: 110px; position: relative;" data-familia-id="{{ $articulo->familia_id }}" onclick='openScaleModal({!! json_encode($articulo) !!})'>
+                    @if($articulo->imagen)
+                        <div style="height: 60px; display: flex; align-items: center; justify-content: center; margin-bottom: 0.5rem;">
+                            <img src="{{ asset('storage/' . $articulo->imagen) }}" alt="{{ $articulo->descripcion }}" style="max-height: 100%; max-width: 100%; border-radius: 4px; object-fit: contain;">
+                        </div>
                     @else
-                        <div style="font-size: 2rem; color: #94a3b8; margin-bottom: 0.5rem;"><i class="fa-solid fa-image"></i></div>
+                        <!-- Simulamos íconos si no hay imagen -->
+                        @if(stripos($articulo->descripcion, 'carne') !== false)
+                            <div style="font-size: 2rem; color: #f59e0b; margin-bottom: 0.5rem;"><i class="fa-solid fa-burger"></i></div>
+                        @elseif(stripos($articulo->descripcion, 'pollo') !== false)
+                            <div style="font-size: 2rem; color: #ef4444; margin-bottom: 0.5rem;"><i class="fa-solid fa-drumstick-bite"></i></div>
+                        @else
+                            <div style="font-size: 2rem; color: #94a3b8; margin-bottom: 0.5rem;"><i class="fa-solid fa-image"></i></div>
+                        @endif
                     @endif
                     <div style="line-height: 1.2;">{{ $articulo->descripcion }}</div>
                     <div style="color: var(--text-muted); margin-top: 0.25rem; font-weight: 700;">${{ number_format($articulo->pvp, 2) }}</div>
@@ -99,17 +105,49 @@
             <div class="cobro-total" id="ticket-total-tactil">0.00</div>
             
             <div class="cobro-buttons">
-                <button class="btn-unico"><i class="fa-solid fa-check"></i> COBRO ÚNICO</button>
+                <button class="btn-unico" onclick="procesarCobro()"><i class="fa-solid fa-check"></i> COBRO ÚNICO</button>
                 <button id="btn-vaciar-tactil" class="btn-separado" onclick="handleVaciarEliminarTactil()"><i class="fa-solid fa-trash"></i> VACIAR</button>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Scale Modal -->
+<div id="scaleModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50; align-items: center; justify-content: center;">
+    <div style="background: white; border-radius: 12px; padding: 2rem; width: 400px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin: 0;">
+                <i class="fa-solid fa-weight-scale" style="color: var(--primary);"></i> Báscula Digital
+            </h3>
+            <button onclick="closeScaleModal()" style="background: none; border: none; font-size: 1.25rem; color: var(--text-muted); cursor: pointer;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        
+        <div style="text-align: center; margin-bottom: 1.5rem;">
+            <div id="scaleArticleName" style="font-weight: 600; font-size: 1.1rem; color: var(--text-main);"></div>
+            <div id="scaleArticlePrice" style="color: var(--text-muted);"></div>
+        </div>
+
+        <div style="background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 8px; padding: 1rem; text-align: center; margin-bottom: 1.5rem;">
+            <input type="number" id="scaleInput" step="0.001" min="0" oninput="updateScaleTotal()" style="width: 100%; text-align: center; font-size: 2.5rem; font-weight: 800; color: #0f172a; background: transparent; border: none; outline: none; font-family: monospace;" placeholder="0.000">
+            <div style="color: var(--text-muted); font-weight: 600; margin-top: 0.5rem; text-transform: uppercase;">{{ $settings['unidad_peso'] ?? 'kg' }}</div>
+            <div id="scaleTotal" style="margin-top: 1rem; font-size: 1.5rem; font-weight: 700; color: var(--primary);">Total: $0.00</div>
+        </div>
+
+        <div style="display: flex; gap: 1rem;">
+            <button onclick="closeScaleModal()" class="btn-modern btn-secondary" style="flex: 1; justify-content: center;">Cancelar</button>
+            <button onclick="confirmScaleAdd()" class="btn-modern btn-accent" style="flex: 1; justify-content: center;">Añadir</button>
+        </div>
+    </div>
+</div>
+
+@include('vender._checkout_modals')
+@endsection
+
+@push('scripts')
 <script>
     // Pasar los artículos de Laravel a JavaScript
     windowArticulos = {!! json_encode($articulos) !!};
     windowSettings = {!! json_encode($settings) !!};
 </script>
 <script src="{{ asset('js/pos.js') }}"></script>
-@endsection
+@endpush

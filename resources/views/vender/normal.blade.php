@@ -127,18 +127,21 @@
                 <i class="fa-solid fa-circle-minus" style="color: #f97316;"></i> QUITAR ARTÍCULO SELECCIONADO
             </button>
 
-            <button class="btn-action-huge" style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white; padding: 1.5rem 1rem; font-size: 1.1rem; margin-top: 0.5rem;">
+            <button class="btn-action-huge" onclick="procesarCobro()" style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white; padding: 1.5rem 1rem; font-size: 1.1rem; margin-top: 0.5rem;">
                 <i class="fa-solid fa-check-double"></i> REALIZAR VENTA
             </button>
         </div>
     </div>
 </div>
 
+@include('vender._checkout_modals')
+@endsection
+
+@push('scripts')
 <script>
     // Pasar los artículos de Laravel a JavaScript
     windowArticulos = {!! json_encode($articulos) !!};
     windowSettings = {!! json_encode($settings) !!};
 </script>
 <script src="{{ asset('js/pos.js') }}"></script>
-
-@endsection
+@endpush

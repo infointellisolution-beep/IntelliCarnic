@@ -21,7 +21,9 @@ class Articulo extends Model
         'iva',
         'pvp',
         'stock',
+        'stock_minimo',
         'estado',
+        'imagen',
     ];
 
     protected function casts(): array
@@ -31,6 +33,7 @@ class Articulo extends Model
             'iva' => 'decimal:2',
             'pvp' => 'decimal:2',
             'stock' => 'decimal:3',
+            'stock_minimo' => 'decimal:3',
             'aplica_iva' => 'boolean',
         ];
     }

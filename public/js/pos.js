@@ -148,13 +148,23 @@ function filterFamilia(familiaId, btnElement) {
         btnElement.style.border = '2px solid white';
     }
     
-    // 2. Filtrar artículos
+    // Aplicar el filtro completo (texto + familia)
+    filterTactilCatalog();
+}
+
+function filterTactilCatalog() {
+    const searchInput = document.getElementById('search-tactil');
+    const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
     const gridBtns = document.querySelectorAll('.tactil-grid .btn-tactil');
+    
     gridBtns.forEach(btn => {
+        const textContent = btn.textContent.toLowerCase();
         const artFamiliaId = btn.getAttribute('data-familia-id');
         
-        // Si no hay familiaId seleccionado, o si coincide con el del botón, mostrar
-        if (familiaId === null || artFamiliaId == familiaId) {
+        const matchFamilia = (currentFamiliaId === null || artFamiliaId == currentFamiliaId);
+        const matchText = query === '' || textContent.includes(query);
+        
+        if (matchFamilia && matchText) {
             btn.style.display = 'flex';
         } else {
             btn.style.display = 'none';
@@ -180,6 +190,54 @@ function getEffectivePrice(articulo) {
         iva: iva,
         pvp: precioSinIva * (1 + (iva / 100))
     };
+}
+
+let scaleArticle = null;
+
+function openScaleModal(articulo) {
+    scaleArticle = articulo;
+    const effective = getEffectivePrice(articulo);
+    
+    document.getElementById('scaleArticleName').innerText = articulo.descripcion;
+    document.getElementById('scaleArticlePrice').innerText = '$' + effective.pvp.toFixed(2) + ' / ' + (windowSettings.unidad_peso || 'kg').toUpperCase();
+    document.getElementById('scaleInput').value = '';
+    document.getElementById('scaleTotal').innerText = 'Total: $0.00';
+    
+    document.getElementById('scaleModal').style.display = 'flex';
+    setTimeout(() => document.getElementById('scaleInput').focus(), 100);
+}
+
+function updateScaleTotal() {
+    if (!scaleArticle) return;
+    
+    const input = document.getElementById('scaleInput');
+    const quantity = parseFloat(input.value) || 0;
+    
+    const effective = getEffectivePrice(scaleArticle);
+    const total = quantity * effective.pvp;
+    
+    document.getElementById('scaleTotal').innerText = 'Total: $' + total.toFixed(2);
+}
+
+function closeScaleModal() {
+    document.getElementById('scaleModal').style.display = 'none';
+    scaleArticle = null;
+}
+
+function confirmScaleAdd() {
+    const input = document.getElementById('scaleInput');
+    const quantity = parseFloat(input.value);
+    
+    if (isNaN(quantity) || quantity <= 0) {
+        alert('Por favor, ingresa una cantidad válida mayor a 0.');
+        input.focus();
+        return;
+    }
+    
+    if (scaleArticle) {
+        addToCart(scaleArticle, quantity);
+        closeScaleModal();
+    }
 }
 
 function addToCart(articulo, quantity = 1) {
@@ -220,7 +278,11 @@ function clearCart() {
 }
 
 function selectRow(index) {
-    currentSelectedIndex = index;
+    if (currentSelectedIndex === index) {
+        currentSelectedIndex = -1; // Toggle off if clicking the same row
+    } else {
+        currentSelectedIndex = index;
+    }
     renderCart();
 }
 
@@ -295,4 +357,247 @@ function renderCart() {
             }
         }
     }
+}
+
+// === COBRO Y TICKET MODALS ===
+
+let currentTotalToPay = 0;
+let currentVentaResponse = null;
+
+function procesarCobro() {
+    if (cart.length === 0) {
+        alert('El carrito está vacío.');
+        return;
+    }
+
+    let subtotal = 0;
+    let total = 0;
+    let impuestos = 0;
+
+    cart.forEach(item => {
+        const itemTotal = item.precio * item.cantidad * (1 - item.descuento / 100);
+        const itemSubtotal = itemTotal / (1 + (item.iva_rate / 100));
+        subtotal += itemSubtotal;
+        total += itemTotal;
+        impuestos += (itemTotal - itemSubtotal);
+    });
+
+    currentTotalToPay = total;
+
+    // Abrir Modal de Cobro
+    document.getElementById('checkoutTotalDisplay').innerText = '$' + total.toFixed(2);
+    document.getElementById('checkoutMontoRecibido').value = total.toFixed(2);
+    document.getElementById('checkoutMetodoPago').value = 'efectivo';
+    document.getElementById('checkoutVueltoDisplay').innerText = '$0.00';
+    document.getElementById('checkoutVueltoDisplay').style.color = '#059669';
+    handlePaymentMethodChange(); // Asegurar estado correcto
+
+    document.getElementById('checkoutModal').style.display = 'flex';
+    setTimeout(() => {
+        const input = document.getElementById('checkoutMontoRecibido');
+        if (!input.disabled) {
+            input.focus();
+            input.select();
+        }
+    }, 100);
+}
+
+function closeCheckoutModal() {
+    document.getElementById('checkoutModal').style.display = 'none';
+}
+
+function handlePaymentMethodChange() {
+    const metodo = document.getElementById('checkoutMetodoPago').value;
+    const inputMonto = document.getElementById('checkoutMontoRecibido');
+    
+    if (metodo !== 'efectivo') {
+        inputMonto.value = currentTotalToPay.toFixed(2);
+        inputMonto.disabled = true;
+        calculateVuelto();
+    } else {
+        inputMonto.disabled = false;
+        inputMonto.focus();
+        inputMonto.select();
+        calculateVuelto();
+    }
+}
+
+function calculateVuelto() {
+    const input = document.getElementById('checkoutMontoRecibido');
+    const vueltoDisplay = document.getElementById('checkoutVueltoDisplay');
+    const btnConfirm = document.getElementById('btnConfirmCheckout');
+    
+    let monto = parseFloat(input.value);
+    if (isNaN(monto)) monto = 0;
+
+    const vuelto = monto - currentTotalToPay;
+
+    if (vuelto < 0) {
+        vueltoDisplay.innerText = 'Falta: $' + Math.abs(vuelto).toFixed(2);
+        vueltoDisplay.style.color = '#dc2626'; // Rojo
+        btnConfirm.disabled = true;
+        btnConfirm.style.opacity = '0.5';
+    } else {
+        vueltoDisplay.innerText = '$' + vuelto.toFixed(2);
+        vueltoDisplay.style.color = '#059669'; // Verde
+        btnConfirm.disabled = false;
+        btnConfirm.style.opacity = '1';
+    }
+}
+
+async function confirmCheckout() {
+    const btnConfirm = document.getElementById('btnConfirmCheckout');
+    if (btnConfirm.disabled) return;
+
+    btnConfirm.disabled = true;
+    btnConfirm.innerText = 'Procesando...';
+
+    let subtotal = 0;
+    let total = 0;
+    let impuestos = 0;
+
+    const items = cart.map(item => {
+        const itemTotal = item.precio * item.cantidad * (1 - item.descuento / 100);
+        const itemSubtotal = itemTotal / (1 + (item.iva_rate / 100));
+        
+        subtotal += itemSubtotal;
+        total += itemTotal;
+        impuestos += (itemTotal - itemSubtotal);
+
+        return {
+            articulo_id: item.id,
+            cantidad: item.cantidad,
+            precio: item.precio,
+            subtotal: itemTotal
+        };
+    });
+
+    const metodoPago = document.getElementById('checkoutMetodoPago').value;
+    let montoRecibido = parseFloat(document.getElementById('checkoutMontoRecibido').value) || total;
+    let vuelto = montoRecibido - total;
+    if (vuelto < 0) vuelto = 0;
+
+    try {
+        const response = await fetch('/vender/cobrar', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+            },
+            body: JSON.stringify({
+                total: total.toFixed(2),
+                subtotal: subtotal.toFixed(2),
+                impuestos: impuestos.toFixed(2),
+                metodo_pago: metodoPago,
+                monto_recibido: montoRecibido.toFixed(2),
+                vuelto: vuelto.toFixed(2),
+                items: items
+            })
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+            closeCheckoutModal();
+            showTicketPreview(data.venta, items, montoRecibido, vuelto);
+        } else {
+            alert('Error al registrar la venta.');
+        }
+    } catch (error) {
+        console.error(error);
+        alert('Ocurrió un error en la conexión.');
+    } finally {
+        btnConfirm.disabled = false;
+        btnConfirm.innerText = 'Registrar Venta';
+    }
+}
+
+function showTicketPreview(venta, itemsPayload, montoRecibido, vuelto) {
+    const ticketArea = document.getElementById('printableTicketArea');
+    
+    // Configuración empresa (puedes inyectar esto desde settings si lo tienes)
+    const empresaNombre = windowSettings.empresa_nombre || 'IntelliCarnic';
+    const empresaRuc = windowSettings.empresa_ruc || '000000000';
+    const empresaDireccion = windowSettings.empresa_direccion || 'Dirección de la empresa';
+    const unidadPeso = windowSettings.unidad_peso || 'kg';
+
+    const fecha = new Date().toLocaleString();
+    const ticketId = venta.id.toString().padStart(6, '0');
+
+    let html = `
+        <div style="text-align: center; margin-bottom: 15px;">
+            <h2 style="margin: 0; font-size: 18px;">${empresaNombre}</h2>
+            <div>RUC/NIT: ${empresaRuc}</div>
+            <div>${empresaDireccion}</div>
+            <div style="margin-top: 5px;">Ticket #${ticketId}</div>
+            <div>Fecha: ${fecha}</div>
+        </div>
+        <hr style="border-top: 1px dashed black; margin: 10px 0;">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="border-bottom: 1px solid black;">
+                    <th style="text-align: left; padding: 2px 0;">CANT</th>
+                    <th style="text-align: left; padding: 2px 0;">DESCRIPCIÓN</th>
+                    <th style="text-align: right; padding: 2px 0;">IMPORTE</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    cart.forEach(item => {
+        const importe = item.precio * item.cantidad * (1 - item.descuento / 100);
+        html += `
+            <tr>
+                <td style="text-align: left; padding: 2px 0; vertical-align: top;">${item.cantidad}</td>
+                <td style="text-align: left; padding: 2px 0;">${item.descripcion}</td>
+                <td style="text-align: right; padding: 2px 0; vertical-align: top;">$${importe.toFixed(2)}</td>
+            </tr>
+        `;
+    });
+
+    html += `
+            </tbody>
+        </table>
+        <hr style="border-top: 1px dashed black; margin: 10px 0;">
+        <div style="display: flex; justify-content: space-between;">
+            <span>SUBTOTAL:</span>
+            <span>$${parseFloat(venta.subtotal).toFixed(2)}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+            <span>IMPUESTOS:</span>
+            <span>$${parseFloat(venta.impuestos).toFixed(2)}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px; margin-top: 5px;">
+            <span>TOTAL:</span>
+            <span>$${parseFloat(venta.total).toFixed(2)}</span>
+        </div>
+        <hr style="border-top: 1px dashed black; margin: 10px 0;">
+        <div style="display: flex; justify-content: space-between;">
+            <span>MÉTODO DE PAGO:</span>
+            <span style="text-transform: uppercase;">${venta.metodo_pago}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+            <span>ENTREGADO:</span>
+            <span>$${montoRecibido.toFixed(2)}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+            <span>CAMBIO/VUELTO:</span>
+            <span>$${vuelto.toFixed(2)}</span>
+        </div>
+        <div style="text-align: center; margin-top: 20px;">
+            ¡Gracias por su compra!
+        </div>
+    `;
+
+    ticketArea.innerHTML = html;
+    document.getElementById('ticketModal').style.display = 'flex';
+}
+
+function closeTicketModal() {
+    document.getElementById('ticketModal').style.display = 'none';
+    clearCart();
+}
+
+function printTicket() {
+    window.print();
 }

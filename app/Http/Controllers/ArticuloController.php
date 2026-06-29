@@ -87,12 +87,12 @@ class ArticuloController extends Controller
     {
         $data = $this->validateArticulo($request);
 
-        if ($data['pvp'] === null) {
-            $data['pvp'] = round((float) $data['precio_sin_iva'] * (1 + ((float) $data['iva'] / 100)), 2);
-        }
-
         $settings = Setting::values();
         $data = $this->applyTaxRules($data, $settings);
+
+        if ($request->hasFile('imagen')) {
+            $data['imagen'] = $request->file('imagen')->store('articulos', 'public');
+        }
 
         Articulo::create($data);
 
@@ -118,12 +118,16 @@ class ArticuloController extends Controller
     {
         $data = $this->validateArticulo($request, $articulo->id);
 
-        if ($data['pvp'] === null) {
-            $data['pvp'] = round((float) $data['precio_sin_iva'] * (1 + ((float) $data['iva'] / 100)), 2);
-        }
-
         $settings = Setting::values();
         $data = $this->applyTaxRules($data, $settings);
+
+        if ($request->hasFile('imagen')) {
+            // Delete old image if needed
+            if ($articulo->imagen) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($articulo->imagen);
+            }
+            $data['imagen'] = $request->file('imagen')->store('articulos', 'public');
+        }
 
         $articulo->update($data);
 
@@ -174,7 +178,7 @@ class ArticuloController extends Controller
 
     private function validateArticulo(Request $request, ?int $articuloId = null): array
     {
-        $data = $request->validate([
+        $rules = [
             'codigo' => [
                 'required',
                 'string',
@@ -188,22 +192,35 @@ class ArticuloController extends Controller
             'precio_sin_iva' => ['required', 'numeric', 'min:0'],
             'pvp' => ['nullable', 'numeric', 'min:0'],
             'stock' => ['required', 'numeric', 'min:0'],
+            'stock_minimo' => ['required', 'numeric', 'min:0'],
             'estado' => ['required', Rule::in(['activo', 'sin_stock', 'inactivo'])],
-        ]);
+        ];
+
+        if ($request->hasFile('imagen')) {
+            $rules['imagen'] = ['image', 'mimes:jpeg,png,jpg,webp', 'max:2048'];
+        }
+
+        $data = $request->validate($rules);
 
         return $data;
     }
 
     private function applyTaxRules(array $data, array $settings): array
     {
+        $usarImpuestos = (bool) ((int) ($settings['usar_impuestos'] ?? 1));
         $ivaRate = (float) ($settings['iva_global_rate'] ?? 21);
         $ivaGlobalEnabled = (bool) ((int) ($settings['iva_global_enabled'] ?? 1));
-        $aplicaIva = $ivaGlobalEnabled ? true : (bool) ($data['aplica_iva'] ?? false);
+        
+        if (!$usarImpuestos) {
+            $aplicaIva = false;
+        } else {
+            $aplicaIva = $ivaGlobalEnabled ? true : (bool) ($data['aplica_iva'] ?? false);
+        }
 
         $data['aplica_iva'] = $aplicaIva;
         $data['iva'] = $aplicaIva ? $ivaRate : 0;
 
-        if ($data['pvp'] === null || $data['pvp'] === '') {
+        if (!isset($data['pvp']) || $data['pvp'] === null || $data['pvp'] === '') {
             $data['pvp'] = $aplicaIva
                 ? round((float) $data['precio_sin_iva'] * (1 + ($ivaRate / 100)), 2)
                 : round((float) $data['precio_sin_iva'], 2);

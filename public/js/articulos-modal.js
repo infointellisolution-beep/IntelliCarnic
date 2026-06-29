@@ -169,7 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
         modalMethod.value = '';
         modalMethod.disabled = true;
 
-        ['codigo', 'codigo_cliente', 'familia_id', 'descripcion', 'precio_sin_iva', 'iva', 'pvp', 'stock', 'estado'].forEach((fieldName) => {
+        ['codigo', 'codigo_cliente', 'familia_id', 'descripcion', 'precio_sin_iva', 'iva', 'pvp', 'stock', 'stock_minimo', 'estado'].forEach((fieldName) => {
             const field = modalForm.querySelector(`[name="${fieldName}"]`);
 
             if (!field) {
@@ -181,7 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            if (fieldName === 'stock') {
+            if (fieldName === 'stock' || fieldName === 'stock_minimo') {
                 field.value = 0;
                 return;
             }
@@ -227,6 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setFieldValue('iva', articulo.iva ?? 21);
             setFieldValue('pvp', articulo.pvp);
             setFieldValue('stock', articulo.stock ?? 0);
+            setFieldValue('stock_minimo', articulo.stock_minimo ?? 0);
             setFieldValue('estado', articulo.estado || 'activo');
             setCheckboxValue('aplica_iva', articulo.aplica_iva ?? true);
 
@@ -320,6 +321,9 @@ document.addEventListener('DOMContentLoaded', () => {
         openFamiliaModal();
     }
 
+    const detailImagenContainer = document.getElementById('detalle-imagen-container');
+    const detailImagen = document.getElementById('detalle-imagen');
+
     if (detailModal && detailTitle && detailCodigo && detailEstado && detailDescripcion && detailFamilia && detailPrecio && detailIva && detailPvp && detailStock) {
         detailButtons.forEach((button) => {
             button.addEventListener('click', () => {
@@ -335,6 +339,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 detailIva.textContent = `${Number(articulo.iva || 0).toFixed(0)}%`;
                 detailPvp.textContent = `$${Number(articulo.pvp || 0).toFixed(2)}`;
                 detailStock.textContent = `${Number(articulo.stock ?? 0).toFixed(3)} ${window.unidadPeso || 'kg'}`;
+
+                if (articulo.imagen_url && detailImagenContainer && detailImagen) {
+                    detailImagen.src = articulo.imagen_url;
+                    detailImagenContainer.style.display = 'block';
+                } else if (detailImagenContainer && detailImagen) {
+                    detailImagen.src = '';
+                    detailImagenContainer.style.display = 'none';
+                }
 
                 openDetailModal();
             });

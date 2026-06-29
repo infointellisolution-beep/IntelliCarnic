@@ -13,7 +13,7 @@
     </div>
 @endif
 
-<form action="{{ $action }}" method="POST" class="card" style="padding: 0;">
+<form action="{{ $action }}" method="POST" enctype="multipart/form-data" class="card" style="padding: 0;">
     @csrf
     @if ($isEdit)
         @method('PUT')
