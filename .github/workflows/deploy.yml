@@ -24,7 +24,7 @@ jobs:
           username: u239804305.intellisolution.net
           password: "@IntelliSolution17"
           port: 21
-          protocol: ftp
+          protocol: ftps
           server-dir: /public_html/intellicarnic/
           local-dir: ./
           exclude: |
