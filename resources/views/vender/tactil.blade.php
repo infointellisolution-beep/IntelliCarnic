@@ -47,7 +47,7 @@
             <!-- Grilla de Artículos -->
             <div class="tactil-grid" style="flex: 1; padding-left: 0.5rem;">
                 @foreach($articulos as $articulo)
-                <button class="btn-tactil" style="min-height: 110px; position: relative;" data-familia-id="{{ $articulo->familia_id }}" onclick='openScaleModal({!! json_encode($articulo) !!})'>
+                <button class="btn-tactil" style="min-height: 130px; height: auto; padding-bottom: 10px; position: relative;" data-familia-id="{{ $articulo->familia_id }}" onclick='openScaleModal({!! json_encode($articulo) !!})'>
                     @if($articulo->imagen)
                         <div style="height: 60px; display: flex; align-items: center; justify-content: center; margin-bottom: 0.5rem;">
                             <img src="{{ asset('storage/' . $articulo->imagen) }}" alt="{{ $articulo->descripcion }}" style="max-height: 100%; max-width: 100%; border-radius: 4px; object-fit: contain;">
@@ -64,6 +64,11 @@
                     @endif
                     <div style="line-height: 1.2;">{{ $articulo->descripcion }}</div>
                     <div style="color: var(--text-muted); margin-top: 0.25rem; font-weight: 700;">${{ number_format($articulo->pvp, 2) }}</div>
+                    @if($articulo->stock !== null && $articulo->stock !== '')
+                        <div style="font-size: 0.8rem; color: #10b981; margin-top: 0.25rem; font-weight: 600;">
+                            Stock: {{ floatval($articulo->stock) }} {{ strtoupper($settings['unidad_peso'] ?? 'kg') }}
+                        </div>
+                    @endif
                 </button>
                 @endforeach
             </div>
@@ -125,6 +130,7 @@
         <div style="text-align: center; margin-bottom: 1.5rem;">
             <div id="scaleArticleName" style="font-weight: 600; font-size: 1.1rem; color: var(--text-main);"></div>
             <div id="scaleArticlePrice" style="color: var(--text-muted);"></div>
+            <div id="scaleArticleStock" style="color: #10b981; font-size: 0.9rem; font-weight: 600; margin-top: 0.5rem;"></div>
         </div>
 
         <div style="background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 8px; padding: 1rem; text-align: center; margin-bottom: 1.5rem;">

@@ -84,7 +84,10 @@ function renderSearchResults(query) {
         html += `
             <tr style="border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background 0.2s; ${bgClass}" onclick="selectSearchResult(${index})">
                 <td style="padding: 0.5rem 0.75rem;">${art.codigo || '-'}</td>
-                <td style="padding: 0.5rem 0.75rem; font-weight: 500;">${art.descripcion}</td>
+                <td style="padding: 0.5rem 0.75rem; font-weight: 500;">
+                    ${art.descripcion}
+                    ${(art.stock !== null && art.stock !== '') ? `<div style="font-size: 0.8rem; color: #10b981; font-weight: 600;">Stock: ${parseFloat(art.stock)} ${(windowSettings.unidad_peso || 'kg').toUpperCase()}</div>` : ''}
+                </td>
                 <td style="padding: 0.5rem 0.75rem; text-align: right; color: var(--primary); font-weight: 600;">$${parseFloat(art.pvp).toFixed(2)}</td>
                 <td style="padding: 0.25rem 0.75rem;">
                     <input type="number" id="qty-search-${index}" class="input-modern" style="padding: 0.4rem; text-align: center; background: ${isSelected ? '#fef08a' : '#f8fafc'}; border: 1px solid var(--border-color);" value="1" onclick="event.stopPropagation()">
@@ -110,12 +113,14 @@ function addSelectedToCart() {
         let qty = 1;
         if (qtyInput) qty = parseInt(qtyInput.value) || 1;
         
-        addToCart(art, qty);
+        const added = addToCart(art, qty);
         
-        // Limpiar búsqueda
-        document.getElementById('search-articulo').value = '';
-        selectedSearchIndex = -1; // Reset selection
-        renderSearchResults('');
+        if (added) {
+            // Limpiar búsqueda
+            document.getElementById('search-articulo').value = '';
+            selectedSearchIndex = -1; // Reset selection
+            renderSearchResults('');
+        }
     }
 }
 
@@ -200,6 +205,17 @@ function openScaleModal(articulo) {
     
     document.getElementById('scaleArticleName').innerText = articulo.descripcion;
     document.getElementById('scaleArticlePrice').innerText = '$' + effective.pvp.toFixed(2) + ' / ' + (windowSettings.unidad_peso || 'kg').toUpperCase();
+    
+    const stockEl = document.getElementById('scaleArticleStock');
+    if (stockEl) {
+        if (articulo.stock !== null && articulo.stock !== undefined && articulo.stock !== '') {
+            stockEl.innerText = `Stock: ${parseFloat(articulo.stock)} ${(windowSettings.unidad_peso || 'kg').toUpperCase()}`;
+            stockEl.style.display = 'block';
+        } else {
+            stockEl.style.display = 'none';
+        }
+    }
+    
     document.getElementById('scaleInput').value = '';
     document.getElementById('scaleTotal').innerText = 'Total: $0.00';
     
@@ -235,14 +251,31 @@ function confirmScaleAdd() {
     }
     
     if (scaleArticle) {
-        addToCart(scaleArticle, quantity);
-        closeScaleModal();
+        const added = addToCart(scaleArticle, quantity);
+        if (added) {
+            closeScaleModal();
+        }
     }
 }
 
 function addToCart(articulo, quantity = 1) {
     const existingIndex = cart.findIndex(item => item.id === articulo.id);
-    
+    const currentCartQty = existingIndex !== -1 ? cart[existingIndex].cantidad : 0;
+    const requestedQty = currentCartQty + quantity;
+
+    // Validación de stock
+    if (articulo.stock !== null && articulo.stock !== undefined && articulo.stock !== '') {
+        const stockDisponible = parseFloat(articulo.stock);
+        if (requestedQty > stockDisponible) {
+            const unidad = windowSettings && windowSettings.unidad_peso ? windowSettings.unidad_peso.toUpperCase() : 'KG';
+            showErrorModal(
+                'Stock Insuficiente',
+                `<strong>Stock disponible:</strong> ${stockDisponible} ${unidad}<br><strong style="color: #ef4444;">Cantidad solicitada:</strong> ${requestedQty} ${unidad}`
+            );
+            return false;
+        }
+    }
+
     const effective = getEffectivePrice(articulo);
     
     if (existingIndex !== -1) {
@@ -253,7 +286,7 @@ function addToCart(articulo, quantity = 1) {
             codigo: articulo.codigo,
             descripcion: articulo.descripcion,
             precio: parseFloat(effective.pvp),
-            iva_rate: effective.iva, // Store the effective IVA rate used
+            iva_rate: effective.iva,
             cantidad: quantity,
             descuento: 0,
             articulo: articulo
@@ -261,6 +294,7 @@ function addToCart(articulo, quantity = 1) {
     }
     
     renderCart();
+    return true;
 }
 
 function removeFromCart() {
@@ -600,4 +634,16 @@ function closeTicketModal() {
 
 function printTicket() {
     window.print();
+}
+
+// === UTILIDADES ===
+function showErrorModal(title, message) {
+    const errorModal = document.getElementById('errorModal');
+    if (errorModal) {
+        document.getElementById('errorModalTitle').innerText = title;
+        document.getElementById('errorModalMessage').innerHTML = message;
+        errorModal.style.display = 'flex';
+    } else {
+        alert(title + "\n\n" + message.replace(/<br>/g, "\n").replace(/<\/?strong[^>]*>/g, ""));
+    }
 }

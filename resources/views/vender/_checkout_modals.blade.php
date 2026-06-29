@@ -76,3 +76,15 @@
     }
 }
 </style>
+
+<!-- Modal de Error Personalizado -->
+<div id="errorModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: center; justify-content: center;">
+    <div style="background: white; border-radius: 12px; padding: 2rem; width: 400px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+        <div style="color: #ef4444; font-size: 3rem; margin-bottom: 1rem;">
+            <i class="fa-solid fa-circle-exclamation"></i>
+        </div>
+        <h3 id="errorModalTitle" style="font-size: 1.5rem; font-weight: 700; color: var(--text-main); margin-top: 0; margin-bottom: 1rem;">Error</h3>
+        <p id="errorModalMessage" style="color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.5; font-size: 1.1rem;"></p>
+        <button onclick="document.getElementById('errorModal').style.display='none'" class="btn-modern btn-primary" style="width: 100%; justify-content: center; background: #ef4444; border-color: #ef4444;">Entendido</button>
+    </div>
+</div>
