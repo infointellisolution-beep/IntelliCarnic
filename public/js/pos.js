@@ -86,7 +86,7 @@ function renderSearchResults(query) {
                 <td style="padding: 0.5rem 0.75rem;">${art.codigo || '-'}</td>
                 <td style="padding: 0.5rem 0.75rem; font-weight: 500;">
                     ${art.descripcion}
-                    ${(art.stock !== null && art.stock !== '') ? `<div style="font-size: 0.8rem; color: #10b981; font-weight: 600;">Stock: ${parseFloat(art.stock)} ${(windowSettings.unidad_peso || 'kg').toUpperCase()}</div>` : ''}
+                    ${(art.stock !== null && art.stock !== '') ? `<div style="font-size: 0.8rem; color: ${(getAvailableStock(art.id, art.stock) <= 0 ? '#ef4444' : '#10b981')}; font-weight: 600;">Stock: ${getAvailableStock(art.id, art.stock)} ${(windowSettings.unidad_peso || 'kg').toUpperCase()}</div>` : ''}
                 </td>
                 <td style="padding: 0.5rem 0.75rem; text-align: right; color: var(--primary); font-weight: 600;">$${parseFloat(art.pvp).toFixed(2)}</td>
                 <td style="padding: 0.25rem 0.75rem;">
@@ -209,7 +209,9 @@ function openScaleModal(articulo) {
     const stockEl = document.getElementById('scaleArticleStock');
     if (stockEl) {
         if (articulo.stock !== null && articulo.stock !== undefined && articulo.stock !== '') {
-            stockEl.innerText = `Stock: ${parseFloat(articulo.stock)} ${(windowSettings.unidad_peso || 'kg').toUpperCase()}`;
+            const available = getAvailableStock(articulo.id, articulo.stock);
+            stockEl.innerText = `Stock: ${available} ${(windowSettings.unidad_peso || 'kg').toUpperCase()}`;
+            stockEl.style.color = available <= 0 ? '#ef4444' : '#10b981';
             stockEl.style.display = 'block';
         } else {
             stockEl.style.display = 'none';
@@ -320,6 +322,46 @@ function selectRow(index) {
     renderCart();
 }
 
+function updateCartQuantity(index, newValue) {
+    if (index >= 0 && index < cart.length) {
+        let newQty = parseFloat(newValue);
+        if (isNaN(newQty) || newQty <= 0) {
+            cart.splice(index, 1);
+            if (currentSelectedIndex === index) currentSelectedIndex = -1;
+            renderCart();
+            return;
+        }
+
+        const articulo = cart[index].articulo;
+
+        if (articulo.stock !== null && articulo.stock !== undefined && articulo.stock !== '') {
+            const stockDisponible = parseFloat(articulo.stock);
+            
+            let inCartOtherRows = 0;
+            cart.forEach((it, i) => {
+                if (i !== index && it.id === articulo.id) {
+                    inCartOtherRows += parseFloat(it.cantidad);
+                }
+            });
+            
+            const totalRequested = inCartOtherRows + newQty;
+
+            if (totalRequested > stockDisponible) {
+                const unidad = windowSettings && windowSettings.unidad_peso ? windowSettings.unidad_peso.toUpperCase() : 'KG';
+                showErrorModal(
+                    'Stock Insuficiente',
+                    `<strong>Stock disponible:</strong> ${stockDisponible} ${unidad}<br><strong style="color: #ef4444;">Cantidad solicitada en total:</strong> ${totalRequested} ${unidad}`
+                );
+                renderCart(); // Reset input
+                return;
+            }
+        }
+
+        cart[index].cantidad = newQty;
+        renderCart();
+    }
+}
+
 // === RENDERIZADO ===
 
 function renderCart() {
@@ -344,7 +386,9 @@ function renderCart() {
                 <tr style="${bgClass} cursor: pointer; transition: background 0.2s;" onclick="selectRow(${index})">
                     <td style="padding: 0.75rem;">${item.codigo || '-'}</td>
                     <td style="padding: 0.75rem; font-weight: 600;">${item.descripcion}</td>
-                    <td style="padding: 0.75rem; text-align: center; font-weight: 600;">${item.cantidad}</td>
+                    <td style="padding: 0.25rem 0.75rem; text-align: center;">
+                        <input type="number" step="any" min="0" value="${item.cantidad}" class="input-modern" style="width: 80px; text-align: center; padding: 0.25rem; font-weight: 600; background: ${isSelected ? '#bfdbfe' : '#f8fafc'};" onclick="event.stopPropagation()" onchange="updateCartQuantity(${index}, this.value)">
+                    </td>
                     <td style="padding: 0.75rem; text-align: right;">${item.precio.toFixed(2)}</td>
                     <td style="padding: 0.75rem; text-align: right;">${item.descuento.toFixed(2)}</td>
                     <td style="padding: 0.75rem; text-align: right;">${item.iva_rate}%</td>
@@ -368,7 +412,9 @@ function renderCart() {
             
             html += `
                 <tr style="${bgClass} cursor: pointer; transition: background 0.2s;" onclick="selectRow(${index})">
-                    <td style="padding: 0.75rem; font-weight: 600; text-align:center;">${item.cantidad}</td>
+                    <td style="padding: 0.25rem 0.75rem; text-align: center;">
+                        <input type="number" step="any" min="0" value="${item.cantidad}" class="input-modern" style="width: 80px; text-align: center; padding: 0.25rem; font-weight: 600; background: ${isSelected ? '#bfdbfe' : '#f8fafc'};" onclick="event.stopPropagation()" onchange="updateCartQuantity(${index}, this.value)">
+                    </td>
                     <td style="padding: 0.75rem;">${item.descripcion}</td>
                     <td style="padding: 0.75rem; text-align: center;">${item.descuento.toFixed(2)}</td>
                     <td style="padding: 0.75rem; text-align: right; font-weight: 700;">${totalFila.toFixed(2)}</td>
@@ -391,6 +437,8 @@ function renderCart() {
             }
         }
     }
+    
+    updateVisualStockDisplays();
 }
 
 // === COBRO Y TICKET MODALS ===
@@ -645,5 +693,51 @@ function showErrorModal(title, message) {
         errorModal.style.display = 'flex';
     } else {
         alert(title + "\n\n" + message.replace(/<br>/g, "\n").replace(/<\/?strong[^>]*>/g, ""));
+    }
+}
+
+function getAvailableStock(articuloId, initialStock) {
+    if (initialStock === null || initialStock === undefined || initialStock === '') return null;
+    let inCart = 0;
+    cart.forEach(item => {
+        if (item.id === articuloId) {
+            inCart += parseFloat(item.cantidad);
+        }
+    });
+    return parseFloat(initialStock) - inCart;
+}
+
+function updateVisualStockDisplays() {
+    const unidad = windowSettings && windowSettings.unidad_peso ? windowSettings.unidad_peso.toUpperCase() : 'KG';
+    
+    // Update Tactil Cards
+    if (window.windowArticulos) {
+        window.windowArticulos.forEach(art => {
+            if (art.stock !== null && art.stock !== '') {
+                const available = getAvailableStock(art.id, art.stock);
+                const elTactil = document.getElementById(`tactil-stock-${art.id}`);
+                if (elTactil) {
+                    elTactil.innerText = `Stock: ${available} ${unidad}`;
+                    elTactil.style.color = available <= 0 ? '#ef4444' : '#10b981';
+                }
+            }
+        });
+    }
+
+    // Update Scale Modal if open
+    if (scaleArticle) {
+        const stockEl = document.getElementById('scaleArticleStock');
+        if (stockEl && scaleArticle.stock !== null && scaleArticle.stock !== '') {
+            const available = getAvailableStock(scaleArticle.id, scaleArticle.stock);
+            stockEl.innerText = `Stock: ${available} ${unidad}`;
+            stockEl.style.color = available <= 0 ? '#ef4444' : '#10b981';
+        }
+    }
+    
+    // Update Normal Search Results if active
+    const searchInput = document.getElementById('search-articulo');
+    if (searchInput && tbodyNormal && document.getElementById('search-results-body')) {
+        // Just re-render search results to update stock
+        renderSearchResults(searchInput.value);
     }
 }

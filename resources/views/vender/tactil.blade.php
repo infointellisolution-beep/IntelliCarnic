@@ -65,7 +65,7 @@
                     <div style="line-height: 1.2;">{{ $articulo->descripcion }}</div>
                     <div style="color: var(--text-muted); margin-top: 0.25rem; font-weight: 700;">${{ number_format($articulo->pvp, 2) }}</div>
                     @if($articulo->stock !== null && $articulo->stock !== '')
-                        <div style="font-size: 0.8rem; color: #10b981; margin-top: 0.25rem; font-weight: 600;">
+                        <div id="tactil-stock-{{ $articulo->id }}" style="font-size: 0.8rem; color: #10b981; margin-top: 0.25rem; font-weight: 600;">
                             Stock: {{ floatval($articulo->stock) }} {{ strtoupper($settings['unidad_peso'] ?? 'kg') }}
                         </div>
                     @endif
