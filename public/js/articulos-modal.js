@@ -334,7 +334,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 detailPrecio.textContent = `$${Number(articulo.precio_sin_iva || 0).toFixed(2)}`;
                 detailIva.textContent = `${Number(articulo.iva || 0).toFixed(0)}%`;
                 detailPvp.textContent = `$${Number(articulo.pvp || 0).toFixed(2)}`;
-                detailStock.textContent = `${Number(articulo.stock ?? 0).toFixed(3)} kg`;
+                detailStock.textContent = `${Number(articulo.stock ?? 0).toFixed(3)} ${window.unidadPeso || 'kg'}`;
 
                 openDetailModal();
             });
@@ -370,9 +370,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div>
                             <div class="stock-result-title">${articulo.codigo} · ${articulo.descripcion}</div>
                             <div class="stock-result-meta">Código cliente: ${articulo.codigo_cliente || 'Sin código'}</div>
-                            <div class="stock-result-meta">${articulo.familia_nombre || 'Sin familia'} · Peso actual: ${Number(articulo.stock || 0).toFixed(3)} kg</div>
+                            <div class="stock-result-meta">${articulo.familia_nombre || 'Sin familia'} · Peso actual: ${Number(articulo.stock || 0).toFixed(3)} ${window.unidadPeso || 'kg'}</div>
                         </div>
-                        <span class="stock-result-badge ${articulo.stock <= 0 ? 'is-danger' : 'is-ok'}">${Number(articulo.stock || 0).toFixed(3)} kg</span>
+                        <span class="stock-result-badge ${articulo.stock <= 0 ? 'is-danger' : 'is-ok'}">${Number(articulo.stock || 0).toFixed(3)} ${window.unidadPeso || 'kg'}</span>
                     </button>
                 `;
             }).join('');
@@ -383,7 +383,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     stockArticuloId.value = articulo.id || '';
                     stockSelectedName.textContent = `${articulo.codigo} · ${articulo.descripcion}`;
-                    stockSelectedMeta.textContent = `${articulo.familia_nombre || 'Sin familia'} · ${articulo.codigo_cliente || 'Sin código'} · Peso actual: ${Number(articulo.stock || 0).toFixed(3)} kg · Estado: ${articulo.estado}`;
+                    stockSelectedMeta.textContent = `${articulo.familia_nombre || 'Sin familia'} · ${articulo.codigo_cliente || 'Sin código'} · Peso actual: ${Number(articulo.stock || 0).toFixed(3)} ${window.unidadPeso || 'kg'} · Estado: ${articulo.estado}`;
                     stockSelectedCard.classList.add('is-active');
 
                     stockResults.querySelectorAll('.stock-result-item').forEach((item) => item.classList.remove('is-selected'));
@@ -408,7 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (selectedArticulo) {
                 stockSelectedName.textContent = `${selectedArticulo.codigo} · ${selectedArticulo.descripcion}`;
-                stockSelectedMeta.textContent = `${selectedArticulo.familia_nombre || 'Sin familia'} · ${selectedArticulo.codigo_cliente || 'Sin código'} · Peso actual: ${Number(selectedArticulo.stock || 0).toFixed(3)} kg · Estado: ${selectedArticulo.estado}`;
+                stockSelectedMeta.textContent = `${selectedArticulo.familia_nombre || 'Sin familia'} · ${selectedArticulo.codigo_cliente || 'Sin código'} · Peso actual: ${Number(selectedArticulo.stock || 0).toFixed(3)} ${window.unidadPeso || 'kg'} · Estado: ${selectedArticulo.estado}`;
                 stockSelectedCard.classList.add('is-active');
             }
         }

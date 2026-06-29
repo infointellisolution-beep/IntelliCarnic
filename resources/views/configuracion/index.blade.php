@@ -64,6 +64,10 @@
                     </select>
                 </div>
                 <div class="input-group" style="display: flex; align-items: center; gap: 0.65rem; padding-top: 1.8rem;">
+                    <input type="checkbox" id="usar_impuestos" name="usar_impuestos" value="1" @checked((int) ($settings['usar_impuestos'] ?? 1) === 1)>
+                    <label for="usar_impuestos" style="margin: 0; color: var(--text-main);">Usar impuestos (IVA) en el sistema</label>
+                </div>
+                <div class="input-group" style="display: flex; align-items: center; gap: 0.65rem; padding-top: 1.8rem;">
                     <input type="checkbox" id="iva_global_enabled" name="iva_global_enabled" value="1" @checked((int) ($settings['iva_global_enabled'] ?? 1) === 1)>
                     <label for="iva_global_enabled" style="margin: 0; color: var(--text-main);">Aplicar IVA global al catálogo</label>
                 </div>

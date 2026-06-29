@@ -15,6 +15,22 @@ class ArticuloController extends Controller
     public function index(): View
     {
         $search = request()->string('search')->trim()->toString();
+        $settings = Setting::values();
+        $usarImpuestos = (bool) ((int) ($settings['usar_impuestos'] ?? 1));
+        $ivaGlobalEnabled = (bool) ((int) ($settings['iva_global_enabled'] ?? 1));
+        $ivaRate = (float) ($settings['iva_global_rate'] ?? 21);
+
+        $applyEffectiveTax = function($articulo) use ($usarImpuestos, $ivaGlobalEnabled, $ivaRate) {
+            if (!$usarImpuestos) {
+                $articulo->effective_iva = 0;
+            } else if ($ivaGlobalEnabled) {
+                $articulo->effective_iva = $ivaRate;
+            } else {
+                $articulo->effective_iva = $articulo->iva;
+            }
+            $articulo->effective_pvp = round($articulo->precio_sin_iva * (1 + ($articulo->effective_iva / 100)), 2);
+            return $articulo;
+        };
 
         $articulos = Articulo::query()
             ->with('familia')
@@ -29,20 +45,20 @@ class ArticuloController extends Controller
                 });
             })
             ->get()
+            ->map($applyEffectiveTax)
             ->sortBy('descripcion')
             ->values();
 
         $catalogoArticulos = Articulo::query()
             ->with('familia')
             ->orderBy('descripcion', 'asc')
-            ->get();
+            ->get()
+            ->map($applyEffectiveTax);
 
         $familias = Familia::query()
             ->withCount('articulos')
             ->orderBy('nombre', 'asc')
             ->get();
-
-        $settings = Setting::values();
 
         return view('articulos.index', compact('articulos', 'catalogoArticulos', 'familias', 'search', 'settings'));
     }

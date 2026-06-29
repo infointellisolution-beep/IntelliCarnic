@@ -19,6 +19,7 @@ class Setting extends Model
     {
         return [
             'unidad_peso' => 'kg',
+            'usar_impuestos' => '1',
             'iva_global_enabled' => '1',
             'iva_global_rate' => '21',
             'empresa_nombre' => '',

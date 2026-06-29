@@ -3,12 +3,12 @@
 @section('title', 'TPV Táctil')
 
 @section('content')
-<!-- Header Toolbar -->
-<div class="tactil-header" style="background: var(--surface); padding: 1rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
+@section('header-actions')
+<div style="display: flex; gap: 0.5rem; align-items: center; padding: 0 1rem; margin-right: auto;">
     <button class="btn-icon-top"><i class="fa-solid fa-receipt"></i> Ticket</button>
     <button class="btn-icon-top"><i class="fa-solid fa-utensils"></i> Cocina</button>
     <button class="btn-icon-top"><i class="fa-solid fa-beer-mug-empty"></i> Barra</button>
-    <div style="border-left: 1px solid var(--border-color); margin: 0 1rem;"></div>
+    <div style="border-left: 1px solid var(--border-color); height: 30px; margin: 0 0.5rem;"></div>
     <button class="btn-icon-top"><i class="fa-solid fa-print"></i> Reimprimir Último</button>
     <button class="btn-icon-top"><i class="fa-solid fa-list-check"></i> Artículos Servidos</button>
     <button class="btn-icon-top"><i class="fa-solid fa-user"></i> Elegir Cliente</button>
@@ -17,8 +17,9 @@
     <button class="btn-icon-top"><i class="fa-solid fa-motorcycle"></i> Pedido a Domicilio</button>
     <button class="btn-icon-top"><i class="fa-solid fa-users"></i> Usuarios</button>
 </div>
+@endsection
 
-<div class="tactil-layout">
+<div class="tactil-layout" style="height: calc(100vh - 64px - 4rem);">
     <!-- Left Panel: Touch Grid (Familias y Artículos) -->
     <div class="tactil-left">
         <div class="flex-between" style="margin-bottom: 1rem;">
@@ -31,8 +32,12 @@
         <div style="display: flex; gap: 1rem; flex: 1; overflow: hidden;">
             <!-- Columna de Familias -->
             <div style="display: flex; flex-direction: column; gap: 0.75rem; width: 130px; overflow-y: auto; padding-right: 0.5rem; border-right: 1px solid var(--border-color);">
+                <button class="btn-tactil familia" style="min-height: 80px;" onclick="filterFamilia(null, this)">
+                    <i class="fa-solid fa-border-all" style="font-size: 1.5rem; margin-bottom: 0.5rem;"></i>
+                    TODOS
+                </button>
                 @foreach($familias as $familia)
-                <button class="btn-tactil familia" style="min-height: 110px;">
+                <button class="btn-tactil familia" style="min-height: 110px;" onclick="filterFamilia({{ $familia->id }}, this)">
                     <i class="fa-solid fa-folder-open" style="font-size: 2rem; margin-bottom: 0.5rem;"></i>
                     {{ $familia->nombre }}
                 </button>
@@ -42,7 +47,7 @@
             <!-- Grilla de Artículos -->
             <div class="tactil-grid" style="flex: 1; padding-left: 0.5rem;">
                 @foreach($articulos as $articulo)
-                <button class="btn-tactil" style="min-height: 110px;">
+                <button class="btn-tactil" style="min-height: 110px;" data-familia-id="{{ $articulo->familia_id }}" onclick='addToCart({!! json_encode($articulo) !!})'>
                     <!-- Simulamos íconos según el nombre del artículo para la demo -->
                     @if(stripos($articulo->descripcion, 'carne') !== false)
                         <div style="font-size: 2rem; color: #f59e0b; margin-bottom: 0.5rem;"><i class="fa-solid fa-burger"></i></div>
@@ -76,13 +81,13 @@
             <table class="modern-table" style="margin: 0;">
                 <thead style="background: #f8fafc; position: sticky; top: 0;">
                     <tr>
-                        <th style="width: 50px;">Can.</th>
+                        <th style="width: 50px; text-align: center;">Can.</th>
                         <th>Artículo</th>
-                        <th>%Dto.</th>
-                        <th>P. c/IVA</th>
+                        <th style="text-align: center;">%Dto.</th>
+                        <th style="text-align: right;">P. c/IVA</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="ticket-body-tactil">
                     <!-- Fila de ejemplo vacía como en la captura nueva -->
                 </tbody>
             </table>
@@ -91,13 +96,20 @@
         <!-- Checkout Area -->
         <div class="cobro-area">
             <div style="text-align: right; font-weight: 700; color: var(--text-muted); font-size: 1.2rem; text-transform: uppercase;">Total:</div>
-            <div class="cobro-total">0.00</div>
+            <div class="cobro-total" id="ticket-total-tactil">0.00</div>
             
             <div class="cobro-buttons">
                 <button class="btn-unico"><i class="fa-solid fa-check"></i> COBRO ÚNICO</button>
-                <button class="btn-separado"><i class="fa-solid fa-columns"></i> POR SEPARADO</button>
+                <button id="btn-vaciar-tactil" class="btn-separado" onclick="handleVaciarEliminarTactil()"><i class="fa-solid fa-trash"></i> VACIAR</button>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+    // Pasar los artículos de Laravel a JavaScript
+    windowArticulos = {!! json_encode($articulos) !!};
+    windowSettings = {!! json_encode($settings) !!};
+</script>
+<script src="{{ asset('js/pos.js') }}"></script>
 @endsection

@@ -37,8 +37,8 @@
             'stock' => $articulo->stock,
             'estado' => $articulo->estado,
             'precio_sin_iva' => $articulo->precio_sin_iva,
-            'iva' => $articulo->iva,
-            'pvp' => $articulo->pvp,
+            'iva' => $articulo->effective_iva,
+            'pvp' => $articulo->effective_pvp,
         ];
     })->values();
     $familiasCatalogo = $familias->map(function ($familia) {
@@ -153,7 +153,7 @@
         <div class="stat-card-header">
             <div>
                 <div class="stat-label">Valor inventario</div>
-                <div class="stat-value">${{ number_format($articulos->sum('pvp'), 2) }}</div>
+                <div class="stat-value">${{ number_format($articulos->sum('effective_pvp'), 2) }}</div>
             </div>
             <div class="stat-card-icon orange"><i class="fa-solid fa-coins"></i></div>
         </div>
@@ -173,17 +173,14 @@
 
 <section class="card">
     <div class="toolbar">
-        <form class="toolbar-search input-group" style="margin-bottom: 0;" method="GET" action="{{ route('articulos.index') }}">
+        <div class="toolbar-search input-group" style="margin-bottom: 0;">
             <div style="display: flex; gap: 0.75rem; align-items: center;">
-                <input type="text" class="input-modern" name="search" value="{{ $currentSearch }}" placeholder="Buscar por código, código cliente, descripción o familia...">
-                <button type="submit" class="btn-modern btn-secondary" style="width: auto;">Buscar</button>
-                @if($currentSearch !== '')
-                    <a href="{{ route('articulos.index') }}" class="btn-modern btn-secondary" style="width: auto; text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">Limpiar</a>
-                @endif
+                <input type="text" class="input-modern" id="catalog-search-input" value="{{ $currentSearch }}" placeholder="Buscar por código, código cliente, descripción o familia...">
+                <button type="button" class="btn-modern btn-secondary" style="width: auto;" onclick="document.getElementById('catalog-search-input').value=''; filterCatalog();">Limpiar</button>
             </div>
-        </form>
+        </div>
         <div class="toolbar-actions">
-            <span class="toolbar-chip"><i class="fa-solid fa-layer-group"></i> {{ $articulos->count() }} resultados</span>
+            <span class="toolbar-chip"><i class="fa-solid fa-layer-group"></i> <span id="catalog-results-count">{{ $articulos->count() }}</span> resultados</span>
             <span class="toolbar-chip"><i class="fa-solid fa-database"></i> Fuente: DB</span>
         </div>
     </div>
@@ -201,7 +198,7 @@
                 <th>Acciones</th>
             </tr>
         </thead>
-        <tbody>
+        <tbody id="catalog-table-body">
             @forelse ($articulos as $articulo)
                 @php
                     $articuloModalData = [
@@ -213,13 +210,13 @@
                         'familia_id' => $articulo->familia_id,
                         'familia_nombre' => $articulo->familia?->nombre,
                         'precio_sin_iva' => $articulo->precio_sin_iva,
-                        'iva' => $articulo->iva,
-                        'pvp' => $articulo->pvp,
+                        'iva' => $articulo->effective_iva,
+                        'pvp' => $articulo->effective_pvp,
                         'stock' => $articulo->stock,
                         'estado' => $articulo->estado,
                     ];
                 @endphp
-                <tr>
+                <tr class="catalog-row">
                     <td style="font-weight: 700;">{{ $articulo->codigo }}</td>
                     <td>
                         <div style="font-weight: 600;">{{ $articulo->descripcion }}</div>
@@ -227,11 +224,11 @@
                         <div style="font-size: 0.82rem; color: var(--text-muted);">{{ $articulo->familia?->nombre ?: 'Sin familia' }}</div>
                     </td>
                     <td>${{ number_format($articulo->precio_sin_iva, 2) }}</td>
-                    <td>{{ number_format($articulo->iva, 0) }}%</td>
-                    <td style="font-weight: 700;">${{ number_format($articulo->pvp, 2) }}</td>
+                    <td>{{ number_format($articulo->effective_iva, 0) }}%</td>
+                    <td style="font-weight: 700;">${{ number_format($articulo->effective_pvp, 2) }}</td>
                     <td>
                         <span class="badge {{ $articulo->stock > 10 ? 'badge-success' : ($articulo->stock > 0 ? 'badge-warning' : 'badge-danger') }}">
-                            {{ number_format($articulo->stock, 3) }} kg
+                            {{ number_format($articulo->stock, 3) }} {{ $settings['unidad_peso'] ?? 'kg' }}
                         </span>
                     </td>
                     <td>
@@ -428,8 +425,29 @@
     </div>
 </div>
 <script>
+    function filterCatalog() {
+        const query = document.getElementById('catalog-search-input').value.toLowerCase().trim();
+        const rows = document.querySelectorAll('#catalog-table-body .catalog-row');
+        let count = 0;
+        
+        rows.forEach(row => {
+            const textContent = row.textContent.toLowerCase();
+            if (textContent.includes(query)) {
+                row.style.display = '';
+                count++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        document.getElementById('catalog-results-count').innerText = count;
+    }
+    
+    document.getElementById('catalog-search-input')?.addEventListener('keyup', filterCatalog);
+
     window.articulosCatalogo = @json($catalogoModalArticulos);
     window.familiasCatalogo = @json($familiasCatalogo);
+    window.unidadPeso = '{{ $settings['unidad_peso'] ?? 'kg' }}';
 </script>
 <script src="/js/articulos-modal.js"></script>
 @endsection

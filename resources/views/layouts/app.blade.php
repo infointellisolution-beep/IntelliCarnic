@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', 'SimplyGest')</title>
+    <title>@yield('title', 'IntelliCarnic')</title>
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,13 +21,22 @@
     @else
         <div class="app-layout">
             <!-- Sidebar Navigation -->
+            @php
+                $appSettings = \App\Models\Setting::values();
+                $empresaNombre = !empty($appSettings['empresa_nombre']) ? $appSettings['empresa_nombre'] : 'IntelliCarnic';
+                $empresaLogo = !empty($appSettings['empresa_logo']) ? asset('storage/'.$appSettings['empresa_logo']) : null;
+            @endphp
             <nav class="sidebar">
                 <div class="sidebar-header">
                     <div class="sidebar-mark">
-                        <i class="fa-solid fa-cube"></i>
+                        @if($empresaLogo)
+                            <img src="{{ $empresaLogo }}" alt="Logo" style="max-width: 100%; max-height: 100%; border-radius: 4px; object-fit: contain;">
+                        @else
+                            <i class="fa-solid fa-cube"></i>
+                        @endif
                     </div>
                     <div>
-                        <div class="sidebar-brand">SimplyGest</div>
+                        <div class="sidebar-brand">{{ $empresaNombre }}</div>
                         <div class="sidebar-subtitle">Sistema profesional</div>
                     </div>
                 </div>

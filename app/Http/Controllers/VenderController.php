@@ -12,13 +12,16 @@ class VenderController extends Controller
     {
         $familias = Familia::all();
         $articulos = Articulo::with('familia')->get();
+        $settings = \App\Models\Setting::values();
 
-        return view('vender.tactil', compact('familias', 'articulos'));
+        return view('vender.tactil', compact('familias', 'articulos', 'settings'));
     }
 
     public function normal()
     {
         $articulos = Articulo::all();
-        return view('vender.normal', compact('articulos'));
+        $settings = \App\Models\Setting::values();
+        
+        return view('vender.normal', compact('articulos', 'settings'));
     }
 }

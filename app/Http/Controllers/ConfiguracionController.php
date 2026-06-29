@@ -28,11 +28,13 @@ class ConfiguracionController extends Controller
     {
         $data = $request->validate([
             'unidad_peso' => ['required', Rule::in(['kg', 'lb'])],
+            'usar_impuestos' => ['nullable', 'boolean'],
             'iva_global_enabled' => ['nullable', 'boolean'],
             'iva_global_rate' => ['required', 'numeric', 'min:0', 'max:100'],
         ]);
 
         Setting::setValue('unidad_peso', $data['unidad_peso']);
+        Setting::setValue('usar_impuestos', $request->boolean('usar_impuestos') ? '1' : '0');
         Setting::setValue('iva_global_enabled', $request->boolean('iva_global_enabled') ? '1' : '0');
         Setting::setValue('iva_global_rate', $data['iva_global_rate']);
 
