@@ -17,6 +17,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer
+
+      - name: Install Dependencies
+        run: composer install --no-dev --optimize-autoloader
+
       - name: Deploy to shared hosting via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -31,22 +40,5 @@ jobs:
             **/.git*
             **/.git*/**
             **/node_modules/**
-            **/vendor/**
             .env
           dangerous-clean-slate: false
-
-      - name: Execute Artisan commands via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: 82.29.157.202
-          username: u239804305.intellisolution.net
-          password: "@IntelliSolution17"
-          port: 22
-          script: |
-            cd domains/intellisolution.net/public_html/intellicarnic
-            composer install --optimize-autoloader --no-dev
-            php artisan migrate --force
-            php artisan optimize:clear
-            php artisan config:cache
-            php artisan view:cache
-            php artisan route:cache

@@ -32,3 +32,30 @@ Route::middleware('auth')->group(function () {
     Route::get('/vender/tactil', [\App\Http\Controllers\VenderController::class, 'tactil'])->name('vender.tactil');
     Route::post('/vender/cobrar', [\App\Http\Controllers\VenderController::class, 'cobrar'])->name('vender.cobrar');
 });
+
+// Ruta de mantenimiento para ejecutar comandos sin SSH
+Route::get('/dev/run-cmd', function (\Illuminate\Http\Request $request) {
+    // Por seguridad, requiere un token: /dev/run-cmd?token=mipassword123
+    if ($request->token !== 'IntelliDeploy2026') {
+        abort(403, 'Unauthorized access.');
+    }
+
+    $output = [];
+    
+    // Migraciones
+    \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+    $output[] = "Migrate: " . \Illuminate\Support\Facades\Artisan::output();
+
+    // Limpiar cachés
+    \Illuminate\Support\Facades\Artisan::call('optimize:clear');
+    $output[] = "Optimize Clear: " . \Illuminate\Support\Facades\Artisan::output();
+    
+    // Optimizar para producción
+    \Illuminate\Support\Facades\Artisan::call('optimize');
+    $output[] = "Optimize: " . \Illuminate\Support\Facades\Artisan::output();
+
+    return response()->json([
+        'message' => 'Comandos ejecutados exitosamente.',
+        'output' => $output
+    ]);
+});
