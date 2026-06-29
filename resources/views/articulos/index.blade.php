@@ -101,7 +101,7 @@
     </div>
 </div>
 
-<div class="modal-overlay" id="familias-list-modal" aria-hidden="true">
+<div class="modal-overlay" id="familias-list-modal">
     <div class="modal-backdrop js-familias-list-close" role="presentation"></div>
     <div class="modal-dialog modal-dialog-details" role="dialog" aria-modal="true" aria-labelledby="familias-list-title">
         <div class="modal-header">
@@ -339,7 +339,7 @@
     </div>
 </div>
 
-<div class="modal-overlay" id="detalle-modal" aria-hidden="true">
+<div class="modal-overlay" id="detalle-modal">
     <div class="modal-backdrop js-detalle-modal-close" role="presentation"></div>
     <div class="modal-dialog modal-dialog-details" role="dialog" aria-modal="true" aria-labelledby="detalle-modal-title">
         <div class="modal-header">

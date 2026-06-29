@@ -42,6 +42,23 @@ Route::get('/dev/run-cmd', function (\Illuminate\Http\Request $request) {
 
     $output = [];
     
+    // Reparar storage link
+    $publicStorage = public_path('storage');
+    if (file_exists($publicStorage) || is_link($publicStorage)) {
+        if (is_link($publicStorage)) {
+            unlink($publicStorage);
+            $output[] = "Unlinked existing storage link.";
+        } else if (is_dir($publicStorage)) {
+            \Illuminate\Support\Facades\File::deleteDirectory($publicStorage);
+            $output[] = "Deleted existing storage directory.";
+        } else {
+            unlink($publicStorage);
+            $output[] = "Deleted existing storage file.";
+        }
+    }
+    \Illuminate\Support\Facades\Artisan::call('storage:link');
+    $output[] = "Storage Link: " . \Illuminate\Support\Facades\Artisan::output();
+    
     // Migraciones
     \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
     $output[] = "Migrate: " . \Illuminate\Support\Facades\Artisan::output();
