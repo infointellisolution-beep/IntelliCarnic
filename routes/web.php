@@ -56,10 +56,30 @@ Route::get('/dev/run-cmd', function (\Illuminate\Http\Request $request) {
         mkdir($publicStorage, 0755, true);
     }
     
-    // Copiar todo el contenido físicamente
+    // Copiar todo el contenido físicamente y arreglar permisos (Evitar error 403)
     try {
         \Illuminate\Support\Facades\File::copyDirectory($target, $publicStorage);
-        $output[] = "Imágenes copiadas físicamente a la carpeta pública con éxito.";
+        
+        // Función recursiva para forzar permisos 0755 a carpetas y 0644 a archivos
+        $setPermissions = function($dir) use (&$setPermissions) {
+            $files = scandir($dir);
+            foreach ($files as $file) {
+                if ($file != "." && $file != "..") {
+                    $path = $dir . '/' . $file;
+                    if (is_dir($path)) {
+                        @chmod($path, 0755);
+                        $setPermissions($path);
+                    } else {
+                        @chmod($path, 0644);
+                    }
+                }
+            }
+        };
+        
+        @chmod($publicStorage, 0755);
+        $setPermissions($publicStorage);
+        
+        $output[] = "Imágenes copiadas y permisos (0755/0644) aplicados con éxito para evitar Error 403.";
     } catch (\Exception $e) {
         $output[] = "Error al copiar imágenes: " . $e->getMessage();
     }
