@@ -1,4 +1,4 @@
-name: Deploy Plus Agencia
+name: Deploy IntelliCarnic
 
 on:
   push:
@@ -17,19 +17,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build production site
-        run: npm run build
-
-      - name: Deploy to shared hosting via FTP (direct credentials)
+      - name: Deploy to shared hosting via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: 82.29.157.202
@@ -38,18 +26,27 @@ jobs:
           port: 21
           protocol: ftp
           server-dir: /public_html/intellicarnic/
-          local-dir: dist/
+          local-dir: ./
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/vendor/**
+            .env
           dangerous-clean-slate: false
 
-# --- Alternativa recomendada con GitHub Secrets ---
-# - name: Deploy to shared hosting via FTP (secrets)
-#   uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-#   with:
-#     server: ${{ secrets.FTP_SERVER }}
-#     username: ${{ secrets.FTP_USERNAME }}
-#     password: ${{ secrets.FTP_PASSWORD }}
-#     port: ${{ secrets.FTP_PORT || 21 }}
-#     protocol: ${{ secrets.FTP_PROTOCOL || 'ftp' }}
-#     server-dir: ${{ secrets.FTP_REMOTE_DIR || './' }}
-#     local-dir: dist/
-#     dangerous-clean-slate: false
+      - name: Execute Artisan commands via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 82.29.157.202
+          username: u239804305.intellisolution.net
+          password: "@IntelliSolution17"
+          port: 22
+          script: |
+            cd domains/intellisolution.net/public_html/intellicarnic
+            composer install --optimize-autoloader --no-dev
+            php artisan migrate --force
+            php artisan optimize:clear
+            php artisan config:cache
+            php artisan view:cache
+            php artisan route:cache
