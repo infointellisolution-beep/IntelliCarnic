@@ -220,7 +220,7 @@
                     ];
                 @endphp
                 <tr class="catalog-row">
-                    <td style="font-weight: 700;">{{ $articulo->codigo }}</td>
+                    <td style="font-weight: 700; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ $articulo->codigo }}">{{ Str::limit($articulo->codigo, 20, '...') }}</td>
                     <td>
                         <div style="font-weight: 600;">{{ $articulo->descripcion }}</div>
                         <div style="font-size: 0.82rem; color: var(--text-muted);">Código cliente: {{ $articulo->codigo_cliente ?? 'Sin código' }}</div>

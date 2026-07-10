@@ -182,7 +182,7 @@ class ArticuloController extends Controller
             'codigo' => [
                 'required',
                 'string',
-                'max:50',
+                'max:100',
                 Rule::unique('articulos', 'codigo')->ignore($articuloId),
             ],
             'codigo_cliente' => ['required', 'string', 'max:50'],
