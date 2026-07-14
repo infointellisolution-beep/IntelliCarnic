@@ -35,11 +35,57 @@ document.addEventListener('DOMContentLoaded', () => {
     // Inicializar buscador en Venta Normal si existe
     const searchInput = document.getElementById('search-articulo');
     if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const isSmart = handleSmartBarcodeScan(e.target.value);
+                if (isSmart) {
+                    e.target.value = '';
+                    renderSearchResults('');
+                } else {
+                    addSelectedToCart();
+                }
+            }
+        });
         searchInput.addEventListener('keyup', (e) => {
-            renderSearchResults(e.target.value);
+            if (e.key !== 'Enter') {
+                renderSearchResults(e.target.value);
+            }
         });
         // Render inicial vacío
         renderSearchResults('');
+    }
+    
+    // Inicializar lector en Venta Táctil si existe
+    const searchTactil = document.getElementById('search-tactil');
+    if (searchTactil) {
+        searchTactil.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const rawVal = e.target.value;
+                if (!rawVal || rawVal.trim() === '') return;
+                
+                const isSmart = handleSmartBarcodeScan(rawVal);
+                if (isSmart) {
+                    e.target.value = '';
+                    filterTactilCatalog();
+                } else {
+                    // Si no es inteligente, buscar coincidencia exacta
+                    const cleanVal = rawVal.trim().toLowerCase();
+                    const exactMatch = windowArticulos.find(a => 
+                        (a.codigo && String(a.codigo).toLowerCase() === cleanVal) || 
+                        (a.codigo_cliente && String(a.codigo_cliente).toLowerCase() === cleanVal)
+                    );
+                    
+                    if (exactMatch) {
+                        e.target.value = '';
+                        filterTactilCatalog();
+                        // Abrimos el modal de báscula para que confirmen cantidad/peso
+                        openScaleModal(exactMatch);
+                    }
+                }
+            }
+        });
     }
     
     renderCart();
@@ -58,6 +104,13 @@ function renderSearchResults(query) {
         tbodySearch.innerHTML = '';
         currentSearchResults = [];
         return;
+    }
+    
+    // Si el texto ingresado parece un código inteligente de 12 dígitos, extraer la base
+    if (query.length === 12 && /^\d{12}$/.test(query)) {
+        query = query.substring(0, 6);
+    } else if (query.length === 13 && /^2\d{12}$/.test(query)) {
+        query = query.substring(1, 6);
     }
     
     currentSearchResults = windowArticulos.filter(art => {
@@ -111,7 +164,7 @@ function addSelectedToCart() {
         const art = currentSearchResults[selectedSearchIndex];
         const qtyInput = document.getElementById(`qty-search-${selectedSearchIndex}`);
         let qty = 1;
-        if (qtyInput) qty = parseInt(qtyInput.value) || 1;
+        if (qtyInput) qty = parseFloat(qtyInput.value) || 1; // Cambiado a parseFloat para aceptar decimales si se ingresan manualmente
         
         const added = addToCart(art, qty);
         
@@ -122,6 +175,67 @@ function addSelectedToCart() {
             renderSearchResults('');
         }
     }
+}
+
+// === ANALIZADOR DE CÓDIGOS DE BARRAS INTELIGENTE ===
+function handleSmartBarcodeScan(rawBarcode) {
+    if (!rawBarcode || rawBarcode.trim() === '') return false;
+    const barcode = rawBarcode.trim();
+    let parsedSku = null;
+    let parsedWeight = null;
+
+    // Limpiar paréntesis si existen (GS1 a veces los envía, a veces no)
+    const cleanCode = barcode.replace(/[()]/g, '');
+    
+    // 1. Detección de Códigos GS1-128 (Proveedor Mayorista)
+    let gtinMatch = cleanCode.match(/01(\d{14})/);
+    let weightMatch = cleanCode.match(/(3202|3102|3203|3103)(\d{6})/);
+
+    if (gtinMatch && weightMatch && cleanCode.length >= 24) {
+        parsedSku = gtinMatch[1]; // 14 dígitos del GTIN
+        let ai = weightMatch[1];
+        let weightStr = weightMatch[2];
+        
+        // Determinar decimales según el último dígito del IA (ej. 3202 = 2 decimales)
+        let decimalPlaces = parseInt(ai.charAt(3));
+        parsedWeight = parseInt(weightStr, 10) / Math.pow(10, decimalPlaces);
+    } 
+    // 2. Detección de Códigos de Báscula (12 dígitos estándar o local)
+    else if (/^\d{12}$/.test(cleanCode)) {
+        parsedSku = cleanCode.substring(0, 6);
+        let weightStr = cleanCode.substring(6, 12);
+        parsedWeight = parseInt(weightStr, 10) / 100; // Asumiendo 2 decimales para códigos de 12 dígitos (Ej. 000075 000041 = 0.41)
+    }
+    // 3. Detección de EAN-13 de Báscula (Empieza con 2, 13 dígitos)
+    else if (/^2\d{12}$/.test(cleanCode)) {
+        parsedSku = cleanCode.substring(1, 6); // 5 dígitos de código
+        let weightStr = cleanCode.substring(6, 11); // 5 dígitos de peso
+        parsedWeight = parseInt(weightStr, 10) / 1000; // Usualmente 3 decimales en EAN-13
+    }
+
+    // Si detectó un formato compuesto válido
+    if (parsedSku !== null && parsedWeight !== null) {
+        const skuInt = parseInt(parsedSku, 10);
+        
+        // Buscar el artículo exacto en la base de datos local
+        let foundArt = windowArticulos.find(a => {
+            return String(a.codigo) === parsedSku || 
+                   parseInt(a.codigo, 10) === skuInt ||
+                   String(a.codigo_cliente) === parsedSku ||
+                   parseInt(a.codigo_cliente, 10) === skuInt;
+        });
+
+        // Si el artículo existe, agregarlo al carrito con el peso extraído automáticamente
+        if (foundArt) {
+            const added = addToCart(foundArt, parsedWeight);
+            if (added) {
+                return true; // Retorna true para indicar que el código fue procesado como inteligente
+            }
+        }
+    }
+    
+    // Si no es un código inteligente o no se encontró el SKU base, retorna false para búsqueda normal
+    return false; 
 }
 
 // === TPV TÁCTIL (FAMILIAS Y BOTONES DINÁMICOS) ===
@@ -159,15 +273,27 @@ function filterFamilia(familiaId, btnElement) {
 
 function filterTactilCatalog() {
     const searchInput = document.getElementById('search-tactil');
-    const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    let query = searchInput ? searchInput.value.toLowerCase().trim() : '';
     const gridBtns = document.querySelectorAll('.tactil-grid .btn-tactil');
+    
+    // Si el texto ingresado parece un código inteligente de 12 dígitos, extraer la base
+    if (query.length === 12 && /^\d{12}$/.test(query)) {
+        query = query.substring(0, 6);
+    } else if (query.length === 13 && /^2\d{12}$/.test(query)) {
+        query = query.substring(1, 6);
+    }
     
     gridBtns.forEach(btn => {
         const textContent = btn.textContent.toLowerCase();
+        const artCodigo = (btn.getAttribute('data-codigo') || '').toLowerCase();
+        const artCodigoCliente = (btn.getAttribute('data-codigo-cliente') || '').toLowerCase();
         const artFamiliaId = btn.getAttribute('data-familia-id');
         
         const matchFamilia = (currentFamiliaId === null || artFamiliaId == currentFamiliaId);
-        const matchText = query === '' || textContent.includes(query);
+        const matchText = query === '' || 
+                          textContent.includes(query) || 
+                          artCodigo.includes(query) || 
+                          artCodigoCliente.includes(query);
         
         if (matchFamilia && matchText) {
             btn.style.display = 'flex';

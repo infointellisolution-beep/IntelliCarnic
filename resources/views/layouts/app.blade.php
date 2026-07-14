@@ -16,6 +16,8 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/css/custom.css">
     <link rel="stylesheet" href="/css/vender.css">
+    <!-- Librería para generar códigos de barras -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 </head>
 <body>
 

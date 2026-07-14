@@ -15,7 +15,8 @@
     </div>
     <div class="input-group">
         <label>Código cliente</label>
-        <input type="text" class="input-modern" name="codigo_cliente" value="{{ old('codigo_cliente', $modalArticulo->codigo_cliente ?? '') }}" placeholder="Código interno o del cliente" required>
+        <input type="text" class="input-modern" name="codigo_cliente" id="field-codigo-cliente" value="{{ old('codigo_cliente', $modalArticulo->codigo_cliente ?? '') }}" placeholder="Código interno o del cliente" required oninput="updateScaleCodePreview()">
+        <div id="scale-code-preview" style="font-size: 0.85rem; color: #64748b; margin-top: 0.25rem;"></div>
     </div>
     <div class="input-group">
         <label>Familia</label>
@@ -89,10 +90,36 @@ function calculatePvp() {
     const pvp = precioBase * (1 + (iva / 100));
     pvpInput.value = pvp > 0 ? pvp.toFixed(2) : '';
 }
+
+function updateScaleCodePreview() {
+    const ccInput = document.getElementById('field-codigo-cliente');
+    const stockInput = document.getElementById('field-stock');
+    const preview = document.getElementById('scale-code-preview');
+    if(!ccInput || !stockInput || !preview) return;
+
+    let cc = ccInput.value.trim();
+    if (cc.length > 0 && cc.length <= 6 && /^\d+$/.test(cc)) {
+        let padCc = cc.padStart(6, '0');
+        let weight = parseFloat(stockInput.value) || 0;
+        let weightInt = Math.round(weight * 100);
+        let weightStr = weightInt.toString().padStart(6, '0');
+        
+        preview.innerHTML = `<i class="fa-solid fa-barcode"></i> Código de Báscula: <strong>${padCc}${weightStr}</strong>`;
+        preview.style.color = '#059669'; // Emerald 600
+    } else {
+        preview.innerHTML = 'Ingresa un código cliente de hasta 6 dígitos numéricos para previsualizar el código de báscula.';
+        preview.style.color = '#64748b';
+    }
+}
+
+// Ejecutar al iniciar
+document.addEventListener('DOMContentLoaded', () => {
+    updateScaleCodePreview();
+});
 </script>
     <div class="input-group">
         <label>Peso / stock actual ({{ strtoupper($unidadPeso) }})</label>
-        <input type="number" step="0.001" min="0" class="input-modern" name="stock" id="field-stock" value="{{ old('stock', $modalArticulo->stock ?? 0) }}" required>
+        <input type="number" step="0.001" min="0" class="input-modern" name="stock" id="field-stock" value="{{ old('stock', $modalArticulo->stock ?? 0) }}" required oninput="updateScaleCodePreview()">
     </div>
     <div class="input-group">
         <label>Stock mínimo</label>

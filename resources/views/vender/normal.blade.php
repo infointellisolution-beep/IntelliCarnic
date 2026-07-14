@@ -35,13 +35,16 @@
     
     <!-- Top Panel: Búsqueda y Catálogo -->
     <div class="card vn-top-panel" style="flex: 0 0 35%; display: flex; flex-direction: column; padding: 1rem;">
-        <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
-            <label style="margin:0; font-weight: 700; white-space: nowrap;">Buscar Artículo:</label>
+        <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 0.5rem;">
+            <label style="margin:0; font-weight: 700; white-space: nowrap;">Buscar / Escanear:</label>
             <div class="input-group" style="margin:0; flex:1;">
-                <input type="text" id="search-articulo" class="input-modern" placeholder="Escriba aquí para buscar..." style="background: #fff7ed; border-color: #fdba74;">
+                <input type="text" id="search-articulo" class="input-modern" placeholder="Escriba texto o escanee un código de barras inteligente..." style="background: #fff7ed; border-color: #fdba74;">
             </div>
             <button class="btn-modern btn-secondary" style="width: auto; padding: 0.65rem 1rem;" onclick="renderSearchResults(document.getElementById('search-articulo').value)"><i class="fa-solid fa-barcode"></i></button>
             <button class="btn-modern btn-secondary" style="width: auto; padding: 0.65rem 1rem;" onclick="renderSearchResults(document.getElementById('search-articulo').value)"><i class="fa-solid fa-magnifying-glass"></i></button>
+        </div>
+        <div style="font-size: 0.75rem; color: #10b981; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fa-solid fa-microchip"></i> Analizador Inteligente de Pesos Activo (GS1-128 & Báscula)
         </div>
         
         <div style="flex: 1; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-md);">

@@ -249,8 +249,9 @@
                     </td>
                     <td>
                         <div class="flex-gap" style="gap: 0.35rem;">
-                            <button type="button" class="btn-modern js-articulo-details" data-articulo-detalles='@json($articuloModalData)' style="width: auto; padding: 0.45rem 0.55rem; background: transparent; color: var(--text-main); border: 1px solid var(--border-color); display: inline-flex; align-items: center; justify-content: center;"><i class="fa-solid fa-eye"></i></button>
-                            <button type="button" class="btn-modern js-articulo-edit" data-modal-title="Editar artículo" data-modal-action="{{ route('articulos.update', $articulo) }}" data-articulo='@json($articuloModalData)' style="width: auto; padding: 0.45rem 0.55rem; background: transparent; color: var(--primary); border: 1px solid var(--border-color); display: inline-flex; align-items: center; justify-content: center;"><i class="fa-solid fa-pen"></i></button>
+                            <button type="button" class="btn-modern js-articulo-details" data-articulo-detalles='@json($articuloModalData)' style="width: auto; padding: 0.45rem 0.55rem; background: transparent; color: var(--text-main); border: 1px solid var(--border-color); display: inline-flex; align-items: center; justify-content: center;" title="Ver detalles"><i class="fa-solid fa-eye"></i></button>
+                            <button type="button" class="btn-modern js-articulo-print" data-articulo='@json($articuloModalData)' style="width: auto; padding: 0.45rem 0.55rem; background: transparent; color: #059669; border: 1px solid var(--border-color); display: inline-flex; align-items: center; justify-content: center;" title="Imprimir etiqueta térmica"><i class="fa-solid fa-print"></i></button>
+                            <button type="button" class="btn-modern js-articulo-edit" data-modal-title="Editar artículo" data-modal-action="{{ route('articulos.update', $articulo) }}" data-articulo='@json($articuloModalData)' style="width: auto; padding: 0.45rem 0.55rem; background: transparent; color: var(--primary); border: 1px solid var(--border-color); display: inline-flex; align-items: center; justify-content: center;" title="Editar"><i class="fa-solid fa-pen"></i></button>
                             <form action="{{ route('articulos.destroy', $articulo) }}" method="POST" onsubmit="return confirm('¿Eliminar este artículo?');">
                                 @csrf
                                 @method('DELETE')
@@ -305,6 +306,7 @@
                     <div class="stock-selected-label">Producto seleccionado</div>
                     <div class="stock-selected-name" id="stock-selected-name">Selecciona un artículo para ajustar stock</div>
                     <div class="stock-selected-meta" id="stock-selected-meta">Código, código cliente, familia y peso actual se mostrarán aquí.</div>
+                    <div id="stock-selected-barcode" style="font-size: 0.95rem; color: #059669; margin-top: 0.5rem; display: none; padding-top: 0.5rem; border-top: 1px dashed rgba(0,0,0,0.1);"></div>
                 </div>
 
                 <input type="hidden" name="stock_articulo_id" id="stock-articulo-id" value="{{ old('stock_articulo_id') }}">
@@ -357,9 +359,19 @@
                     <span class="detail-chip orange" id="detalle-estado-chip">Activo</span>
                 </div>
 
-                <div class="detail-metric">
+                <div class="detail-metric" id="detalle-codigo-proveedor-container" style="display: none; background: #eff6ff; border: 1px dashed #60a5fa; border-radius: 6px; padding: 0.5rem; margin-top: 1rem;">
+                    <div class="detail-metric-label" style="color: #1d4ed8; margin-bottom: 0.25rem;"><i class="fa-solid fa-box"></i> Código Proveedor (Dinámico)</div>
+                    <div class="detail-metric-value" id="detalle-codigo-proveedor" style="color: #2563eb; font-size: 1.05rem; font-family: monospace; letter-spacing: 0.5px;">(01)00000000000000(3202)000000</div>
+                </div>
+
+                <div class="detail-metric" style="margin-top: 1rem;">
                     <div class="detail-metric-label">Código cliente</div>
                     <div class="detail-metric-value" id="detalle-codigo-cliente">CL-1001</div>
+                </div>
+
+                <div class="detail-metric" id="detalle-codigo-bascula-container" style="display: none; background: #ecfdf5; border: 1px dashed #34d399; border-radius: 6px; padding: 0.5rem;">
+                    <div class="detail-metric-label" style="color: #047857; margin-bottom: 0.25rem;"><i class="fa-solid fa-barcode"></i> Código Báscula (Dinámico)</div>
+                    <div class="detail-metric-value" id="detalle-codigo-bascula" style="color: #059669; font-size: 1.1rem;">000000000000</div>
                 </div>
 
                 <div class="detail-metric">

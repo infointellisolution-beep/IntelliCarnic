@@ -24,8 +24,11 @@
     <div class="tactil-left">
         <div class="flex-between" style="margin-bottom: 1rem;">
             <h3 style="margin:0;">Catálogo</h3>
-            <div class="input-group" style="margin:0; width: 250px;">
-                <input type="text" id="search-tactil" class="input-modern" placeholder="Buscar artículo..." onkeyup="filterTactilCatalog()">
+            <div class="input-group" style="margin:0; width: 300px;">
+                <input type="text" id="search-tactil" class="input-modern" placeholder="Buscar o escanear código..." onkeyup="filterTactilCatalog()">
+            </div>
+            <div style="font-size: 0.75rem; color: #10b981; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; margin-left: auto;">
+                <i class="fa-solid fa-microchip"></i> Analizador Inteligente Activo
             </div>
         </div>
         
@@ -47,22 +50,23 @@
             <!-- Grilla de Artículos -->
             <div class="tactil-grid" style="flex: 1; padding-left: 0.5rem;">
                 @foreach($articulos as $articulo)
-                <button class="btn-tactil" style="min-height: 130px; height: auto; padding-bottom: 10px; position: relative;" data-familia-id="{{ $articulo->familia_id }}" onclick='openScaleModal({!! json_encode($articulo) !!})'>
+                <button class="btn-tactil" style="min-height: 90px; height: auto; padding: 0.25rem; position: relative;" data-familia-id="{{ $articulo->familia_id }}" data-codigo="{{ $articulo->codigo }}" data-codigo-cliente="{{ $articulo->codigo_cliente }}" onclick='openScaleModal({!! json_encode($articulo) !!})'>
                     @if($articulo->imagen)
-                        <div style="height: 60px; display: flex; align-items: center; justify-content: center; margin-bottom: 0.5rem;">
+                        <div style="height: 40px; display: flex; align-items: center; justify-content: center; margin-bottom: 0.25rem;">
                             <img src="{{ asset('storage/' . $articulo->imagen) }}" alt="{{ $articulo->descripcion }}" style="max-height: 100%; max-width: 100%; border-radius: 4px; object-fit: contain;">
                         </div>
                     @else
                         <!-- Simulamos íconos si no hay imagen -->
                         @if(stripos($articulo->descripcion, 'carne') !== false)
-                            <div style="font-size: 2rem; color: #f59e0b; margin-bottom: 0.5rem;"><i class="fa-solid fa-burger"></i></div>
+                            <i class="fa-solid fa-drumstick-bite" style="font-size: 1.5rem; color: #ef4444; margin-bottom: 0.25rem; margin-top: 0.25rem;"></i>
                         @elseif(stripos($articulo->descripcion, 'pollo') !== false)
-                            <div style="font-size: 2rem; color: #ef4444; margin-bottom: 0.5rem;"><i class="fa-solid fa-drumstick-bite"></i></div>
+                            <i class="fa-solid fa-kiwi-bird" style="font-size: 1.5rem; color: #f59e0b; margin-bottom: 0.25rem; margin-top: 0.25rem;"></i>
                         @else
-                            <div style="font-size: 2rem; color: #94a3b8; margin-bottom: 0.5rem;"><i class="fa-solid fa-image"></i></div>
+                            <i class="fa-solid fa-image" style="font-size: 1.5rem; color: #94a3b8; margin-bottom: 0.25rem; margin-top: 0.25rem;"></i>
                         @endif
                     @endif
-                    <div style="line-height: 1.2;">{{ $articulo->descripcion }}</div>
+                    
+                    <div style="font-weight: 600; font-size: 0.75rem; margin-bottom: 0.15rem; line-height: 1.1; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">{{ $articulo->descripcion }}</div>
                     <div style="color: var(--text-muted); margin-top: 0.25rem; font-weight: 700;">${{ number_format($articulo->pvp, 2) }}</div>
                     @if($articulo->stock !== null && $articulo->stock !== '')
                         <div id="tactil-stock-{{ $articulo->id }}" style="font-size: 0.8rem; color: #10b981; margin-top: 0.25rem; font-weight: 600;">
