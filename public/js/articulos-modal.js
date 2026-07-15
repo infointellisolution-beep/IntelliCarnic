@@ -59,14 +59,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const rawBarcode = e.target.value;
             if (!rawBarcode || rawBarcode.trim() === '') return;
             const barcode = rawBarcode.trim();
-            const cleanCode = barcode.replace(/[()]/g, '');
+            // Remover paréntesis, guiones y espacios
+            const cleanCode = barcode.replace(/[()\-\s]/g, '');
             
             let parsedSku = null;
             let parsedWeight = null;
             
             // 1. Detección GS1-128
             let gtinMatch = cleanCode.match(/01(\d{14})/);
-            let weightMatch = cleanCode.match(/(3202|3102|3203|3103)(\d{6})/);
+            let weightMatch = cleanCode.match(/(320[0-5]|310[0-5])(\d{6})/);
             
             if (gtinMatch && weightMatch && cleanCode.length >= 24) {
                 parsedSku = gtinMatch[1];

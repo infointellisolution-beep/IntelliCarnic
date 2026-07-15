@@ -184,19 +184,20 @@ function handleSmartBarcodeScan(rawBarcode) {
     let parsedSku = null;
     let parsedWeight = null;
 
-    // Limpiar paréntesis si existen (GS1 a veces los envía, a veces no)
-    const cleanCode = barcode.replace(/[()]/g, '');
+    // Remover paréntesis, guiones y espacios (por si el código se escribe a mano con formato)
+    const cleanCode = barcode.replace(/[()\-\s]/g, '');
     
     // 1. Detección de Códigos GS1-128 (Proveedor Mayorista)
     let gtinMatch = cleanCode.match(/01(\d{14})/);
-    let weightMatch = cleanCode.match(/(3202|3102|3203|3103)(\d{6})/);
+    // 320x: Libras, 310x: Kilogramos. x = cantidad de decimales (0-5)
+    let weightMatch = cleanCode.match(/(320[0-5]|310[0-5])(\d{6})/);
 
     if (gtinMatch && weightMatch && cleanCode.length >= 24) {
         parsedSku = gtinMatch[1]; // 14 dígitos del GTIN
         let ai = weightMatch[1];
         let weightStr = weightMatch[2];
         
-        // Determinar decimales según el último dígito del IA (ej. 3202 = 2 decimales)
+        // Determinar decimales según el último dígito del IA (ej. 3201 = 1 decimal, 3202 = 2 decimales)
         let decimalPlaces = parseInt(ai.charAt(3));
         parsedWeight = parseInt(weightStr, 10) / Math.pow(10, decimalPlaces);
     } 
