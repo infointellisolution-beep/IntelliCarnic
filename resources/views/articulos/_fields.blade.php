@@ -10,7 +10,7 @@
 
 <div class="form-grid">
     <div class="input-group">
-        <label>Código</label>
+        <label>Código Proveedor</label>
         <input type="text" class="input-modern" name="codigo" value="{{ old('codigo', $modalArticulo->codigo ?? '') }}" required>
     </div>
     <div class="input-group">
