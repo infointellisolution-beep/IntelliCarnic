@@ -159,5 +159,5 @@
     windowArticulos = {!! json_encode($articulos) !!};
     windowSettings = {!! json_encode($settings) !!};
 </script>
-<script src="{{ asset('js/pos.js') }}"></script>
+<script src="{{ asset('js/pos.js') }}?v={{ time() }}"></script>
 @endpush

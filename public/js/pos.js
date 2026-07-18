@@ -106,11 +106,17 @@ function renderSearchResults(query) {
         return;
     }
     
-    // Si el texto ingresado parece un código inteligente de 12 dígitos, extraer la base
-    if (query.length === 12 && /^\d{12}$/.test(query)) {
-        query = query.substring(0, 6);
-    } else if (query.length === 13 && /^2\d{12}$/.test(query)) {
-        query = query.substring(1, 6);
+    // Si el texto ingresado parece un código inteligente (GS1 o local), extraer la base
+    const cleanCode = query.replace(/[()\-\s]/g, '');
+    let gtinMatch = cleanCode.match(/01(\d{14})/);
+    let weightMatch = cleanCode.match(/(320[0-5]|310[0-5])(\d{6})/);
+    
+    if (gtinMatch && weightMatch && cleanCode.length >= 24) {
+        query = gtinMatch[1]; // Extraer el GTIN base
+    } else if (cleanCode.length === 12 && /^\d{12}$/.test(cleanCode)) {
+        query = cleanCode.substring(0, 6);
+    } else if (cleanCode.length === 13 && /^2\d{12}$/.test(cleanCode)) {
+        query = cleanCode.substring(1, 6);
     }
     
     currentSearchResults = windowArticulos.filter(art => {
@@ -226,12 +232,10 @@ function handleSmartBarcodeScan(rawBarcode) {
                    parseInt(a.codigo_cliente, 10) === skuInt;
         });
 
-        // Si el artículo existe, agregarlo al carrito con el peso extraído automáticamente
+        // Si el artículo existe, abrir la báscula pre-llenada con el peso
         if (foundArt) {
-            const added = addToCart(foundArt, parsedWeight);
-            if (added) {
-                return true; // Retorna true para indicar que el código fue procesado como inteligente
-            }
+            openScaleModal(foundArt, parsedWeight);
+            return true; // Retorna true para indicar que el código fue procesado como inteligente
         }
     }
     
@@ -277,11 +281,17 @@ function filterTactilCatalog() {
     let query = searchInput ? searchInput.value.toLowerCase().trim() : '';
     const gridBtns = document.querySelectorAll('.tactil-grid .btn-tactil');
     
-    // Si el texto ingresado parece un código inteligente de 12 dígitos, extraer la base
-    if (query.length === 12 && /^\d{12}$/.test(query)) {
-        query = query.substring(0, 6);
-    } else if (query.length === 13 && /^2\d{12}$/.test(query)) {
-        query = query.substring(1, 6);
+    // Si el texto ingresado parece un código inteligente (GS1 o local), extraer la base
+    const cleanCode = query.replace(/[()\-\s]/g, '');
+    let gtinMatch = cleanCode.match(/01(\d{14})/);
+    let weightMatch = cleanCode.match(/(320[0-5]|310[0-5])(\d{6})/);
+    
+    if (gtinMatch && weightMatch && cleanCode.length >= 24) {
+        query = gtinMatch[1]; // Extraer el GTIN base
+    } else if (cleanCode.length === 12 && /^\d{12}$/.test(cleanCode)) {
+        query = cleanCode.substring(0, 6);
+    } else if (cleanCode.length === 13 && /^2\d{12}$/.test(cleanCode)) {
+        query = cleanCode.substring(1, 6);
     }
     
     gridBtns.forEach(btn => {
@@ -326,7 +336,7 @@ function getEffectivePrice(articulo) {
 
 let scaleArticle = null;
 
-function openScaleModal(articulo) {
+function openScaleModal(articulo, initialWeight = '') {
     scaleArticle = articulo;
     const effective = getEffectivePrice(articulo);
     
@@ -345,8 +355,8 @@ function openScaleModal(articulo) {
         }
     }
     
-    document.getElementById('scaleInput').value = '';
-    document.getElementById('scaleTotal').innerText = 'Total: $0.00';
+    document.getElementById('scaleInput').value = initialWeight;
+    updateScaleTotal();
     
     document.getElementById('scaleModal').style.display = 'flex';
     setTimeout(() => document.getElementById('scaleInput').focus(), 100);
@@ -831,7 +841,8 @@ function getAvailableStock(articuloId, initialStock) {
             inCart += parseFloat(item.cantidad);
         }
     });
-    return parseFloat(initialStock) - inCart;
+    const diff = parseFloat(initialStock) - inCart;
+    return parseFloat(diff.toFixed(3));
 }
 
 function updateVisualStockDisplays() {
