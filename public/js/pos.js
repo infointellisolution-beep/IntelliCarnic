@@ -113,7 +113,7 @@ function renderSearchResults(query) {
     
     if (gtinMatch && weightMatch && cleanCode.length >= 24) {
         query = gtinMatch[1]; // Extraer el GTIN base
-    } else if (cleanCode.length === 12 && /^\d{12}$/.test(cleanCode)) {
+    } else if ((cleanCode.length === 11 || cleanCode.length === 12) && /^\d{11,12}$/.test(cleanCode)) {
         query = cleanCode.substring(0, 6);
     } else if (cleanCode.length === 13 && /^2\d{12}$/.test(cleanCode)) {
         query = cleanCode.substring(1, 6);
@@ -207,7 +207,13 @@ function handleSmartBarcodeScan(rawBarcode) {
         let decimalPlaces = parseInt(ai.charAt(3));
         parsedWeight = parseInt(weightStr, 10) / Math.pow(10, decimalPlaces);
     } 
-    // 2. Detección de Códigos de Báscula (12 dígitos estándar o local)
+    // 2. Detección de Códigos de Báscula (11 dígitos local)
+    else if (/^\d{11}$/.test(cleanCode)) {
+        parsedSku = cleanCode.substring(0, 6);
+        let weightStr = cleanCode.substring(6, 11);
+        parsedWeight = parseInt(weightStr, 10) / 10;
+    }
+    // 2.1 Detección de Códigos de Báscula (12 dígitos estándar o local)
     else if (/^\d{12}$/.test(cleanCode)) {
         parsedSku = cleanCode.substring(0, 6);
         let weightStr = cleanCode.substring(6, 12);
@@ -288,7 +294,7 @@ function filterTactilCatalog() {
     
     if (gtinMatch && weightMatch && cleanCode.length >= 24) {
         query = gtinMatch[1]; // Extraer el GTIN base
-    } else if (cleanCode.length === 12 && /^\d{12}$/.test(cleanCode)) {
+    } else if ((cleanCode.length === 11 || cleanCode.length === 12) && /^\d{11,12}$/.test(cleanCode)) {
         query = cleanCode.substring(0, 6);
     } else if (cleanCode.length === 13 && /^2\d{12}$/.test(cleanCode)) {
         query = cleanCode.substring(1, 6);
@@ -499,6 +505,38 @@ function updateCartQuantity(index, newValue) {
     }
 }
 
+function updateCartPrice(index, newValue) {
+    if (index >= 0 && index < cart.length) {
+        let newPrice = parseFloat(newValue);
+        if (isNaN(newPrice) || newPrice < 0) {
+            renderCart(); // Reset input
+            return;
+        }
+
+        cart[index].precio = newPrice;
+        renderCart();
+    }
+}
+
+function updateCartTotalRow(index, newValue) {
+    if (index >= 0 && index < cart.length) {
+        let newTotal = parseFloat(newValue);
+        if (isNaN(newTotal) || newTotal < 0) {
+            renderCart(); // Reset input
+            return;
+        }
+
+        let item = cart[index];
+        if (item.cantidad > 0) {
+            let factorDescuento = 1 - (item.descuento / 100);
+            item.precio = newTotal / (item.cantidad * factorDescuento);
+        } else {
+            item.precio = 0;
+        }
+        renderCart();
+    }
+}
+
 // === RENDERIZADO ===
 
 function renderCart() {
@@ -526,10 +564,14 @@ function renderCart() {
                     <td style="padding: 0.25rem 0.75rem; text-align: center;">
                         <input type="number" step="any" min="0" value="${item.cantidad}" class="input-modern" style="width: 80px; text-align: center; padding: 0.25rem; font-weight: 600; background: ${isSelected ? '#bfdbfe' : '#f8fafc'};" onclick="event.stopPropagation()" onchange="updateCartQuantity(${index}, this.value)">
                     </td>
-                    <td style="padding: 0.75rem; text-align: right;">${item.precio.toFixed(2)}</td>
+                    <td style="padding: 0.75rem; text-align: right;">
+                        <input type="number" step="any" min="0" value="${item.precio.toFixed(2)}" class="input-modern" style="width: 80px; text-align: right; padding: 0.25rem; font-weight: 600; background: ${isSelected ? '#bfdbfe' : '#f8fafc'};" onclick="event.stopPropagation()" onchange="updateCartPrice(${index}, this.value)">
+                    </td>
                     <td style="padding: 0.75rem; text-align: right;">${item.descuento.toFixed(2)}</td>
                     <td style="padding: 0.75rem; text-align: right;">${item.iva_rate}%</td>
-                    <td style="padding: 0.75rem; text-align: right; font-weight: 700; color: var(--primary);">${totalFila.toFixed(2)}</td>
+                    <td style="padding: 0.25rem 0.75rem; text-align: right;">
+                        <input type="number" step="any" min="0" value="${totalFila.toFixed(2)}" class="input-modern" style="width: 90px; text-align: right; padding: 0.25rem; font-weight: 700; color: var(--primary); background: ${isSelected ? '#bfdbfe' : '#f8fafc'};" onclick="event.stopPropagation()" onchange="updateCartTotalRow(${index}, this.value)">
+                    </td>
                 </tr>
             `;
         });
@@ -553,8 +595,12 @@ function renderCart() {
                         <input type="number" step="any" min="0" value="${item.cantidad}" class="input-modern" style="width: 80px; text-align: center; padding: 0.25rem; font-weight: 600; background: ${isSelected ? '#bfdbfe' : '#f8fafc'};" onclick="event.stopPropagation()" onchange="updateCartQuantity(${index}, this.value)">
                     </td>
                     <td style="padding: 0.75rem;">${item.descripcion}</td>
-                    <td style="padding: 0.75rem; text-align: center;">${item.descuento.toFixed(2)}</td>
-                    <td style="padding: 0.75rem; text-align: right; font-weight: 700;">${totalFila.toFixed(2)}</td>
+                    <td style="padding: 0.25rem 0.75rem; text-align: right;">
+                        <input type="number" step="any" min="0" value="${item.precio.toFixed(2)}" class="input-modern" style="width: 80px; text-align: right; padding: 0.25rem; font-weight: 600; background: ${isSelected ? '#bfdbfe' : '#f8fafc'};" onclick="event.stopPropagation()" onchange="updateCartPrice(${index}, this.value)">
+                    </td>
+                    <td style="padding: 0.25rem 0.75rem; text-align: right;">
+                        <input type="number" step="any" min="0" value="${totalFila.toFixed(2)}" class="input-modern" style="width: 90px; text-align: right; padding: 0.25rem; font-weight: 700; background: ${isSelected ? '#bfdbfe' : '#f8fafc'};" onclick="event.stopPropagation()" onchange="updateCartTotalRow(${index}, this.value)">
+                    </td>
                 </tr>
             `;
         });

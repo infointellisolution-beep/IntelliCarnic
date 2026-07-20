@@ -101,8 +101,8 @@ function updateScaleCodePreview() {
     if (cc.length > 0 && cc.length <= 6 && /^\d+$/.test(cc)) {
         let padCc = cc.padStart(6, '0');
         let weight = parseFloat(stockInput.value) || 0;
-        let weightInt = Math.round(weight * 100);
-        let weightStr = weightInt.toString().padStart(6, '0');
+        let weightInt = Math.round(weight * 10);
+        let weightStr = weightInt.toString().padStart(5, '0');
         
         preview.innerHTML = `<i class="fa-solid fa-barcode"></i> Código de Báscula: <strong>${padCc}${weightStr}</strong>`;
         preview.style.color = '#059669'; // Emerald 600

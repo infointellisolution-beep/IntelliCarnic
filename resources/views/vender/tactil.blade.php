@@ -98,8 +98,8 @@
                     <tr>
                         <th style="width: 50px; text-align: center;">Can.</th>
                         <th>Artículo</th>
-                        <th style="text-align: center;">%Dto.</th>
-                        <th style="text-align: right;">P. c/IVA</th>
+                        <th style="text-align: right; padding-right: 1rem;">Precio U.</th>
+                        <th style="text-align: right;">Total</th>
                     </tr>
                 </thead>
                 <tbody id="ticket-body-tactil">

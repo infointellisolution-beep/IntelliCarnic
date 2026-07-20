@@ -61,91 +61,104 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Escuchamos el evento input (funciona tanto si se teclea como si se usa un lector láser)
+        let scanTimeout = null;
+
+        // Escuchamos el evento input pero usamos un debounce para esperar a que el escáner termine de escribir
         codigoInput.addEventListener('input', (e) => {
-            const rawBarcode = e.target.value;
-            if (!rawBarcode || rawBarcode.trim() === '') return;
-            const barcode = rawBarcode.trim();
-            // Remover paréntesis, guiones y espacios
-            const cleanCode = barcode.replace(/[()\-\s]/g, '');
-            
-            let parsedSku = null;
-            let parsedWeight = null;
-            
-            // 1. Detección GS1-128
-            let gtinMatch = cleanCode.match(/01(\d{14})/);
-            let weightMatch = cleanCode.match(/(320[0-5]|310[0-5])(\d{6})/);
-            
-            if (gtinMatch && weightMatch && cleanCode.length >= 24) {
-                parsedSku = gtinMatch[1];
-                let ai = weightMatch[1];
-                let weightStr = weightMatch[2];
-                let decimalPlaces = parseInt(ai.charAt(3));
-                parsedWeight = parseInt(weightStr, 10) / Math.pow(10, decimalPlaces);
+            clearTimeout(scanTimeout);
+            scanTimeout = setTimeout(() => {
+                const rawBarcode = e.target.value;
+                if (!rawBarcode || rawBarcode.trim() === '') return;
+                const barcode = rawBarcode.trim();
+                // Remover paréntesis, guiones y espacios
+                const cleanCode = barcode.replace(/[()\-\s]/g, '');
                 
-                // --- Generación Automática de Código Interno (Báscula) ---
-                const codigoClienteInput = modalForm.querySelector('[name="codigo_cliente"]');
-                if (codigoClienteInput && parsedSku.length >= 6) {
-                    codigoClienteInput.value = parsedSku.slice(-6); // Extraemos los últimos 6 dígitos
+                let parsedSku = null;
+                let parsedWeight = null;
+                
+                // 1. Detección GS1-128
+                let gtinMatch = cleanCode.match(/01(\d{14})/);
+                let weightMatch = cleanCode.match(/(320[0-5]|310[0-5])(\d{6})/);
+                
+                if (gtinMatch && weightMatch && cleanCode.length >= 24) {
+                    parsedSku = gtinMatch[1];
+                    let ai = weightMatch[1];
+                    let weightStr = weightMatch[2];
+                    let decimalPlaces = parseInt(ai.charAt(3));
+                    parsedWeight = parseInt(weightStr, 10) / Math.pow(10, decimalPlaces);
                     
-                    const origBg = codigoClienteInput.style.backgroundColor;
-                    codigoClienteInput.style.backgroundColor = '#dcfce7';
-                    codigoClienteInput.style.borderColor = '#10b981';
-                    codigoClienteInput.style.color = '#047857';
+                    // --- Generación Automática de Código Interno (Báscula) ---
+                    const codigoClienteInput = modalForm.querySelector('[name="codigo_cliente"]');
+                    if (codigoClienteInput && parsedSku.length >= 6) {
+                        codigoClienteInput.value = parsedSku.slice(-6); // Extraemos los últimos 6 dígitos
+                        
+                        const origBg = codigoClienteInput.style.backgroundColor;
+                        codigoClienteInput.style.backgroundColor = '#dcfce7';
+                        codigoClienteInput.style.borderColor = '#10b981';
+                        codigoClienteInput.style.color = '#047857';
+                        setTimeout(() => {
+                            codigoClienteInput.style.backgroundColor = origBg;
+                            codigoClienteInput.style.borderColor = '';
+                            codigoClienteInput.style.color = '';
+                        }, 1500);
+                    }
+                }
+                // 2. Detección Báscula 11 dígitos
+                else if (/^\d{11}$/.test(cleanCode)) {
+                    parsedSku = cleanCode.substring(0, 6);
+                    let weightStr = cleanCode.substring(6, 11);
+                    parsedWeight = parseInt(weightStr, 10) / 10;
+                }
+                // 2.1 Detección Báscula 12 dígitos
+                else if (/^\d{12}$/.test(cleanCode)) {
+                    parsedSku = cleanCode.substring(0, 6);
+                    let weightStr = cleanCode.substring(6, 12);
+                    parsedWeight = parseInt(weightStr, 10) / 100;
+                }
+                // 3. Detección EAN-13 Báscula
+                else if (/^2\d{12}$/.test(cleanCode)) {
+                    parsedSku = cleanCode.substring(1, 6);
+                    let weightStr = cleanCode.substring(6, 11);
+                    parsedWeight = parseInt(weightStr, 10) / 1000;
+                }
+                
+                if (parsedSku !== null && parsedWeight !== null) {
+                    // Limpiamos el código y movemos el peso al stock
+                    if (codigoInput.value !== parsedSku) {
+                        codigoInput.value = parsedSku;
+                        codigoInput.dispatchEvent(new Event('input'));
+                    }
+                    if (stockInput.value !== parsedWeight.toString()) {
+                        stockInput.value = parsedWeight;
+                        stockInput.dispatchEvent(new Event('input'));
+                    }
+                    
+                    const codigoClienteInput = modalForm.querySelector('[name="codigo_cliente"]');
+                    if (codigoClienteInput) {
+                        codigoClienteInput.dispatchEvent(new Event('input'));
+                    }
+                    
+                    // Feedback visual (parpadeo verde)
+                    const originalBg = codigoInput.style.backgroundColor;
+                    codigoInput.style.backgroundColor = '#dcfce7';
+                    codigoInput.style.borderColor = '#10b981';
+                    codigoInput.style.color = '#047857';
+                    
+                    stockInput.style.backgroundColor = '#dcfce7';
+                    stockInput.style.borderColor = '#10b981';
+                    stockInput.style.color = '#047857';
+                    
                     setTimeout(() => {
-                        codigoClienteInput.style.backgroundColor = origBg;
-                        codigoClienteInput.style.borderColor = '';
-                        codigoClienteInput.style.color = '';
+                        codigoInput.style.backgroundColor = originalBg;
+                        codigoInput.style.borderColor = '';
+                        codigoInput.style.color = '';
+                        
+                        stockInput.style.backgroundColor = originalBg;
+                        stockInput.style.borderColor = '';
+                        stockInput.style.color = '';
                     }, 1500);
                 }
-            }
-            // 2. Detección Báscula 12 dígitos
-            else if (/^\d{12}$/.test(cleanCode)) {
-                parsedSku = cleanCode.substring(0, 6);
-                let weightStr = cleanCode.substring(6, 12);
-                parsedWeight = parseInt(weightStr, 10) / 100;
-            }
-            // 3. Detección EAN-13 Báscula
-            else if (/^2\d{12}$/.test(cleanCode)) {
-                parsedSku = cleanCode.substring(1, 6);
-                let weightStr = cleanCode.substring(6, 11);
-                parsedWeight = parseInt(weightStr, 10) / 1000;
-            }
-            
-            if (parsedSku !== null && parsedWeight !== null) {
-                // Limpiamos el código y movemos el peso al stock
-                codigoInput.value = parsedSku;
-                stockInput.value = parsedWeight;
-                
-                // Disparamos manualmente los eventos para que la previsualización se actualice
-                codigoInput.dispatchEvent(new Event('input'));
-                stockInput.dispatchEvent(new Event('input'));
-                
-                const codigoClienteInput = modalForm.querySelector('[name="codigo_cliente"]');
-                if (codigoClienteInput) {
-                    codigoClienteInput.dispatchEvent(new Event('input'));
-                }
-                
-                // Feedback visual (parpadeo verde)
-                const originalBg = codigoInput.style.backgroundColor;
-                codigoInput.style.backgroundColor = '#dcfce7';
-                codigoInput.style.borderColor = '#10b981';
-                codigoInput.style.color = '#047857';
-                
-                stockInput.style.backgroundColor = '#dcfce7';
-                stockInput.style.borderColor = '#10b981';
-                stockInput.style.color = '#047857';
-                
-                setTimeout(() => {
-                    codigoInput.style.backgroundColor = originalBg;
-                    codigoInput.style.borderColor = '';
-                    codigoInput.style.color = '';
-                    
-                    stockInput.style.backgroundColor = originalBg;
-                    stockInput.style.borderColor = '';
-                    stockInput.style.color = '';
-                }, 1500);
-            }
+            }, 300); // 300ms de espera para asegurarse de que el lector láser terminó
         });
     }
     // -----------------------------------------------------
@@ -569,8 +582,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (basculaContainer && basculaValue && articulo.codigo_cliente && articulo.codigo_cliente.length <= 6 && /^\d+$/.test(articulo.codigo_cliente)) {
                     let padCc = articulo.codigo_cliente.padStart(6, '0');
                     let weight = parseFloat(articulo.stock) || 0;
-                    let weightInt = Math.round(weight * 100);
-                    let weightStr = weightInt.toString().padStart(6, '0');
+                    let weightInt = Math.round(weight * 10);
+                    let weightStr = weightInt.toString().padStart(5, '0');
                     basculaValue.textContent = padCc + weightStr;
                     basculaContainer.style.display = 'block';
                 } else if (basculaContainer) {
