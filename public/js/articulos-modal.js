@@ -54,6 +54,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const stockInput = modalForm.querySelector('[name="stock"]');
     
     if (codigoInput && stockInput) {
+        // Prevenir que el Enter del lector láser envíe el formulario accidentalmente
+        modalForm.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.type !== 'submit') {
+                e.preventDefault();
+            }
+        });
+
         // Escuchamos el evento input (funciona tanto si se teclea como si se usa un lector láser)
         codigoInput.addEventListener('input', (e) => {
             const rawBarcode = e.target.value;

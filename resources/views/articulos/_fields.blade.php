@@ -15,7 +15,7 @@
     </div>
     <div class="input-group">
         <label>Código cliente</label>
-        <input type="text" class="input-modern" name="codigo_cliente" id="field-codigo-cliente" value="{{ old('codigo_cliente', $modalArticulo->codigo_cliente ?? '') }}" placeholder="Código interno o del cliente" required oninput="updateScaleCodePreview()">
+        <input type="text" class="input-modern" name="codigo_cliente" id="field-codigo-cliente" value="{{ old('codigo_cliente', $modalArticulo->codigo_cliente ?? '') }}" placeholder="Código interno o del cliente" oninput="updateScaleCodePreview()">
         <div id="scale-code-preview" style="font-size: 0.85rem; color: #64748b; margin-top: 0.25rem;"></div>
     </div>
     <div class="input-group">
