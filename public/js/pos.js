@@ -211,7 +211,7 @@ function handleSmartBarcodeScan(rawBarcode) {
     else if (/^\d{11}$/.test(cleanCode)) {
         parsedSku = cleanCode.substring(0, 6);
         let weightStr = cleanCode.substring(6, 11);
-        parsedWeight = parseInt(weightStr, 10) / 10;
+        parsedWeight = parseInt(weightStr, 10) / 100;
     }
     // 2.1 Detección de Códigos de Báscula (12 dígitos estándar o local)
     else if (/^\d{12}$/.test(cleanCode)) {

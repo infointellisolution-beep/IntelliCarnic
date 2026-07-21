@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 else if (/^\d{11}$/.test(cleanCode)) {
                     parsedSku = cleanCode.substring(0, 6);
                     let weightStr = cleanCode.substring(6, 11);
-                    parsedWeight = parseInt(weightStr, 10) / 10;
+                    parsedWeight = parseInt(weightStr, 10) / 100;
                 }
                 // 2.1 Detección Báscula 12 dígitos
                 else if (/^\d{12}$/.test(cleanCode)) {
@@ -582,7 +582,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (basculaContainer && basculaValue && articulo.codigo_cliente && articulo.codigo_cliente.length <= 6 && /^\d+$/.test(articulo.codigo_cliente)) {
                     let padCc = articulo.codigo_cliente.padStart(6, '0');
                     let weight = parseFloat(articulo.stock) || 0;
-                    let weightInt = Math.round(weight * 10);
+                    let weightInt = Math.round(weight * 100);
                     let weightStr = weightInt.toString().padStart(5, '0');
                     basculaValue.textContent = padCc + weightStr;
                     basculaContainer.style.display = 'block';
