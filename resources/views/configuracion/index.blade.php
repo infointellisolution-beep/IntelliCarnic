@@ -46,6 +46,7 @@
     <a href="{{ route('configuracion.index', ['tab' => 'general']) }}" class="config-tab {{ $activeTab === 'general' ? 'is-active' : '' }}">General</a>
     <a href="{{ route('configuracion.index', ['tab' => 'empresa']) }}" class="config-tab {{ $activeTab === 'empresa' ? 'is-active' : '' }}">Mi Empresa</a>
     <a href="{{ route('configuracion.index', ['tab' => 'users']) }}" class="config-tab {{ $activeTab === 'users' ? 'is-active' : '' }}">Usuarios</a>
+    <a href="{{ route('configuracion.index', ['tab' => 'sistema']) }}" class="config-tab {{ $activeTab === 'sistema' ? 'is-active' : '' }}">Sistema y Red</a>
 </div>
 
 @if($activeTab === 'general')
@@ -125,6 +126,137 @@
                 <button type="submit" class="btn-modern btn-accent" style="width: auto;">Guardar información</button>
             </div>
         </form>
+    </div>
+@elseif($activeTab === 'sistema')
+    @php
+        $localIP = '127.0.0.1';
+        $output = shell_exec('ipconfig');
+        if ($output) {
+            preg_match_all('/IPv4.*?:\s*([\d\.]+)/i', $output, $matches);
+            if (!empty($matches[1])) {
+                foreach ($matches[1] as $ip) {
+                    // Ignorar 127.0.0.1 y IPs terminadas en .1 (puertas de enlace / adaptadores virtuales)
+                    if ($ip !== '127.0.0.1' && !str_ends_with($ip, '.1')) {
+                        $localIP = $ip;
+                        break;
+                    }
+                }
+                if ($localIP === '127.0.0.1') {
+                    foreach ($matches[1] as $ip) {
+                        if ($ip !== '127.0.0.1') {
+                            $localIP = $ip;
+                        }
+                    }
+                }
+            }
+        }
+
+        if ($localIP === '127.0.0.1') {
+            $localIP = getHostByName(getHostName());
+        }
+
+        // Detectar Repositorio GitHub vinculado
+        $gitCmd = null;
+        $testCmd = @shell_exec('git --version 2>&1');
+        if ($testCmd && str_contains(strtolower($testCmd), 'git version')) {
+            $gitCmd = 'git';
+        } else {
+            $possiblePaths = [
+                'C:\laragon\bin\git\cmd\git.exe',
+                'C:\laragon\bin\git\bin\git.exe',
+                'C:\Program Files\Git\cmd\git.exe',
+                'C:\Program Files\Git\bin\git.exe',
+                'C:\Program Files (x86)\Git\cmd\git.exe',
+            ];
+            foreach ($possiblePaths as $p) {
+                if (file_exists($p)) {
+                    $gitCmd = '"' . $p . '"';
+                    break;
+                }
+            }
+        }
+
+        $gitRepoUrl = 'No detectado / No vinculado';
+        $gitBranch = 'main';
+        if ($gitCmd) {
+            try {
+                $remote = shell_exec($gitCmd . ' remote get-url origin 2>&1');
+                if ($remote && !str_contains($remote, 'fatal') && !str_contains(strtolower($remote), 'no se reconoce')) {
+                    $gitRepoUrl = trim($remote);
+                }
+                $branch = shell_exec($gitCmd . ' branch --show-current 2>&1');
+                if ($branch && !str_contains($branch, 'fatal') && !str_contains(strtolower($branch), 'no se reconoce')) {
+                    $gitBranch = trim($branch);
+                }
+            } catch (\Throwable $e) {}
+        }
+        
+        if ($gitRepoUrl === 'No detectado / No vinculado' && !empty($settings['github_url'])) {
+            $gitRepoUrl = $settings['github_url'];
+        }
+
+        $lanUrl = 'http://' . $localIP . '/intelliCarnic/public';
+        $qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' . urlencode($lanUrl);
+    @endphp
+    <div class="config-grid">
+        <div class="card">
+            <div class="hero-kicker"><i class="fa-solid fa-network-wired"></i> Red Local (LAN)</div>
+            <h2 class="hero-title" style="font-size: 1.5rem; margin-top: 0.25rem;">Acceso desde otros dispositivos</h2>
+            <p style="color: var(--text-muted); margin-top: 0.5rem; font-size: 0.95rem;">
+                Escanea este código QR directamente desde el dispositivo Zebra TC51 o desde el navegador de cualquier teléfono conectado al mismo Wi-Fi para entrar al sistema sin necesidad de escribir la dirección manualmente.
+            </p>
+            
+            <div style="background: var(--surface-bg); border: 1px solid var(--border-color); padding: 1.5rem; border-radius: var(--radius-md); margin-top: 1.5rem; display: flex; align-items: center; justify-content: center; gap: 2rem;">
+                
+                <img src="{{ $qrUrl }}" alt="Código QR de Acceso" style="border-radius: 8px; border: 4px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                
+                <div style="text-align: left;">
+                    <div style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: 1px; margin-bottom: 0.25rem;">También puedes teclear esto:</div>
+                    <a href="{{ $lanUrl }}" target="_blank" style="font-size: 1.6rem; font-weight: 700; color: var(--accent); text-decoration: none; font-family: monospace;">
+                        {{ $lanUrl }}
+                    </a>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="hero-kicker"><i class="fa-brands fa-github"></i> Mantenimiento y Actualizaciones</div>
+            <h2 class="hero-title" style="font-size: 1.5rem; margin-top: 0.25rem;">Conexión a GitHub</h2>
+            <p style="color: var(--text-muted); margin-top: 0.5rem; font-size: 0.95rem;">
+                Ingresa la dirección URL de tu repositorio público o privado en GitHub para vincular este sistema local y permitir actualizaciones con 1 solo clic.
+            </p>
+
+            <form action="{{ route('configuracion.sistema.github') }}" method="POST" style="margin-top: 1rem;">
+                @csrf
+                <div class="input-group">
+                    <label>URL del Repositorio en GitHub</label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="url" class="input-modern" name="github_url" value="{{ $gitRepoUrl !== 'No detectado / No vinculado' ? $gitRepoUrl : ($settings['github_url'] ?? '') }}" placeholder="https://github.com/usuario/repositorio.git" required>
+                        <button type="submit" class="btn-modern btn-secondary" style="width: auto; whitespace: nowrap;">Vincular</button>
+                    </div>
+                </div>
+            </form>
+
+            <div style="background: var(--surface-bg); border: 1px solid var(--border-color); padding: 1rem 1.25rem; border-radius: var(--radius-md); margin-top: 1.25rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Estado de vinculación:</span>
+                    <span class="badge {{ $gitRepoUrl !== 'No detectado / No vinculado' ? 'badge-success' : 'badge-warning' }}">
+                        {{ $gitRepoUrl !== 'No detectado / No vinculado' ? 'Vinculado' : 'Pendiente' }}
+                    </span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Rama activa:</span>
+                    <span style="font-weight: 600; font-family: monospace; font-size: 0.9rem; color: var(--accent);">{{ $gitBranch }}</span>
+                </div>
+            </div>
+            
+            <div style="margin-top: 1.5rem;">
+                <a href="{{ route('configuracion.sistema.downloadUpdater') }}" class="btn-modern btn-accent" style="width: auto; display: inline-flex; align-items: center; gap: 0.5rem;">
+                    <i class="fa-solid fa-download"></i> Descargar Script Actualizador (.bat)
+                </a>
+            </div>
+        </div>
     </div>
 @else
 @php
@@ -243,5 +375,5 @@
     </div>
 @endif
 
-<script src="/js/configuracion.js"></script>
+<script src="{{ asset('js/configuracion.js') }}"></script>
 @endsection

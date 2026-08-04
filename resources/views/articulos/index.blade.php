@@ -475,5 +475,5 @@
     window.familiasCatalogo = @json($familiasCatalogo);
     window.unidadPeso = '{{ $settings['unidad_peso'] ?? 'kg' }}';
 </script>
-<script src="/js/articulos-modal.js?v={{ time() }}"></script>
+<script src="{{ asset('js/articulos-modal.js') }}?v={{ time() }}"></script>
 @endsection

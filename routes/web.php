@@ -27,6 +27,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/configuracion/usuarios', [ConfiguracionController::class, 'storeUser'])->name('configuracion.users.store');
     Route::put('/configuracion/usuarios/{user}', [ConfiguracionController::class, 'updateUser'])->name('configuracion.users.update');
     Route::delete('/configuracion/usuarios/{user}', [ConfiguracionController::class, 'destroyUser'])->name('configuracion.users.destroy');
+    
+    // Sistema
+    Route::get('/configuracion/sistema/descargar-actualizador', [ConfiguracionController::class, 'downloadUpdater'])->name('configuracion.sistema.downloadUpdater');
+    Route::post('/configuracion/sistema/github', [ConfiguracionController::class, 'updateGithub'])->name('configuracion.sistema.github');
 
     Route::get('/vender/normal', [\App\Http\Controllers\VenderController::class, 'normal'])->name('vender.normal');
     Route::get('/vender/tactil', [\App\Http\Controllers\VenderController::class, 'tactil'])->name('vender.tactil');

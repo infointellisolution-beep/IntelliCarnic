@@ -146,6 +146,80 @@ class ConfiguracionController extends Controller
             ->with('status', 'Usuario eliminado correctamente.');
     }
 
+    public function downloadUpdater()
+    {
+        $batContent = "@echo off\r\n"
+            . "echo Buscando nuevas actualizaciones en GitHub...\r\n"
+            . "cd C:\\laragon\\www\\intelliCarnic\r\n\r\n"
+            . ":: 1. Descarga los archivos nuevos de codigo\r\n"
+            . "git pull origin main\r\n\r\n"
+            . "echo.\r\n"
+            . "echo Actualizando la base de datos...\r\n"
+            . ":: 2. Ejecuta las migraciones sin preguntarle al usuario (--force es clave)\r\n"
+            . "php artisan migrate --force\r\n\r\n"
+            . "echo.\r\n"
+            . "echo Limpiando memoria cache...\r\n"
+            . ":: 3. Limpia el cache de Laravel para que los cambios se vean de inmediato\r\n"
+            . "php artisan optimize:clear\r\n\r\n"
+            . "echo.\r\n"
+            . "echo El sistema ha sido actualizado con exito! Ya puedes cerrar esta ventana.\r\n"
+            . "pause\r\n";
+
+        return response($batContent)
+            ->header('Content-Type', 'application/bat')
+            ->header('Content-Disposition', 'attachment; filename="Actualizar_IntelliCarnic.bat"');
+    }
+
+    public function updateGithub(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'github_url' => ['required', 'url'],
+        ]);
+
+        $url = trim($data['github_url']);
+        Setting::setValue('github_url', $url);
+
+        // Buscar el ejecutable de Git en el sistema o dentro de Laragon
+        $git = $this->getGitBinary();
+
+        if ($git) {
+            @shell_exec($git . ' init 2>&1');
+            @shell_exec($git . ' remote remove origin 2>&1');
+            @shell_exec($git . ' remote add origin ' . escapeshellarg($url) . ' 2>&1');
+            $msg = 'Repositorio de GitHub vinculado y configurado correctamente.';
+        } else {
+            $msg = 'Se guardó la URL de GitHub. Nota: Git no está instalado o no se detectó en Laragon/Windows.';
+        }
+
+        return redirect()
+            ->route('configuracion.index', ['tab' => 'sistema'])
+            ->with('status', $msg);
+    }
+
+    private function getGitBinary(): ?string
+    {
+        $test = @shell_exec('git --version 2>&1');
+        if ($test && str_contains(strtolower($test), 'git version')) {
+            return 'git';
+        }
+
+        $paths = [
+            'C:\laragon\bin\git\cmd\git.exe',
+            'C:\laragon\bin\git\bin\git.exe',
+            'C:\Program Files\Git\cmd\git.exe',
+            'C:\Program Files\Git\bin\git.exe',
+            'C:\Program Files (x86)\Git\cmd\git.exe',
+        ];
+
+        foreach ($paths as $path) {
+            if (file_exists($path)) {
+                return '"' . $path . '"';
+            }
+        }
+
+        return null;
+    }
+
     private function isProtectedAdmin(User $user): bool
     {
         return strtolower($user->email) === self::PROTECTED_ADMIN_EMAIL;
