@@ -86,6 +86,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     let weightStr = weightMatch[2];
                     let decimalPlaces = parseInt(ai.charAt(3));
                     parsedWeight = parseInt(weightStr, 10) / Math.pow(10, decimalPlaces);
+
+                    // --- Conversión Automática de Unidades ---
+                    // 310x = Kilos (KG), 320x = Libras (LB)
+                    const systemUnit = (window.unidadPeso || 'lb').toLowerCase();
+                    const isKgInBarcode = ai.startsWith('310');
+
+                    if (isKgInBarcode && (systemUnit === 'lb' || systemUnit === 'lbs')) {
+                        // 1 kg = 2.20462 lbs
+                        parsedWeight = Math.round((parsedWeight * 2.20462) * 100) / 100;
+                    } else if (!isKgInBarcode && systemUnit === 'kg') {
+                        // 1 lb = 1 / 2.20462 kg
+                        parsedWeight = Math.round((parsedWeight / 2.20462) * 100) / 100;
+                    }
                     
                     // --- Generación Automática de Código Interno (Báscula) ---
                     const codigoClienteInput = modalForm.querySelector('[name="codigo_cliente"]');

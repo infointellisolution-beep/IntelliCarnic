@@ -206,6 +206,19 @@ function handleSmartBarcodeScan(rawBarcode) {
         // Determinar decimales según el último dígito del IA (ej. 3201 = 1 decimal, 3202 = 2 decimales)
         let decimalPlaces = parseInt(ai.charAt(3));
         parsedWeight = parseInt(weightStr, 10) / Math.pow(10, decimalPlaces);
+
+        // --- Conversión Automática de Unidades ---
+        // 310x = Kilos (KG), 320x = Libras (LB)
+        const systemUnit = (windowSettings.unidad_peso || 'lb').toLowerCase();
+        const isKgInBarcode = ai.startsWith('310');
+
+        if (isKgInBarcode && (systemUnit === 'lb' || systemUnit === 'lbs')) {
+            // 1 kg = 2.20462 lbs
+            parsedWeight = Math.round((parsedWeight * 2.20462) * 100) / 100;
+        } else if (!isKgInBarcode && systemUnit === 'kg') {
+            // 1 lb = 1 / 2.20462 kg
+            parsedWeight = Math.round((parsedWeight / 2.20462) * 100) / 100;
+        }
     } 
     // 2. Detección de Códigos de Báscula (11 dígitos local)
     else if (/^\d{11}$/.test(cleanCode)) {
