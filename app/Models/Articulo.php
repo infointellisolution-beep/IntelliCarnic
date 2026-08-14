@@ -14,6 +14,7 @@ class Articulo extends Model
     protected $fillable = [
         'codigo',
         'codigo_cliente',
+        'item',
         'familia_id',
         'descripcion',
         'aplica_iva',

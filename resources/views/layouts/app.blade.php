@@ -71,6 +71,11 @@
                             <i class="fa-solid fa-truck-ramp-box"></i> Compras
                         </a>
                     </li>
+                    <li>
+                        <a href="{{ route('reportes.index') }}" class="{{ request()->routeIs('reportes.*') ? 'active' : '' }}">
+                            <i class="fa-solid fa-chart-pie"></i> Reportes
+                        </a>
+                    </li>
                 </ul>
                 <ul class="nav-links" style="margin-top: auto;">
                     <li>

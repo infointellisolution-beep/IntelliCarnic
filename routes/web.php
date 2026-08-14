@@ -43,7 +43,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/compras', [CompraController::class, 'store'])->name('compras.store');
     Route::get('/compras/historial', [CompraController::class, 'historial'])->name('compras.historial');
     Route::get('/compras/{compra}', [CompraController::class, 'show'])->name('compras.show');
-    Route::post('/proveedores', [CompraController::class, 'storeProveedor'])->name('proveedores.store');
+    // Reportes
+    Route::get('/reportes', [\App\Http\Controllers\ReporteController::class, 'index'])->name('reportes.index');
+    Route::get('/reportes/exportar/{tipo}', [\App\Http\Controllers\ReporteController::class, 'exportarCsv'])->name('reportes.exportar');
 });
 
 // Ruta de mantenimiento para ejecutar comandos sin SSH

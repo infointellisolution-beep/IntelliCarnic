@@ -232,6 +232,7 @@ class ArticuloController extends Controller
                 Rule::unique('articulos', 'codigo')->ignore($articuloId),
             ],
             'codigo_cliente' => ['nullable', 'string', 'max:50'],
+            'item' => ['nullable', 'string', 'max:50'],
             'familia_id' => ['required', 'exists:familias,id'],
             'aplica_iva' => ['nullable', 'boolean'],
             'descripcion' => ['required', 'string', 'max:255'],

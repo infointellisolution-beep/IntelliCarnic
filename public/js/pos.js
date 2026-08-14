@@ -379,8 +379,25 @@ function openScaleModal(articulo, initialWeight = '', rawBarcode = '') {
     document.getElementById('scaleInput').value = initialWeight;
     updateScaleTotal();
     
+    const scaleInput = document.getElementById('scaleInput');
+    if (scaleInput && !scaleInput.dataset.hasEnterListener) {
+        scaleInput.dataset.hasEnterListener = 'true';
+        scaleInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                confirmScaleAdd();
+            }
+        });
+    }
+
     document.getElementById('scaleModal').style.display = 'flex';
-    setTimeout(() => document.getElementById('scaleInput').focus(), 100);
+    setTimeout(() => {
+        if (scaleInput) {
+            scaleInput.focus();
+            scaleInput.select();
+        }
+    }, 100);
 }
 
 function updateScaleTotal() {

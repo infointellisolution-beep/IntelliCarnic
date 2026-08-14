@@ -206,6 +206,7 @@
                         'id' => $articulo->id,
                         'codigo' => $articulo->codigo,
                         'codigo_cliente' => $articulo->codigo_cliente,
+                        'item' => $articulo->item,
                         'aplica_iva' => $articulo->aplica_iva,
                         'descripcion' => $articulo->descripcion,
                         'familia_id' => $articulo->familia_id,
@@ -224,7 +225,12 @@
                     <td style="font-weight: 700; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ $articulo->codigo }}">{{ Str::limit($articulo->codigo, 20, '...') }}</td>
                     <td>
                         <div style="font-weight: 600;">{{ $articulo->descripcion }}</div>
-                        <div style="font-size: 0.82rem; color: var(--text-muted);">Código cliente: {{ $articulo->codigo_cliente ?? 'Sin código' }}</div>
+                        <div style="font-size: 0.82rem; color: var(--text-muted);">
+                            Código cliente: <strong>{{ $articulo->codigo_cliente ?? 'Sin código' }}</strong>
+                            @if($articulo->item)
+                                | ITEM: <span class="badge badge-info" style="font-family: monospace; font-size: 0.78rem;">{{ $articulo->item }}</span>
+                            @endif
+                        </div>
                         <div style="font-size: 0.82rem; color: var(--text-muted);">{{ $articulo->familia?->nombre ?: 'Sin familia' }}</div>
                     </td>
                     <td>${{ number_format($articulo->precio_sin_iva, 2) }}</td>

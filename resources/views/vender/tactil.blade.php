@@ -138,7 +138,7 @@
         </div>
 
         <div style="background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 8px; padding: 1rem; text-align: center; margin-bottom: 1.5rem;">
-            <input type="number" id="scaleInput" step="0.001" min="0" oninput="updateScaleTotal()" style="width: 100%; text-align: center; font-size: 2.5rem; font-weight: 800; color: #0f172a; background: transparent; border: none; outline: none; font-family: monospace;" placeholder="0.000">
+            <input type="number" id="scaleInput" step="0.001" min="0" oninput="updateScaleTotal()" onkeydown="if(event.key==='Enter'){event.preventDefault();confirmScaleAdd();}" style="width: 100%; text-align: center; font-size: 2.5rem; font-weight: 800; color: #0f172a; background: transparent; border: none; outline: none; font-family: monospace;" placeholder="0.000">
             <div style="color: var(--text-muted); font-weight: 600; margin-top: 0.5rem; text-transform: uppercase;">{{ $settings['unidad_peso'] ?? 'kg' }}</div>
             <div id="scaleTotal" style="margin-top: 1rem; font-size: 1.5rem; font-weight: 700; color: var(--primary);">Total: $0.00</div>
         </div>

@@ -125,20 +125,35 @@ document.addEventListener('DOMContentLoaded', () => {
                         parsedExpDate = d.toISOString().split('T')[0];
                     }
                     
-                    // --- Generación Automática de Código Interno (Báscula) ---
+                    // --- Generación Automática de Código Interno (Báscula 6d) e ITEM Puro (5d) ---
                     const codigoClienteInput = modalForm.querySelector('[name="codigo_cliente"]');
-                    if (codigoClienteInput && parsedSku.length >= 6) {
-                        codigoClienteInput.value = parsedSku.slice(-6);
-                        
-                        const origBg = codigoClienteInput.style.backgroundColor;
-                        codigoClienteInput.style.backgroundColor = '#dcfce7';
-                        codigoClienteInput.style.borderColor = '#10b981';
-                        codigoClienteInput.style.color = '#047857';
-                        setTimeout(() => {
-                            codigoClienteInput.style.backgroundColor = origBg;
-                            codigoClienteInput.style.borderColor = '';
-                            codigoClienteInput.style.color = '';
-                        }, 1500);
+                    const itemInput = modalForm.querySelector('[name="item"]');
+                    
+                    if (parsedSku.length >= 6) {
+                        if (codigoClienteInput) {
+                            codigoClienteInput.value = parsedSku.slice(-6);
+                            codigoClienteInput.style.backgroundColor = '#dcfce7';
+                            codigoClienteInput.style.borderColor = '#10b981';
+                            codigoClienteInput.style.color = '#047857';
+                            setTimeout(() => {
+                                codigoClienteInput.style.backgroundColor = '';
+                                codigoClienteInput.style.borderColor = '';
+                                codigoClienteInput.style.color = '';
+                            }, 1500);
+                        }
+
+                        if (itemInput) {
+                            // Extraer solo los 5 dígitos puros del ITEM (ej. 00449)
+                            itemInput.value = parsedSku.slice(-6, -1);
+                            itemInput.style.backgroundColor = '#dcfce7';
+                            itemInput.style.borderColor = '#10b981';
+                            itemInput.style.color = '#047857';
+                            setTimeout(() => {
+                                itemInput.style.backgroundColor = '';
+                                itemInput.style.borderColor = '';
+                                itemInput.style.color = '';
+                            }, 1500);
+                        }
                     }
                 }
                 // 2. Detección Báscula 11 dígitos
@@ -340,7 +355,7 @@ document.addEventListener('DOMContentLoaded', () => {
         modalMethod.value = '';
         modalMethod.disabled = true;
 
-        ['codigo', 'codigo_cliente', 'familia_id', 'descripcion', 'precio_sin_iva', 'iva', 'pvp', 'stock', 'stock_minimo', 'estado'].forEach((fieldName) => {
+        ['codigo', 'codigo_cliente', 'item', 'familia_id', 'descripcion', 'precio_sin_iva', 'iva', 'pvp', 'stock', 'stock_minimo', 'estado'].forEach((fieldName) => {
             const field = modalForm.querySelector(`[name="${fieldName}"]`);
 
             if (!field) {
@@ -362,7 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            if (fieldName === 'codigo_cliente') {
+            if (fieldName === 'codigo_cliente' || fieldName === 'item') {
                 field.value = '';
                 return;
             }
@@ -392,6 +407,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             setFieldValue('codigo', articulo.codigo);
             setFieldValue('codigo_cliente', articulo.codigo_cliente);
+            setFieldValue('item', articulo.item);
             setFieldValue('familia_id', articulo.familia_id);
             setFieldValue('descripcion', articulo.descripcion);
             setFieldValue('precio_sin_iva', articulo.precio_sin_iva);

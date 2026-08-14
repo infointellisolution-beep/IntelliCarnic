@@ -19,6 +19,10 @@
         <div id="scale-code-preview" style="font-size: 0.85rem; color: #64748b; margin-top: 0.25rem;"></div>
     </div>
     <div class="input-group">
+        <label>Nº ITEM (5 dígitos)</label>
+        <input type="text" class="input-modern" name="item" id="field-item" value="{{ old('item', $modalArticulo->item ?? '') }}" placeholder="Ej. 00449">
+    </div>
+    <div class="input-group">
         <label>Familia</label>
         <select class="input-modern" name="familia_id" required>
             <option value="">Selecciona una familia</option>
