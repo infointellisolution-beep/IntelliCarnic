@@ -66,6 +66,11 @@
                             <i class="fa-solid fa-hand-pointer"></i> TPV Táctil
                         </a>
                     </li>
+                    <li>
+                        <a href="{{ route('compras.index') }}" class="{{ request()->routeIs('compras.*') ? 'active' : '' }}">
+                            <i class="fa-solid fa-truck-ramp-box"></i> Compras
+                        </a>
+                    </li>
                 </ul>
                 <ul class="nav-links" style="margin-top: auto;">
                     <li>

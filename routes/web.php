@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ArticuloController;
+use App\Http\Controllers\CompraController;
 use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\FamiliaController;
 use Illuminate\Support\Facades\Route;
@@ -35,6 +36,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/vender/normal', [\App\Http\Controllers\VenderController::class, 'normal'])->name('vender.normal');
     Route::get('/vender/tactil', [\App\Http\Controllers\VenderController::class, 'tactil'])->name('vender.tactil');
     Route::post('/vender/cobrar', [\App\Http\Controllers\VenderController::class, 'cobrar'])->name('vender.cobrar');
+
+    // Compras (Acceso directo a registro)
+    Route::get('/compras', [CompraController::class, 'create'])->name('compras.index');
+    Route::get('/compras/crear', [CompraController::class, 'create'])->name('compras.create');
+    Route::post('/compras', [CompraController::class, 'store'])->name('compras.store');
+    Route::get('/compras/historial', [CompraController::class, 'historial'])->name('compras.historial');
+    Route::get('/compras/{compra}', [CompraController::class, 'show'])->name('compras.show');
+    Route::post('/proveedores', [CompraController::class, 'storeProveedor'])->name('proveedores.store');
 });
 
 // Ruta de mantenimiento para ejecutar comandos sin SSH
