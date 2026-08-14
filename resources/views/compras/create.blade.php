@@ -6,7 +6,7 @@
 <div class="content-header">
     <div>
         <h1 class="page-title">Registrar Compra / Recepción de Mercancía</h1>
-        <p class="page-subtitle">Escanea códigos de barras GS1-128 de cajas mayoristas o ingresa productos manualmente.</p>
+        <p class="page-subtitle">Escanea códigos de barras GS1-128 de cajas mayoristas para registrar la recepción de mercancía.</p>
     </div>
 </div>
 
@@ -77,27 +77,6 @@
                 <input type="text" id="input-scan-barcode" class="input-modern" placeholder="Haz clic aquí o escanea directo con el láser..." autofocus style="font-size: 1.1rem; font-weight: 600; font-family: monospace; border-color: var(--accent);">
                 <div id="scan-feedback" style="font-size: 0.85rem; margin-top: 0.4rem; font-weight: 600; min-height: 1.2rem;"></div>
             </div>
-        </div>
-
-        <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 1.25rem 0;">
-
-        <!-- Búsqueda Manual alternativa -->
-        <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-            <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">O Agregar Manualmente:</span>
-            <select id="select-articulo-manual" class="input-modern" style="flex: 1; min-width: 250px;">
-                <option value="">-- Buscar producto por nombre o código --</option>
-                @foreach($articulos as $art)
-                    <option value="{{ $art->id }}" 
-                            data-codigo="{{ $art->codigo }}" 
-                            data-descripcion="{{ $art->descripcion }}" 
-                            data-costo="{{ $art->precio_sin_iva }}">
-                        {{ $art->descripcion }} (SKU: {{ $art->codigo }} - Costo: ${{ number_format($art->precio_sin_iva, 2) }})
-                    </option>
-                @endforeach
-            </select>
-            <button type="button" id="btn-add-manual" class="btn-modern btn-secondary" style="width: auto;">
-                <i class="fa-solid fa-plus"></i> Agregar Fila
-            </button>
         </div>
     </div>
 

@@ -19,6 +19,16 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('settings')) {
+                $tz = \App\Models\Setting::getValue('timezone', 'America/Managua');
+                if ($tz) {
+                    date_default_timezone_set($tz);
+                    config(['app.timezone' => $tz]);
+                }
+            }
+        } catch (\Throwable $e) {
+            // Silence if DB is not ready during migrations
+        }
     }
 }

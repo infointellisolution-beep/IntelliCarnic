@@ -27,6 +27,7 @@ class Setting extends Model
             'empresa_logo' => '',
             'empresa_correo' => '',
             'empresa_celular' => '',
+            'timezone' => 'America/Managua',
         ];
     }
 

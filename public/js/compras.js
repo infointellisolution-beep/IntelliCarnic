@@ -209,30 +209,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Agregar manual
-    btnAddManual?.addEventListener('click', () => {
-        const selectedId = selectManual.value;
-        if (!selectedId) return;
-
-        const opt = selectManual.options[selectManual.selectedIndex];
-        const found = articulos.find(a => String(a.id) === String(selectedId));
-
-        if (found) {
-            addItemToTable({
-                articulo_id: found.id,
-                codigo: found.codigo,
-                descripcion: found.descripcion,
-                codigo_escaneado: '',
-                lote: '',
-                serie: '',
-                fecha_vencimiento: '',
-                cantidad_peso: 1.0,
-                costo_unitario: parseFloat(found.precio_sin_iva) || 0.00
-            });
-            selectManual.value = '';
-        }
-    });
-
     function addItemToTable(item) {
         compraItems.push(item);
         renderTable();

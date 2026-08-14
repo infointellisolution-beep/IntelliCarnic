@@ -76,6 +76,32 @@
                     <label>IVA global (%)</label>
                     <input type="number" step="0.01" min="0" max="100" class="input-modern" name="iva_global_rate" value="{{ $settings['iva_global_rate'] ?? 21 }}" required>
                 </div>
+                <div class="input-group">
+                    <label><i class="fa-solid fa-clock"></i> Zona Horaria del Sistema</label>
+                    <select class="input-modern" name="timezone" required>
+                        @php
+                            $tzCurrent = $settings['timezone'] ?? 'America/Managua';
+                            $timezones = [
+                                'America/Managua' => 'Nicaragua / Centroamérica (GMT-6)',
+                                'America/El_Salvador' => 'El Salvador (GMT-6)',
+                                'America/Guatemala' => 'Guatemala (GMT-6)',
+                                'America/Tegucigalpa' => 'Honduras (GMT-6)',
+                                'America/Costa_Rica' => 'Costa Rica (GMT-6)',
+                                'America/Mexico_City' => 'México / CDMX (GMT-6)',
+                                'America/Panama' => 'Panamá (GMT-5)',
+                                'America/Bogota' => 'Colombia (GMT-5)',
+                                'America/Lima' => 'Perú (GMT-5)',
+                                'America/Santiago' => 'Chile (GMT-3/4)',
+                                'America/Buenos_Aires' => 'Argentina (GMT-3)',
+                                'America/New_York' => 'EE.UU. Este / EST (GMT-5)',
+                                'UTC' => 'UTC / Tiempo Universal',
+                            ];
+                        @endphp
+                        @foreach($timezones as $tzKey => $tzLabel)
+                            <option value="{{ $tzKey }}" @selected($tzCurrent === $tzKey)>{{ $tzLabel }}</option>
+                        @endforeach
+                    </select>
+                </div>
             </div>
 
             <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
