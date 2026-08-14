@@ -112,18 +112,19 @@
             <table class="table-modern" id="table-compra-items">
                 <thead>
                     <tr>
-                        <th style="width: 50px;">#</th>
+                        <th style="width: 40px;">#</th>
                         <th>Producto / SKU</th>
                         <th>Lote / Serie</th>
-                        <th style="width: 140px;">Peso/Cant ({{ strtoupper($settings['unidad_peso'] ?? 'lb') }})</th>
-                        <th style="width: 140px;">Costo Unit. ($)</th>
-                        <th style="width: 140px;">Subtotal ($)</th>
+                        <th style="width: 130px;">Fecha Venc.</th>
+                        <th style="width: 120px;">Peso/Cant ({{ strtoupper($settings['unidad_peso'] ?? 'lb') }})</th>
+                        <th style="width: 120px;">Costo Unit. ($)</th>
+                        <th style="width: 120px;">Subtotal ($)</th>
                         <th style="width: 50px; text-align: center;">Acción</th>
                     </tr>
                 </thead>
                 <tbody id="tbody-compra-items">
                     <tr id="tr-empty-compra">
-                        <td colspan="7" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
+                        <td colspan="8" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
                             <i class="fa-solid fa-barcode" style="font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.4;"></i>
                             <p style="font-weight: 600;">Ningún producto escaneado aún</p>
                             <p style="font-size: 0.85rem;">Utiliza el lector de código de barras o la búsqueda manual arriba para agregar mercancía.</p>

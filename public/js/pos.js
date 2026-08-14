@@ -253,8 +253,8 @@ function handleSmartBarcodeScan(rawBarcode) {
 
         // Si el artículo existe, abrir la báscula pre-llenada con el peso
         if (foundArt) {
-            openScaleModal(foundArt, parsedWeight);
-            return true; // Retorna true para indicar que el código fue procesado como inteligente
+            openScaleModal(foundArt, parsedWeight, cleanCode);
+            return true;
         }
     }
     
@@ -354,9 +354,11 @@ function getEffectivePrice(articulo) {
 }
 
 let scaleArticle = null;
+let scaleBarcodeScanned = null;
 
-function openScaleModal(articulo, initialWeight = '') {
+function openScaleModal(articulo, initialWeight = '', rawBarcode = '') {
     scaleArticle = articulo;
+    scaleBarcodeScanned = rawBarcode;
     const effective = getEffectivePrice(articulo);
     
     document.getElementById('scaleArticleName').innerText = articulo.descripcion;
@@ -396,6 +398,7 @@ function updateScaleTotal() {
 function closeScaleModal() {
     document.getElementById('scaleModal').style.display = 'none';
     scaleArticle = null;
+    scaleBarcodeScanned = null;
 }
 
 function confirmScaleAdd() {
@@ -409,14 +412,14 @@ function confirmScaleAdd() {
     }
     
     if (scaleArticle) {
-        const added = addToCart(scaleArticle, quantity);
+        const added = addToCart(scaleArticle, quantity, scaleBarcodeScanned);
         if (added) {
             closeScaleModal();
         }
     }
 }
 
-function addToCart(articulo, quantity = 1) {
+function addToCart(articulo, quantity = 1, rawBarcode = '') {
     const existingIndex = cart.findIndex(item => item.id === articulo.id);
     const currentCartQty = existingIndex !== -1 ? cart[existingIndex].cantidad : 0;
     const requestedQty = currentCartQty + quantity;
@@ -438,6 +441,7 @@ function addToCart(articulo, quantity = 1) {
     
     if (existingIndex !== -1) {
         cart[existingIndex].cantidad += quantity;
+        if (rawBarcode) cart[existingIndex].codigo_escaneado = rawBarcode;
     } else {
         cart.push({
             id: articulo.id,
@@ -447,6 +451,7 @@ function addToCart(articulo, quantity = 1) {
             iva_rate: effective.iva,
             cantidad: quantity,
             descuento: 0,
+            codigo_escaneado: rawBarcode || '',
             articulo: articulo
         });
     }
@@ -744,6 +749,7 @@ async function confirmCheckout() {
 
         return {
             articulo_id: item.id,
+            codigo_escaneado: item.codigo_escaneado || '',
             cantidad: item.cantidad,
             precio: item.precio,
             subtotal: itemTotal

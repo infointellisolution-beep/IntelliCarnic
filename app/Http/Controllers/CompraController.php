@@ -73,6 +73,7 @@ class CompraController extends Controller
             'detalles.*.codigo_escaneado' => ['nullable', 'string', 'max:255'],
             'detalles.*.lote' => ['nullable', 'string', 'max:100'],
             'detalles.*.serie' => ['nullable', 'string', 'max:100'],
+            'detalles.*.fecha_vencimiento' => ['nullable', 'date'],
             'detalles.*.cantidad_peso' => ['required', 'numeric', 'min:0.001'],
             'detalles.*.costo_unitario' => ['required', 'numeric', 'min:0'],
         ]);
@@ -106,6 +107,7 @@ class CompraController extends Controller
                     'codigo_escaneado' => $item['codigo_escaneado'] ?? null,
                     'lote' => $item['lote'] ?? null,
                     'serie' => $item['serie'] ?? null,
+                    'fecha_vencimiento' => $item['fecha_vencimiento'] ?? null,
                     'cantidad_peso' => $item['cantidad_peso'],
                     'costo_unitario' => $item['costo_unitario'],
                     'subtotal' => $lineSubtotal,

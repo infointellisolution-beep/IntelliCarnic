@@ -42,4 +42,9 @@ class Articulo extends Model
     {
         return $this->belongsTo(Familia::class);
     }
+
+    public function compraDetalles()
+    {
+        return $this->hasMany(CompraDetalle::class)->where('cantidad_peso', '>', 0)->orderBy('fecha_vencimiento', 'asc');
+    }
 }

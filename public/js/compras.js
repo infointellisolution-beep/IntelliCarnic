@@ -101,12 +101,17 @@ document.addEventListener('DOMContentLoaded', () => {
         let parsedWeight = null;
         let parsedLote = null;
         let parsedSerie = null;
+        let parsedExpDate = null;
 
         // 1. Detección GS1-128
         let gtinMatch = cleanCode.match(/01(\d{14})/);
         let weightMatch = cleanCode.match(/(320[0-5]|310[0-5])(\d{6})/);
-        let loteMatch = cleanCode.match(/10([a-zA-Z0-9]+?)(?=21|310|320|$)/);
-        let serieMatch = cleanCode.match(/21([a-zA-Z0-9]+?)(?=10|310|320|$)/);
+        
+        let restCode = gtinMatch ? cleanCode.substring(gtinMatch.index + 16) : cleanCode;
+        let loteMatch = restCode.match(/10([a-zA-Z0-9]+?)(?=11|15|17|21|310|320|$)/);
+        let serieMatch = restCode.match(/21([a-zA-Z0-9]+?)(?=10|11|15|17|310|320|$)/);
+        let expMatch = restCode.match(/(?:17|15)(\d{6})/);
+        let packMatch = restCode.match(/11(\d{6})/);
 
         if (gtinMatch && weightMatch && cleanCode.length >= 24) {
             parsedSku = gtinMatch[1];
@@ -125,6 +130,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (loteMatch) parsedLote = loteMatch[1];
             if (serieMatch) parsedSerie = serieMatch[1];
+
+            if (expMatch) {
+                let yy = expMatch[1].substring(0, 2);
+                let mm = expMatch[1].substring(2, 4);
+                let dd = expMatch[1].substring(4, 6);
+                parsedExpDate = `20${yy}-${mm}-${dd}`;
+            } else if (packMatch) {
+                let yy = packMatch[1].substring(0, 2);
+                let mm = parseInt(packMatch[1].substring(2, 4), 10) - 1;
+                let dd = parseInt(packMatch[1].substring(4, 6), 10);
+                let d = new Date(2000 + parseInt(yy, 10), mm, dd);
+                d.setDate(d.getDate() + 90); // +90 días estimada
+                parsedExpDate = d.toISOString().split('T')[0];
+            }
         }
         // 2. Báscula 11 dígitos
         else if (/^\d{11}$/.test(cleanCode)) {
@@ -167,6 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     codigo_escaneado: cleanCode,
                     lote: parsedLote || '',
                     serie: parsedSerie || '',
+                    fecha_vencimiento: parsedExpDate || '',
                     cantidad_peso: parsedWeight || 1.0,
                     costo_unitario: parseFloat(found.precio_sin_iva) || 0.00
                 });
@@ -205,6 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 codigo_escaneado: '',
                 lote: '',
                 serie: '',
+                fecha_vencimiento: '',
                 cantidad_peso: 1.0,
                 costo_unitario: parseFloat(found.precio_sin_iva) || 0.00
             });
@@ -249,8 +270,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     <input type="hidden" name="detalles[${index}][codigo_escaneado]" value="${item.codigo_escaneado}">
                 </td>
                 <td>
-                    <input type="text" name="detalles[${index}][lote]" class="input-modern" style="padding: 0.25rem 0.5rem; font-size: 0.85rem; font-family: monospace; width: 110px; margin-bottom: 0.2rem;" placeholder="Lote" value="${item.lote}">
-                    <input type="text" name="detalles[${index}][serie]" class="input-modern" style="padding: 0.25rem 0.5rem; font-size: 0.85rem; font-family: monospace; width: 110px;" placeholder="Serie" value="${item.serie}">
+                    <input type="text" name="detalles[${index}][lote]" class="input-modern" style="padding: 0.2rem 0.4rem; font-size: 0.8rem; font-family: monospace; width: 100px; margin-bottom: 0.2rem;" placeholder="Lote" value="${item.lote}">
+                    <input type="text" name="detalles[${index}][serie]" class="input-modern" style="padding: 0.2rem 0.4rem; font-size: 0.8rem; font-family: monospace; width: 100px;" placeholder="Serie" value="${item.serie}">
+                </td>
+                <td>
+                    <input type="date" name="detalles[${index}][fecha_vencimiento]" class="input-modern js-input-venc" data-index="${index}" style="padding: 0.25rem 0.4rem; font-size: 0.8rem;" value="${item.fecha_vencimiento}">
                 </td>
                 <td>
                     <input type="number" step="0.001" min="0.001" name="detalles[${index}][cantidad_peso]" class="input-modern js-input-peso" data-index="${index}" style="font-weight: 700;" value="${item.cantidad_peso}">

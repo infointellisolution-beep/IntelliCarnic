@@ -16,12 +16,14 @@ class CompraDetalle extends Model
         'codigo_escaneado',
         'lote',
         'serie',
+        'fecha_vencimiento',
         'cantidad_peso',
         'costo_unitario',
         'subtotal',
     ];
 
     protected $casts = [
+        'fecha_vencimiento' => 'date',
         'cantidad_peso' => 'decimal:3',
         'costo_unitario' => 'decimal:2',
         'subtotal' => 'decimal:2',

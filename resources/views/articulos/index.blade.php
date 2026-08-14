@@ -217,6 +217,7 @@
                         'stock_minimo' => $articulo->stock_minimo,
                         'estado' => $articulo->estado,
                         'imagen_url' => $articulo->imagen ? asset('storage/' . $articulo->imagen) : null,
+                        'lotes_desglose' => $articulo->lotes_desglose ?? [],
                     ];
                 @endphp
                 <tr class="catalog-row">
@@ -402,6 +403,15 @@
                     <div class="detail-list-item">
                         <div><strong>Stock</strong><span>Disponibilidad actual</span></div>
                         <strong id="detalle-stock">24 unidades</strong>
+                    </div>
+
+                    <div id="detalle-lotes-container" style="grid-column: 1 / -1; margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                        <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.4rem;">
+                            <i class="fa-solid fa-boxes-packing" style="color: var(--accent);"></i> Desglose de Lotes y Vencimientos Recibidos
+                        </h4>
+                        <div id="detalle-lotes-body" style="font-size: 0.85rem;">
+                            <!-- Cargado dinámicamente por JS -->
+                        </div>
                     </div>
                 </div>
             </div>

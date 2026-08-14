@@ -80,6 +80,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 let gtinMatch = cleanCode.match(/01(\d{14})/);
                 let weightMatch = cleanCode.match(/(320[0-5]|310[0-5])(\d{6})/);
                 
+                let parsedLote = null;
+                let parsedSerie = null;
+                let parsedExpDate = null;
+                
                 if (gtinMatch && weightMatch && cleanCode.length >= 24) {
                     parsedSku = gtinMatch[1];
                     let ai = weightMatch[1];
@@ -87,23 +91,44 @@ document.addEventListener('DOMContentLoaded', () => {
                     let decimalPlaces = parseInt(ai.charAt(3));
                     parsedWeight = parseInt(weightStr, 10) / Math.pow(10, decimalPlaces);
 
+                    // Extraer resto del código después del GTIN de 14 dígitos para evitar coincidencias falsas con 010...
+                    let rest = cleanCode.substring(gtinMatch.index + 16);
+                    let loteMatch = rest.match(/10([a-zA-Z0-9]+?)(?=11|15|17|21|310|320|$)/) || cleanCode.match(/10([a-zA-Z0-9]{4,15})/);
+                    let serieMatch = rest.match(/21([a-zA-Z0-9]+?)(?=10|11|15|17|310|320|$)/) || cleanCode.match(/21([a-zA-Z0-9]{4,15})/);
+                    let expMatch = rest.match(/(?:17|15)(\d{6})/) || cleanCode.match(/(?:17|15)(\d{6})/);
+                    let packMatch = rest.match(/11(\d{6})/) || cleanCode.match(/11(\d{6})/);
+
                     // --- Conversión Automática de Unidades ---
-                    // 310x = Kilos (KG), 320x = Libras (LB)
                     const systemUnit = (window.unidadPeso || 'lb').toLowerCase();
                     const isKgInBarcode = ai.startsWith('310');
 
                     if (isKgInBarcode && (systemUnit === 'lb' || systemUnit === 'lbs')) {
-                        // 1 kg = 2.20462 lbs
                         parsedWeight = Math.round((parsedWeight * 2.20462) * 100) / 100;
                     } else if (!isKgInBarcode && systemUnit === 'kg') {
-                        // 1 lb = 1 / 2.20462 kg
                         parsedWeight = Math.round((parsedWeight / 2.20462) * 100) / 100;
+                    }
+
+                    if (loteMatch) parsedLote = loteMatch[1];
+                    if (serieMatch) parsedSerie = serieMatch[1];
+
+                    if (expMatch) {
+                        let yy = expMatch[1].substring(0, 2);
+                        let mm = expMatch[1].substring(2, 4);
+                        let dd = expMatch[1].substring(4, 6);
+                        parsedExpDate = `20${yy}-${mm}-${dd}`;
+                    } else if (packMatch) {
+                        let yy = packMatch[1].substring(0, 2);
+                        let mm = parseInt(packMatch[1].substring(2, 4), 10) - 1;
+                        let dd = parseInt(packMatch[1].substring(4, 6), 10);
+                        let d = new Date(2000 + parseInt(yy, 10), mm, dd);
+                        d.setDate(d.getDate() + 90);
+                        parsedExpDate = d.toISOString().split('T')[0];
                     }
                     
                     // --- Generación Automática de Código Interno (Báscula) ---
                     const codigoClienteInput = modalForm.querySelector('[name="codigo_cliente"]');
                     if (codigoClienteInput && parsedSku.length >= 6) {
-                        codigoClienteInput.value = parsedSku.slice(-6); // Extraemos los últimos 6 dígitos
+                        codigoClienteInput.value = parsedSku.slice(-6);
                         
                         const origBg = codigoClienteInput.style.backgroundColor;
                         codigoClienteInput.style.backgroundColor = '#dcfce7';
@@ -136,10 +161,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 
                 if (parsedSku !== null && parsedWeight !== null) {
+                    // Setear campos ocultos para Lote, Serie y Vencimiento inicial (solo si se extrajeron datos)
+                    let inputLote = modalForm.querySelector('[name="initial_lote"]');
+                    let inputSerie = modalForm.querySelector('[name="initial_serie"]');
+                    let inputVenc = modalForm.querySelector('[name="initial_fecha_vencimiento"]');
+                    let inputRaw = modalForm.querySelector('[name="initial_codigo_escaneado"]');
+
+                    if (!inputLote) {
+                        modalForm.insertAdjacentHTML('beforeend', `
+                            <input type="hidden" name="initial_lote" value="${parsedLote || ''}">
+                            <input type="hidden" name="initial_serie" value="${parsedSerie || ''}">
+                            <input type="hidden" name="initial_fecha_vencimiento" value="${parsedExpDate || ''}">
+                            <input type="hidden" name="initial_codigo_escaneado" value="${cleanCode}">
+                        `);
+                    } else {
+                        if (parsedLote) inputLote.value = parsedLote;
+                        if (parsedSerie) inputSerie.value = parsedSerie;
+                        if (parsedExpDate) inputVenc.value = parsedExpDate;
+                        if (cleanCode.length >= 24) inputRaw.value = cleanCode;
+                    }
+
                     // Limpiamos el código y movemos el peso al stock
                     if (codigoInput.value !== parsedSku) {
                         codigoInput.value = parsedSku;
-                        codigoInput.dispatchEvent(new Event('input'));
                     }
                     if (stockInput.value !== parsedWeight.toString()) {
                         stockInput.value = parsedWeight;
@@ -621,6 +665,52 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (detailImagenContainer && detailImagen) {
                     detailImagen.src = '';
                     detailImagenContainer.style.display = 'none';
+                }
+
+                // --- Renderizado de Desglose por Lote y Vencimiento ---
+                const lotesContainer = document.getElementById('detalle-lotes-body');
+                if (lotesContainer) {
+                    if (articulo.lotes_desglose && articulo.lotes_desglose.length > 0) {
+                        let html = `<div style="display: flex; flex-direction: column; gap: 0.5rem;">`;
+                        articulo.lotes_desglose.forEach(l => {
+                            let statusBadge = '';
+                            if (l.fecha_vencimiento) {
+                                let today = new Date();
+                                let exp = new Date(l.fecha_vencimiento + 'T23:59:59');
+                                let diffDays = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
+                                if (diffDays < 0) {
+                                    statusBadge = `<span style="background: #fee2e2; color: #991b1b; padding: 0.15rem 0.5rem; border-radius: 9999px; font-weight: 700; font-size: 0.75rem;"><i class="fa-solid fa-circle-xmark"></i> Vencido (${l.fecha_vencimiento})</span>`;
+                                } else if (diffDays <= 30) {
+                                    statusBadge = `<span style="background: #fef3c7; color: #92400e; padding: 0.15rem 0.5rem; border-radius: 9999px; font-weight: 700; font-size: 0.75rem;"><i class="fa-solid fa-triangle-exclamation"></i> Vence pronto (${l.fecha_vencimiento})</span>`;
+                                } else {
+                                    statusBadge = `<span style="background: #dcfce7; color: #166534; padding: 0.15rem 0.5rem; border-radius: 9999px; font-weight: 700; font-size: 0.75rem;"><i class="fa-solid fa-circle-check"></i> Vence: ${l.fecha_vencimiento}</span>`;
+                                }
+                            } else {
+                                statusBadge = `<span style="color: var(--text-muted); font-size: 0.78rem;">Sin fecha caducidad</span>`;
+                            }
+
+                            html += `
+                                <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 0.6rem 0.85rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                                    <div>
+                                        <div style="font-size: 0.78rem; font-weight: 700; color: #2563eb; font-family: monospace; letter-spacing: 0.3px; margin-bottom: 0.25rem;">
+                                            <i class="fa-solid fa-barcode"></i> Código Completo: ${l.codigo_escaneado || 'N/A'}
+                                        </div>
+                                        <strong style="color: var(--text-main);">Lote: ${l.lote}</strong>
+                                        <span style="color: var(--text-muted); font-size: 0.8rem; margin-left: 0.5rem;">Serie: ${l.serie}</span>
+                                        <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.1rem;">Recibido: ${l.fecha_recepcion || 'Reciente'}</div>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <div style="font-weight: 700; font-size: 0.95rem; color: var(--accent);">${l.peso.toFixed(2)} ${window.unidadPeso || 'lb'}</div>
+                                        <div style="margin-top: 0.2rem;">${statusBadge}</div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        html += `</div>`;
+                        lotesContainer.innerHTML = html;
+                    } else {
+                        lotesContainer.innerHTML = `<div style="color: var(--text-muted); font-style: italic; padding: 0.5rem 0;">No hay historial de lotes registrado para este artículo aún.</div>`;
+                    }
                 }
 
                 openDetailModal();
