@@ -198,6 +198,36 @@ class ConfiguracionController extends Controller
             ->with('status', $msg);
     }
 
+    public function actualizarSistema(): RedirectResponse
+    {
+        $git = $this->getGitBinary();
+
+        if (!$git) {
+            return redirect()
+                ->to(route('configuracion.index', ['tab' => 'sistema'], false))
+                ->withErrors(['actualizar' => 'No se detectó el ejecutable de Git en la PC servidor.']);
+        }
+
+        try {
+            @putenv('GIT_TERMINAL_PROMPT=0');
+            @putenv('GIT_ASKPASS=');
+            $pullOutput = $this->safeShellExec($git . ' -c core.askPass= pull origin main 2>&1');
+            \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+            \Illuminate\Support\Facades\Artisan::call('config:cache');
+            \Illuminate\Support\Facades\Artisan::call('view:cache');
+            \Illuminate\Support\Facades\Artisan::call('route:clear');
+
+            $msg = '¡Sistema actualizado y optimizado con éxito! ' . ($pullOutput ? 'Salida Git: ' . trim($pullOutput) : '');
+            return redirect()
+                ->to(route('configuracion.index', ['tab' => 'sistema'], false))
+                ->with('status', $msg);
+        } catch (\Throwable $e) {
+            return redirect()
+                ->to(route('configuracion.index', ['tab' => 'sistema'], false))
+                ->withErrors(['actualizar' => 'Error durante la actualización: ' . $e->getMessage()]);
+        }
+    }
+
     private function getGitBinary(): ?string
     {
         $test = $this->safeShellExec('git --version 2>&1');

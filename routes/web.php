@@ -7,10 +7,7 @@ use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\FamiliaController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return redirect()->route('login');
-});
-
+Route::any('/', [AuthController::class, 'showLogin']);
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
@@ -32,6 +29,7 @@ Route::middleware('auth')->group(function () {
     // Sistema
     Route::get('/configuracion/sistema/descargar-actualizador', [ConfiguracionController::class, 'downloadUpdater'])->name('configuracion.sistema.downloadUpdater');
     Route::post('/configuracion/sistema/github', [ConfiguracionController::class, 'updateGithub'])->name('configuracion.sistema.github');
+    Route::post('/configuracion/sistema/actualizar', [ConfiguracionController::class, 'actualizarSistema'])->name('configuracion.sistema.actualizar');
 
     Route::get('/vender/normal', [\App\Http\Controllers\VenderController::class, 'normal'])->name('vender.normal');
     Route::get('/vender/tactil', [\App\Http\Controllers\VenderController::class, 'tactil'])->name('vender.tactil');

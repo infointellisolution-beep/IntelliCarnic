@@ -298,9 +298,16 @@
                 </div>
             </div>
             
-            <div style="margin-top: 1.5rem;">
-                <a href="{{ route('configuracion.sistema.downloadUpdater') }}" class="btn-modern btn-accent" style="width: auto; display: inline-flex; align-items: center; gap: 0.5rem;">
-                    <i class="fa-solid fa-download"></i> Descargar Script Actualizador (.bat)
+            <div style="margin-top: 1.5rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                <form action="{{ route('configuracion.sistema.actualizar') }}" method="POST" style="margin: 0;">
+                    @csrf
+                    <button type="submit" class="btn-modern btn-primary" style="width: auto; display: inline-flex; align-items: center; gap: 0.5rem;" onclick="return confirm('¿Deseas buscar e instalar la última versión de IntelliCarnic desde GitHub ahora?')">
+                        <i class="fa-solid fa-arrows-rotate"></i> Buscar e Instalar Actualización Ahora
+                    </button>
+                </form>
+
+                <a href="{{ route('configuracion.sistema.downloadUpdater') }}" class="btn-modern btn-secondary" style="width: auto; display: inline-flex; align-items: center; gap: 0.5rem;">
+                    <i class="fa-solid fa-download"></i> Descargar Script (.bat)
                 </a>
             </div>
         </div>
