@@ -12,4 +12,9 @@ class Venta extends Model
     {
         return $this->hasMany(VentaDetalle::class);
     }
+
+    public function cajaSesion()
+    {
+        return $this->belongsTo(CajaSesion::class, 'caja_sesion_id');
+    }
 }

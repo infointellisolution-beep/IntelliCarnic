@@ -42,6 +42,8 @@ class VenderController extends Controller
             'items.*.subtotal' => 'required|numeric',
         ]);
 
+        $cajaActiva = \App\Models\CajaSesion::query()->where('estado', 'abierta')->first();
+
         $venta = \App\Models\Venta::create([
             'subtotal' => $data['subtotal'],
             'impuestos' => $data['impuestos'],
@@ -50,7 +52,12 @@ class VenderController extends Controller
             'monto_recibido' => $data['monto_recibido'] ?? $data['total'],
             'vuelto' => $data['vuelto'] ?? 0,
             'user_id' => auth()->id(),
+            'caja_sesion_id' => $cajaActiva?->id,
         ]);
+
+        if ($cajaActiva) {
+            $cajaActiva->recargarTotales();
+        }
 
         foreach ($data['items'] as $item) {
             $venta->detalles()->create([
@@ -129,6 +136,21 @@ class VenderController extends Controller
             }
         }
 
-        return response()->json(['success' => true, 'venta' => $venta->load('detalles.articulo')]);
+        $articulosActualizados = [];
+        foreach ($data['items'] as $item) {
+            $art = Articulo::find($item['articulo_id']);
+            if ($art) {
+                $articulosActualizados[] = [
+                    'id' => $art->id,
+                    'stock' => floatval($art->stock),
+                ];
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'venta' => $venta->load('detalles.articulo'),
+            'articulos_actualizados' => $articulosActualizados,
+        ]);
     }
 }

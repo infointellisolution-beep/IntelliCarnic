@@ -127,6 +127,21 @@ class CompraController extends Controller
                     $articulo->save();
                 }
             }
+
+            // Registrar movimiento de salida en Caja si hay una caja de turno abierta
+            $cajaActiva = \App\Models\CajaSesion::query()->where('estado', 'abierta')->first();
+            if ($cajaActiva && $subtotal > 0) {
+                \App\Models\CajaMovimiento::create([
+                    'caja_sesion_id' => $cajaActiva->id,
+                    'user_id' => Auth::id() ?? $compra->user_id,
+                    'tipo' => 'salida',
+                    'monto' => $subtotal,
+                    'concepto' => 'Compra de Mercancía/Carne - ' . $compra->proveedor_nombre . ($compra->numero_factura ? ' (Fact: ' . $compra->numero_factura . ')' : ''),
+                    'observaciones' => 'Registro automático desde módulo de compras #' . $compra->id,
+                ]);
+
+                $cajaActiva->recargarTotales();
+            }
         });
 
         return redirect()

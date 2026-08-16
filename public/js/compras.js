@@ -270,15 +270,42 @@ document.addEventListener('DOMContentLoaded', () => {
             tbody.appendChild(tr);
         });
 
-        // Event listeners parainputs de peso y costo
+        // Event listeners para inputs de peso y costo
         document.querySelectorAll('.js-input-peso').forEach(input => {
             input.addEventListener('change', (e) => {
                 const idx = e.target.dataset.index;
                 const val = parseFloat(e.target.value) || 0;
                 compraItems[idx].cantidad_peso = val;
+                if (compraItems[idx].codigo_escaneado) {
+                    compraItems[idx].codigo_escaneado = rewriteBarcodeWeight(compraItems[idx].codigo_escaneado, val, systemUnit);
+                }
                 renderTable();
             });
         });
+
+    function rewriteBarcodeWeight(code, weightVal, unit) {
+        if (!code || typeof code !== 'string') return code;
+        let clean = code.trim().replace(/[()\-\s]/g, '');
+
+        let m = clean.match(/(320[0-5]|310[0-5])(\d{6})/);
+        if (!m) return clean;
+
+        let ai = m[1];
+        let decimals = parseInt(ai.charAt(3));
+        let isKgInBarcode = ai.startsWith('310');
+
+        let targetWeight = weightVal;
+        if (isKgInBarcode && (unit === 'lb' || unit === 'lbs')) {
+            targetWeight = weightVal / 2.20462;
+        } else if (!isKgInBarcode && unit === 'kg') {
+            targetWeight = weightVal * 2.20462;
+        }
+
+        let rawNum = Math.round(targetWeight * Math.pow(10, decimals));
+        let formattedStr = String(rawNum).padStart(6, '0').slice(-6);
+
+        return clean.replace(m[0], ai + formattedStr);
+    }
 
         document.querySelectorAll('.js-input-costo').forEach(input => {
             input.addEventListener('change', (e) => {

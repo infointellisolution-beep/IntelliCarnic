@@ -67,6 +67,11 @@
                         </a>
                     </li>
                     <li>
+                        <a href="{{ route('caja.index') }}" class="{{ request()->routeIs('caja.*') ? 'active' : '' }}">
+                            <i class="fa-solid fa-cash-register"></i> Control de Caja
+                        </a>
+                    </li>
+                    <li>
                         <a href="{{ route('compras.index') }}" class="{{ request()->routeIs('compras.*') ? 'active' : '' }}">
                             <i class="fa-solid fa-truck-ramp-box"></i> Compras
                         </a>

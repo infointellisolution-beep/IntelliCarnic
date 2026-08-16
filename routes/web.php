@@ -44,6 +44,13 @@ Route::middleware('auth')->group(function () {
     // Reportes
     Route::get('/reportes', [\App\Http\Controllers\ReporteController::class, 'index'])->name('reportes.index');
     Route::get('/reportes/exportar/{tipo}', [\App\Http\Controllers\ReporteController::class, 'exportarCsv'])->name('reportes.exportar');
+
+    // Control de Caja
+    Route::get('/caja', [\App\Http\Controllers\CajaController::class, 'index'])->name('caja.index');
+    Route::post('/caja/aperturar', [\App\Http\Controllers\CajaController::class, 'aperturar'])->name('caja.aperturar');
+    Route::post('/caja/movimiento', [\App\Http\Controllers\CajaController::class, 'storeMovimiento'])->name('caja.movimiento.store');
+    Route::post('/caja/cerrar', [\App\Http\Controllers\CajaController::class, 'cerrar'])->name('caja.cerrar');
+    Route::get('/caja/ticket-cierre/{cajaSesion}', [\App\Http\Controllers\CajaController::class, 'ticketCierre'])->name('caja.ticketCierre');
 });
 
 // Ruta de mantenimiento para ejecutar comandos sin SSH

@@ -357,6 +357,10 @@ let scaleArticle = null;
 let scaleBarcodeScanned = null;
 
 function openScaleModal(articulo, initialWeight = '', rawBarcode = '') {
+    if (Array.isArray(windowArticulos) && articulo && articulo.id) {
+        const fresh = windowArticulos.find(a => a.id == articulo.id);
+        if (fresh) articulo = fresh;
+    }
     scaleArticle = articulo;
     scaleBarcodeScanned = rawBarcode;
     const effective = getEffectivePrice(articulo);
@@ -799,6 +803,25 @@ async function confirmCheckout() {
         const data = await response.json();
         
         if (data.success) {
+            if (Array.isArray(data.articulos_actualizados)) {
+                data.articulos_actualizados.forEach(art => {
+                    // 1. Actualizar array global windowArticulos
+                    if (Array.isArray(windowArticulos)) {
+                        const found = windowArticulos.find(a => a.id == art.id);
+                        if (found) {
+                            found.stock = art.stock;
+                        }
+                    }
+
+                    // 2. Actualizar la tarjeta visual en el DOM
+                    const el = document.getElementById(`tactil-stock-${art.id}`);
+                    if (el) {
+                        const unit = (windowSettings.unidad_peso || 'LB').toUpperCase();
+                        el.innerText = `Stock: ${art.stock} ${unit}`;
+                    }
+                });
+            }
+
             closeCheckoutModal();
             showTicketPreview(data.venta, items, montoRecibido, vuelto);
         } else {
