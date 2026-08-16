@@ -185,9 +185,9 @@ class ConfiguracionController extends Controller
         $git = $this->getGitBinary();
 
         if ($git) {
-            @shell_exec($git . ' init 2>&1');
-            @shell_exec($git . ' remote remove origin 2>&1');
-            @shell_exec($git . ' remote add origin ' . escapeshellarg($url) . ' 2>&1');
+            $this->safeShellExec($git . ' init 2>&1');
+            $this->safeShellExec($git . ' remote remove origin 2>&1');
+            $this->safeShellExec($git . ' remote add origin ' . escapeshellarg($url) . ' 2>&1');
             $msg = 'Repositorio de GitHub vinculado y configurado correctamente.';
         } else {
             $msg = 'Se guardó la URL de GitHub. Nota: Git no está instalado o no se detectó en Laragon/Windows.';
@@ -200,7 +200,7 @@ class ConfiguracionController extends Controller
 
     private function getGitBinary(): ?string
     {
-        $test = @shell_exec('git --version 2>&1');
+        $test = $this->safeShellExec('git --version 2>&1');
         if ($test && str_contains(strtolower($test), 'git version')) {
             return 'git';
         }
@@ -220,6 +220,28 @@ class ConfiguracionController extends Controller
         }
 
         return null;
+    }
+
+    private function safeShellExec(string $command): ?string
+    {
+        if (!function_exists('shell_exec')) {
+            return null;
+        }
+
+        $disabled = ini_get('disable_functions');
+        if ($disabled) {
+            $disabledArr = array_map('trim', explode(',', strtolower($disabled)));
+            if (in_array('shell_exec', $disabledArr)) {
+                return null;
+            }
+        }
+
+        try {
+            $result = @shell_exec($command);
+            return $result !== false ? $result : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     private function isProtectedAdmin(User $user): bool

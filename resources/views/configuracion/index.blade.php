@@ -155,8 +155,27 @@
     </div>
 @elseif($activeTab === 'sistema')
     @php
+        $safeExec = function($cmd) {
+            if (!function_exists('shell_exec')) {
+                return null;
+            }
+            $disabled = ini_get('disable_functions');
+            if ($disabled) {
+                $disabledArr = array_map('trim', explode(',', strtolower($disabled)));
+                if (in_array('shell_exec', $disabledArr)) {
+                    return null;
+                }
+            }
+            try {
+                $res = @shell_exec($cmd);
+                return $res !== false ? $res : null;
+            } catch (\Throwable $e) {
+                return null;
+            }
+        };
+
         $localIP = '127.0.0.1';
-        $output = shell_exec('ipconfig');
+        $output = $safeExec('ipconfig');
         if ($output) {
             preg_match_all('/IPv4.*?:\s*([\d\.]+)/i', $output, $matches);
             if (!empty($matches[1])) {
@@ -177,13 +196,15 @@
             }
         }
 
-        if ($localIP === '127.0.0.1') {
-            $localIP = getHostByName(getHostName());
+        if ($localIP === '127.0.0.1' && function_exists('getHostName') && function_exists('getHostByName')) {
+            try {
+                $localIP = getHostByName(getHostName());
+            } catch (\Throwable $e) {}
         }
 
         // Detectar Repositorio GitHub vinculado
         $gitCmd = null;
-        $testCmd = @shell_exec('git --version 2>&1');
+        $testCmd = $safeExec('git --version 2>&1');
         if ($testCmd && str_contains(strtolower($testCmd), 'git version')) {
             $gitCmd = 'git';
         } else {
@@ -206,11 +227,11 @@
         $gitBranch = 'main';
         if ($gitCmd) {
             try {
-                $remote = shell_exec($gitCmd . ' remote get-url origin 2>&1');
+                $remote = $safeExec($gitCmd . ' remote get-url origin 2>&1');
                 if ($remote && !str_contains($remote, 'fatal') && !str_contains(strtolower($remote), 'no se reconoce')) {
                     $gitRepoUrl = trim($remote);
                 }
-                $branch = shell_exec($gitCmd . ' branch --show-current 2>&1');
+                $branch = $safeExec($gitCmd . ' branch --show-current 2>&1');
                 if ($branch && !str_contains($branch, 'fatal') && !str_contains(strtolower($branch), 'no se reconoce')) {
                     $gitBranch = trim($branch);
                 }
