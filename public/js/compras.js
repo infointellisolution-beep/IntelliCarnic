@@ -272,13 +272,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Event listeners para inputs de peso y costo
         document.querySelectorAll('.js-input-peso').forEach(input => {
-            input.addEventListener('change', (e) => {
+            const updateWeight = (e) => {
                 const idx = e.target.dataset.index;
                 const val = parseFloat(e.target.value) || 0;
                 compraItems[idx].cantidad_peso = val;
                 if (compraItems[idx].codigo_escaneado) {
                     compraItems[idx].codigo_escaneado = rewriteBarcodeWeight(compraItems[idx].codigo_escaneado, val, systemUnit);
                 }
+            };
+            input.addEventListener('input', updateWeight);
+            input.addEventListener('change', (e) => {
+                updateWeight(e);
                 renderTable();
             });
         });

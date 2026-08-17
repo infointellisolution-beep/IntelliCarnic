@@ -684,9 +684,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 // --- Renderizado de Desglose por Lote y Vencimiento ---
+                const lotesContainerBox = document.getElementById('detalle-lotes-container');
                 const lotesContainer = document.getElementById('detalle-lotes-body');
-                if (lotesContainer) {
-                    if (articulo.lotes_desglose && articulo.lotes_desglose.length > 0) {
+                
+                if (window.modoInventario === 'simple') {
+                    if (lotesContainerBox) lotesContainerBox.style.display = 'none';
+                } else {
+                    if (lotesContainerBox) lotesContainerBox.style.display = 'block';
+                    if (lotesContainer) {
+                        if (articulo.lotes_desglose && articulo.lotes_desglose.length > 0) {
                         let html = `<div style="display: flex; flex-direction: column; gap: 0.5rem;">`;
                         articulo.lotes_desglose.forEach(l => {
                             let statusBadge = '';
@@ -728,8 +734,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         lotesContainer.innerHTML = `<div style="color: var(--text-muted); font-style: italic; padding: 0.5rem 0;">No hay historial de lotes registrado para este artículo aún.</div>`;
                     }
                 }
+            }
 
-                openDetailModal();
+            openDetailModal();
             });
         });
     }

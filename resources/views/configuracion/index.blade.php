@@ -57,6 +57,22 @@
             <h2 class="hero-title" style="font-size: 1.5rem; margin-top: 0.25rem;">Parámetros del negocio</h2>
 
             <div class="form-grid" style="margin-top: 1.25rem;">
+                <div class="input-group" style="grid-column: span 2;">
+                    <label style="font-weight: 700; color: var(--primary);"><i class="fa-solid fa-boxes-packing"></i> Modo de Control de Inventario</label>
+                    <select class="input-modern" name="modo_inventario" required style="font-weight: 600;">
+                        <option value="dinamico" @selected(($settings['modo_inventario'] ?? 'dinamico') === 'dinamico')>
+                            📦 Modo Dinámico (Por Lotes, Series y Vencimientos - FEFO / PEPS)
+                        </option>
+                        <option value="simple" @selected(($settings['modo_inventario'] ?? 'dinamico') === 'simple')>
+                            ⚡ Modo Simple (Stock General Acumulado - Sin Desglose de Lotes)
+                        </option>
+                    </select>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.35rem;">
+                        <strong>Dinámico:</strong> Guarda cada compra por lotes/series y los desgloza en el producto.<br>
+                        <strong>Simple:</strong> Suma directamente todas las compras al stock general del producto sin pedir ni desglosar lotes en pantalla.
+                    </div>
+                </div>
+
                 <div class="input-group">
                     <label>Unidad de peso</label>
                     <select class="input-modern" name="unidad_peso" required>

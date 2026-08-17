@@ -490,6 +490,7 @@
     window.articulosCatalogo = @json($catalogoModalArticulos);
     window.familiasCatalogo = @json($familiasCatalogo);
     window.unidadPeso = '{{ $settings['unidad_peso'] ?? 'kg' }}';
+    window.modoInventario = '{{ $settings['modo_inventario'] ?? 'dinamico' }}';
 </script>
 <script src="{{ asset('js/articulos-modal.js') }}?v={{ time() }}"></script>
 @endsection

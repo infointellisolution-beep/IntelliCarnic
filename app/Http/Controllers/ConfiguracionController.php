@@ -27,6 +27,7 @@ class ConfiguracionController extends Controller
     public function updateGeneral(Request $request): RedirectResponse
     {
         $data = $request->validate([
+            'modo_inventario' => ['required', Rule::in(['dinamico', 'simple'])],
             'unidad_peso' => ['required', Rule::in(['kg', 'lb'])],
             'usar_impuestos' => ['nullable', 'boolean'],
             'iva_global_enabled' => ['nullable', 'boolean'],
@@ -34,6 +35,7 @@ class ConfiguracionController extends Controller
             'timezone' => ['required', 'string', 'max:100'],
         ]);
 
+        Setting::setValue('modo_inventario', $data['modo_inventario']);
         Setting::setValue('unidad_peso', $data['unidad_peso']);
         Setting::setValue('usar_impuestos', $request->boolean('usar_impuestos') ? '1' : '0');
         Setting::setValue('iva_global_enabled', $request->boolean('iva_global_enabled') ? '1' : '0');

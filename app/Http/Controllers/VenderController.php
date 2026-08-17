@@ -71,65 +71,67 @@ class VenderController extends Controller
             $articulo = Articulo::find($item['articulo_id']);
             if ($articulo) {
                 $pesoAVender = (float) $item['cantidad'];
-                $articulo->stock = max(0, round((float)$articulo->stock - $pesoAVender, 3));
+                $codigoScanned = $item['codigo_escaneado'] ?? null;
+                $articulo->stock = max(0, round(((float)$articulo->stock - $pesoAVender), 3));
                 if ($articulo->stock <= 0) {
                     $articulo->estado = 'sin_stock';
                 }
                 $articulo->save();
 
-                // 1. Intentar buscar coincidencia directa por Lote / Serie / Código escaneado específico
-                $codigoScanned = $item['codigo_escaneado'] ?? null;
-                $specificLot = null;
+                // 2. Descontar del lote específico o aplicar PEPS (FIFO) solo si estamos en Modo Dinámico
+                $modoInventario = \App\Models\Setting::get('modo_inventario', 'dinamico');
+                if ($modoInventario === 'dinamico') {
+                    $specificLot = null;
 
-                if ($codigoScanned) {
-                    $cleanCode = preg_replace('/[()\-\s]/', '', $codigoScanned);
+                    if ($codigoScanned) {
+                        $cleanCode = preg_replace('/[()\-\s]/', '', $codigoScanned);
 
-                    // Extraer Serie (21) si existe
-                    if (preg_match('/01(\d{14})/', $cleanCode, $mGtin)) {
-                        $rest = substr($cleanCode, strpos($cleanCode, $mGtin[0]) + 16);
-                        if (preg_match('/21([a-zA-Z0-9]+?)(?=10|11|15|17|310|320|$)/', $rest, $mSerie)) {
-                            $serieVal = $mSerie[1];
+                        // Extraer Serie (21) si existe
+                        if (preg_match('/01(\d{14})/', $cleanCode, $mGtin)) {
+                            $rest = substr($cleanCode, strpos($cleanCode, $mGtin[0]) + 16);
+                            if (preg_match('/21([a-zA-Z0-9]+?)(?=10|11|15|17|310|320|$)/', $rest, $mSerie)) {
+                                $serieVal = $mSerie[1];
+                                $specificLot = \App\Models\CompraDetalle::where('articulo_id', $articulo->id)
+                                    ->where('serie', $serieVal)
+                                    ->where('cantidad_peso', '>', 0)
+                                    ->first();
+                            }
+                        }
+
+                        if (!$specificLot) {
                             $specificLot = \App\Models\CompraDetalle::where('articulo_id', $articulo->id)
-                                ->where('serie', $serieVal)
+                                ->where(function($q) use ($codigoScanned, $cleanCode) {
+                                    $q->where('codigo_escaneado', $codigoScanned)
+                                      ->orWhere('codigo_escaneado', $cleanCode);
+                                })
                                 ->where('cantidad_peso', '>', 0)
                                 ->first();
                         }
                     }
 
-                    if (!$specificLot) {
-                        $specificLot = \App\Models\CompraDetalle::where('articulo_id', $articulo->id)
-                            ->where(function($q) use ($codigoScanned, $cleanCode) {
-                                $q->where('codigo_escaneado', $codigoScanned)
-                                  ->orWhere('codigo_escaneado', $cleanCode);
-                            })
+                    if ($specificLot) {
+                        $specificLot->cantidad_peso = max(0, round((float)$specificLot->cantidad_peso - $pesoAVender, 3));
+                        $specificLot->save();
+                    } else {
+                        $lotesDisponibles = \App\Models\CompraDetalle::where('articulo_id', $articulo->id)
                             ->where('cantidad_peso', '>', 0)
-                            ->first();
-                    }
-                }
+                            ->orderByRaw('fecha_vencimiento IS NULL ASC, fecha_vencimiento ASC, id ASC')
+                            ->get();
 
-                // 2. Descontar del lote específico o aplicar PEPS (FIFO)
-                if ($specificLot) {
-                    $specificLot->cantidad_peso = max(0, round((float)$specificLot->cantidad_peso - $pesoAVender, 3));
-                    $specificLot->save();
-                } else {
-                    $lotesDisponibles = \App\Models\CompraDetalle::where('articulo_id', $articulo->id)
-                        ->where('cantidad_peso', '>', 0)
-                        ->orderByRaw('fecha_vencimiento IS NULL ASC, fecha_vencimiento ASC, id ASC')
-                        ->get();
+                        $porDescontar = $pesoAVender;
+                        foreach ($lotesDisponibles as $loteDetalle) {
+                            if ($porDescontar <= 0) break;
 
-                    $porDescontar = $pesoAVender;
-                    foreach ($lotesDisponibles as $loteDetalle) {
-                        if ($porDescontar <= 0) break;
-
-                        $pesoEnLote = (float) $loteDetalle->cantidad_peso;
-                        if ($pesoEnLote >= $porDescontar) {
-                            $loteDetalle->cantidad_peso = round($pesoEnLote - $porDescontar, 3);
-                            $loteDetalle->save();
-                            $porDescontar = 0;
-                        } else {
-                            $porDescontar -= $pesoEnLote;
-                            $loteDetalle->cantidad_peso = 0;
-                            $loteDetalle->save();
+                            $pesoEnLote = (float) $loteDetalle->cantidad_peso;
+                            if ($pesoEnLote >= $porDescontar) {
+                                $loteDetalle->cantidad_peso = round($pesoEnLote - $porDescontar, 3);
+                                $loteDetalle->save();
+                                $porDescontar = 0;
+                            } else {
+                                $porDescontar -= $pesoEnLote;
+                                $loteDetalle->cantidad_peso = 0;
+                                $loteDetalle->save();
+                            }
                         }
                     }
                 }

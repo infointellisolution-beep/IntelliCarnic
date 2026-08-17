@@ -98,13 +98,20 @@ class CompraController extends Controller
                 'user_id' => Auth::id(),
             ]);
 
+            $systemUnit = strtolower(Setting::get('unidad_peso', 'lb'));
+
             foreach ($data['detalles'] as $item) {
                 $lineSubtotal = round((float)$item['cantidad_peso'] * (float)$item['costo_unitario'], 2);
+
+                $rawCode = $item['codigo_escaneado'] ?? null;
+                if ($rawCode) {
+                    $rawCode = $this->rewriteBarcodeWeight($rawCode, (float)$item['cantidad_peso'], $systemUnit);
+                }
 
                 CompraDetalle::create([
                     'compra_id' => $compra->id,
                     'articulo_id' => $item['articulo_id'],
-                    'codigo_escaneado' => $item['codigo_escaneado'] ?? null,
+                    'codigo_escaneado' => $rawCode,
                     'lote' => $item['lote'] ?? null,
                     'serie' => $item['serie'] ?? null,
                     'fecha_vencimiento' => $item['fecha_vencimiento'] ?? null,
@@ -174,5 +181,32 @@ class CompraController extends Controller
             'success' => true,
             'proveedor' => $proveedor,
         ]);
+    }
+
+    private function rewriteBarcodeWeight(?string $code, float $weightVal, string $unit): ?string
+    {
+        if (!$code) return $code;
+        $clean = preg_replace('/[()\-\s]/', '', trim($code));
+
+        if (!preg_match('/(320[0-5]|310[0-5])(\d{6})/', $clean, $m)) {
+            return $clean;
+        }
+
+        $ai = $m[1];
+        $decimals = (int) substr($ai, 3, 1);
+        $isKgInBarcode = str_starts_with($ai, '310');
+
+        $targetWeight = $weightVal;
+        if ($isKgInBarcode && in_array($unit, ['lb', 'lbs'])) {
+            $targetWeight = $weightVal / 2.20462;
+        } elseif (!$isKgInBarcode && $unit === 'kg') {
+            $targetWeight = $weightVal * 2.20462;
+        }
+
+        $rawNum = (int) round($targetWeight * pow(10, $decimals));
+        $formattedStr = str_pad((string) $rawNum, 6, '0', STR_PAD_LEFT);
+        $formattedStr = substr($formattedStr, -6);
+
+        return str_replace($m[0], $ai . $formattedStr, $clean);
     }
 }
