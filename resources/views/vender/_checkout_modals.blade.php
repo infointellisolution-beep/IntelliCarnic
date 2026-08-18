@@ -1,35 +1,62 @@
 <!-- Modal de Cobro -->
 <div id="checkoutModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center;">
-    <div style="background: white; border-radius: 12px; padding: 2rem; width: 450px; max-width: 90%; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
-        <h2 style="margin-top: 0; margin-bottom: 1rem; color: var(--text-main); text-align: center; font-size: 1.5rem;">Completar Pago</h2>
+    <div style="background: white; border-radius: 14px; padding: 1.75rem; width: 480px; max-width: 90%; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
+        <h2 style="margin-top: 0; margin-bottom: 1rem; color: var(--text-main); text-align: center; font-size: 1.4rem; font-weight: 800;">Completar Cobro de Venta</h2>
         
-        <div style="text-align: center; margin-bottom: 1.5rem; background: #f8fafc; padding: 1rem; border-radius: 8px;">
-            <div style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Total a Cobrar</div>
-            <div id="checkoutTotalDisplay" style="font-size: 2.5rem; font-weight: 800; color: var(--primary);"></div>
+        <div style="text-align: center; margin-bottom: 1.25rem; background: #f8fafc; padding: 0.85rem; border-radius: 10px; border: 1px solid var(--border-color);">
+            <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Total a Cobrar</div>
+            <div id="checkoutTotalDisplay" style="font-size: 2.2rem; font-weight: 800; color: var(--primary);"></div>
+            <div id="checkoutClienteTag" style="font-size: 0.85rem; font-weight: 700; color: #475569; margin-top: 0.2rem;">
+                <i class="fa-solid fa-user"></i> Cliente: <span id="checkoutClienteNombre">Cliente Contado</span>
+            </div>
         </div>
 
-        <div class="input-group" style="margin-bottom: 1rem;">
-            <label>Método de Pago</label>
-            <select id="checkoutMetodoPago" class="input-modern" onchange="handlePaymentMethodChange()">
-                <option value="efectivo">Efectivo</option>
-                <option value="tarjeta">Tarjeta (Crédito/Débito)</option>
-                <option value="transferencia">Transferencia</option>
-            </select>
+        <!-- Selector de Tipo de Venta (Contado / Crédito) -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1.25rem;">
+            <button type="button" id="btnTipoVentaNormal" class="btn-modern" onclick="setTipoVenta('normal')" style="padding: 0.6rem; font-size: 0.88rem; font-weight: 700; background: #059669; border: 2px solid #059669; color: white;">
+                <i class="fa-solid fa-money-bill-wave"></i> Venta Contado
+            </button>
+            <button type="button" id="btnTipoVentaCredito" class="btn-modern btn-secondary" onclick="setTipoVenta('credito')" style="padding: 0.6rem; font-size: 0.88rem; font-weight: 700; background: white; border: 2px solid var(--border-color); color: var(--text-main);">
+                <i class="fa-solid fa-credit-card"></i> Venta a Crédito
+            </button>
         </div>
 
-        <div class="input-group" style="margin-bottom: 1rem;" id="montoRecibidoContainer">
-            <label>Monto Recibido</label>
-            <input type="number" id="checkoutMontoRecibido" class="input-modern" style="font-size: 1.5rem; text-align: center;" step="0.01" min="0" oninput="calculateVuelto()">
+        <!-- Alerta de Crédito -->
+        <div id="checkoutCreditoInfo" style="display: none; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; padding: 0.75rem; margin-bottom: 1rem; font-size: 0.85rem;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                <span style="color: #92400e;">Saldo Actual del Cliente:</span>
+                <strong id="creditoSaldoActual">$0.00</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span style="color: #92400e;">Límite Disponible:</span>
+                <strong id="creditoLimiteDisponible">$0.00</strong>
+            </div>
         </div>
 
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 0; border-top: 1px dashed var(--border-color); margin-bottom: 1.5rem;">
-            <span style="font-size: 1.1rem; font-weight: 600; color: var(--text-main);">Vuelto / Cambio:</span>
-            <span id="checkoutVueltoDisplay" style="font-size: 1.5rem; font-weight: 700; color: #059669;">$0.00</span>
+        <div id="checkoutContadoSection">
+            <div class="input-group" style="margin-bottom: 1rem;">
+                <label style="font-size: 0.85rem; font-weight: 700;">Método de Pago</label>
+                <select id="checkoutMetodoPago" class="input-modern" onchange="handlePaymentMethodChange()" style="font-weight: 600;">
+                    <option value="efectivo">Efectivo</option>
+                    <option value="tarjeta">Tarjeta (Crédito/Débito)</option>
+                    <option value="transferencia">Transferencia</option>
+                </select>
+            </div>
+
+            <div class="input-group" style="margin-bottom: 1rem;" id="montoRecibidoContainer">
+                <label style="font-size: 0.85rem; font-weight: 700;">Monto Recibido</label>
+                <input type="number" id="checkoutMontoRecibido" class="input-modern" style="font-size: 1.4rem; text-align: center; font-weight: 800; color: #059669;" step="0.01" min="0" oninput="calculateVuelto()">
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.85rem 0; border-top: 1px dashed var(--border-color); margin-bottom: 1.25rem;">
+                <span style="font-size: 1rem; font-weight: 700; color: var(--text-main);">Vuelto / Cambio:</span>
+                <span id="checkoutVueltoDisplay" style="font-size: 1.4rem; font-weight: 800; color: #059669;">$0.00</span>
+            </div>
         </div>
 
-        <div style="display: flex; gap: 1rem;">
-            <button class="btn-modern btn-secondary" style="flex: 1; padding: 1rem;" onclick="closeCheckoutModal()">Cancelar</button>
-            <button id="btnConfirmCheckout" class="btn-modern btn-primary" style="flex: 2; padding: 1rem; background: #059669;" onclick="confirmCheckout()">Registrar Venta</button>
+        <div style="display: flex; gap: 0.75rem;">
+            <button class="btn-modern btn-secondary" style="flex: 1; padding: 0.75rem;" onclick="closeCheckoutModal()">Cancelar</button>
+            <button id="btnConfirmCheckout" class="btn-modern btn-primary" style="flex: 2; padding: 0.75rem; background: #059669; border-color: #059669;" onclick="confirmCheckout()">Registrar Venta</button>
         </div>
     </div>
 </div>
@@ -340,6 +367,112 @@
         </div>
     </div>
 </div>
+
+<!-- Modal Seleccionar Cliente -->
+<div id="modalSeleccionarCliente" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(3px); z-index: 106; align-items: center; justify-content: center; padding: 1rem;">
+    <div style="background: white; border-radius: 14px; width: 620px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); border: 1px solid var(--border-color); overflow: hidden;">
+        <!-- Header -->
+        <div style="padding: 1.1rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+            <div style="font-weight: 800; font-size: 1.15rem; color: var(--primary); display: flex; align-items: center; gap: 0.6rem;">
+                <i class="fa-solid fa-user-tag"></i> Asignar Cliente a la Venta
+            </div>
+            <button type="button" onclick="closeSeleccionarClienteModal()" style="background: none; border: none; font-size: 1.3rem; color: var(--text-muted); cursor: pointer;">&times;</button>
+        </div>
+
+        <!-- Body -->
+        <div style="padding: 1.25rem 1.5rem; overflow-y: auto; flex: 1;">
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 1.25rem;">
+                <div style="position: relative; flex: 1;">
+                    <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                    <input type="text" id="posClienteSearchInput" class="input-modern" placeholder="Buscar por nombre, RUC/DNI o teléfono..." style="padding-left: 2.6rem; font-size: 1rem;" oninput="buscarClientePos(this.value)">
+                </div>
+                <button type="button" class="btn-modern btn-secondary" onclick="openCrearClienteRapidoModal()" style="width: auto; padding: 0 1rem; font-weight: 700; color: var(--primary); border-color: var(--primary); white-space: nowrap;">
+                    <i class="fa-solid fa-user-plus"></i> + Nuevo
+                </button>
+            </div>
+
+            <!-- Botón Cliente Contado -->
+            <div style="background: #f8fafc; border: 1.5px dashed var(--border-color); border-radius: 10px; padding: 0.75rem 1rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong style="color: var(--text-main); font-size: 0.95rem; display: block;">Cliente Contado / General</strong>
+                    <span style="font-size: 0.78rem; color: var(--text-muted);">Venta sin asignar crédito ni expediente</span>
+                </div>
+                <button type="button" class="btn-modern btn-secondary" style="width: auto; padding: 0.35rem 0.85rem; font-size: 0.82rem;" onclick="seleccionarClientePos(null)">
+                    Seleccionar Contado
+                </button>
+            </div>
+
+            <div style="font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase;">
+                Resultados de Búsqueda:
+            </div>
+
+            <!-- Lista de Resultados -->
+            <div id="posClientesResultados" style="border: 1px solid var(--border-color); border-radius: 10px; max-height: 280px; overflow-y: auto;">
+                <div style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                    Escribe para buscar un cliente...
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="padding: 0.85rem 1.5rem; border-top: 1px solid var(--border-color); background: #f8fafc; display: flex; justify-content: flex-end;">
+            <button type="button" class="btn-modern btn-secondary" onclick="closeSeleccionarClienteModal()">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Crear Cliente Rápido desde TPV -->
+<div id="modalCrearClienteRapido" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(3px); z-index: 107; align-items: center; justify-content: center; padding: 1rem;">
+    <div style="background: white; border-radius: 14px; width: 480px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); border: 1px solid var(--border-color); overflow: hidden;">
+        <!-- Header -->
+        <div style="padding: 1.1rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+            <div style="font-weight: 800; font-size: 1.15rem; color: var(--primary); display: flex; align-items: center; gap: 0.6rem;">
+                <i class="fa-solid fa-user-plus"></i> Crear Cliente Rápido
+            </div>
+            <button type="button" onclick="closeCrearClienteRapidoModal()" style="background: none; border: none; font-size: 1.3rem; color: var(--text-muted); cursor: pointer;">&times;</button>
+        </div>
+
+        <!-- Body -->
+        <div style="padding: 1.25rem 1.5rem; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 1rem;">
+            <div>
+                <label style="font-size: 0.85rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem; display: block;">
+                    Nombre del Cliente <span style="color: #dc2626;">*</span>
+                </label>
+                <input type="text" id="rapidoClienteNombre" class="input-modern" placeholder="Ej: Roberto Gómez">
+            </div>
+
+            <div>
+                <label style="font-size: 0.85rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem; display: block;">
+                    Identificación / RUC / DNI
+                </label>
+                <input type="text" id="rapidoClienteIdentificacion" class="input-modern" placeholder="Ej: 0801199012345">
+            </div>
+
+            <div>
+                <label style="font-size: 0.85rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem; display: block;">
+                    Teléfono
+                </label>
+                <input type="text" id="rapidoClienteTelefono" class="input-modern" placeholder="Ej: 9988-7766">
+            </div>
+
+            <div>
+                <label style="font-size: 0.85rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem; display: block;">
+                    Límite de Crédito ($)
+                </label>
+                <input type="number" step="0.01" min="0" id="rapidoClienteLimite" class="input-modern" placeholder="0.00 (0 = Sin límite)" value="0.00">
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="padding: 0.85rem 1.5rem; border-top: 1px solid var(--border-color); background: #f8fafc; display: flex; justify-content: flex-end; gap: 0.75rem;">
+            <button type="button" class="btn-modern btn-secondary" onclick="closeCrearClienteRapidoModal()">Cancelar</button>
+            <button type="button" class="btn-modern btn-primary" onclick="ejecutarGuardarClienteRapido()">
+                <i class="fa-solid fa-check"></i> Guardar y Seleccionar
+            </button>
+        </div>
+    </div>
+</div>
+
 
 
 

@@ -1133,3 +1133,49 @@ body {
     padding: 0.5rem;
     background: #fff;
 }
+
+/* Laravel Pagination Fix (Prevenir flechas SVG gigantes) */
+nav svg,
+.pagination svg {
+    width: 1.25rem !important;
+    height: 1.25rem !important;
+    max-width: 1.25rem !important;
+    max-height: 1.25rem !important;
+    display: inline-block !important;
+    vertical-align: middle !important;
+}
+.pagination {
+    display: flex !important;
+    list-style: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    gap: 0.35rem !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+}
+.pagination .page-item .page-link,
+.pagination li a,
+.pagination li span {
+    padding: 0.4rem 0.85rem !important;
+    border-radius: 8px !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-main) !important;
+    text-decoration: none !important;
+    font-weight: 600 !important;
+    font-size: 0.85rem !important;
+    background: white !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+.pagination .page-item.active .page-link,
+.pagination li.active span {
+    background: var(--primary) !important;
+    color: white !important;
+    border-color: var(--primary) !important;
+}
+.pagination .page-item.disabled .page-link,
+.pagination li.disabled span {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+}

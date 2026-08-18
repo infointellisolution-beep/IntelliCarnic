@@ -27,4 +27,14 @@ class Venta extends Model
     {
         return $this->hasMany(Devolucion::class);
     }
+
+    public function cliente()
+    {
+        return $this->belongsTo(Cliente::class);
+    }
+
+    public function abonos()
+    {
+        return $this->hasMany(Abono::class);
+    }
 }

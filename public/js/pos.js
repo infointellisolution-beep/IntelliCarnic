@@ -25,6 +25,214 @@ if (typeof windowSettings === 'undefined') {
 // Variables para el TPV Táctil (Familias)
 let currentFamiliaId = null;
 
+// Variables para Gestión de Clientes y Crédito en TPV
+let currentPosCliente = null;
+let currentTipoVenta = 'normal';
+
+function openSeleccionarClienteModal() {
+    const modal = document.getElementById('modalSeleccionarCliente');
+    if (modal) {
+        modal.style.display = 'flex';
+        const input = document.getElementById('posClienteSearchInput');
+        if (input) {
+            input.value = '';
+            input.focus();
+            buscarClientePos('');
+        }
+    }
+}
+
+function closeSeleccionarClienteModal() {
+    const modal = document.getElementById('modalSeleccionarCliente');
+    if (modal) modal.style.display = 'none';
+}
+
+let searchClienteTimer = null;
+function buscarClientePos(query) {
+    clearTimeout(searchClienteTimer);
+    searchClienteTimer = setTimeout(async () => {
+        const resBox = document.getElementById('posClientesResultados');
+        if (!resBox) return;
+
+        try {
+            const res = await fetch(`/clientes/api/buscar?q=${encodeURIComponent(query)}`);
+            const data = await res.json();
+
+            if (data.success && data.clientes && data.clientes.length > 0) {
+                let html = '';
+                data.clientes.forEach(c => {
+                    const saldo = parseFloat(c.saldo_deudor || 0);
+                    const limite = parseFloat(c.limite_credito || 0);
+                    const saldoColor = saldo > 0 ? '#dc2626' : '#10b981';
+
+                    html += `
+                        <div style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong style="color: var(--primary); font-size: 0.95rem; display: block;">${c.nombre}</strong>
+                                <div style="font-size: 0.78rem; color: var(--text-muted);">
+                                    Identificación: ${c.identificacion || '-'} | Tel: ${c.telefono || '-'}
+                                </div>
+                            </div>
+                            <div style="text-align: right; display: flex; align-items: center; gap: 0.75rem;">
+                                <div>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted);">Saldo: <strong style="color: ${saldoColor}">$${saldo.toFixed(2)}</strong></div>
+                                    <div style="font-size: 0.72rem; color: var(--text-muted);">Límite: $${limite > 0 ? '$' + limite.toFixed(2) : 'Sin límite'}</div>
+                                </div>
+                                <button type="button" class="btn-modern btn-primary" style="padding: 0.3rem 0.65rem; font-size: 0.78rem;" onclick='seleccionarClientePos(${JSON.stringify(c)})'>
+                                    Seleccionar
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+                resBox.innerHTML = html;
+            } else {
+                resBox.innerHTML = `
+                    <div style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                        No se encontraron clientes activos con "${query}".
+                    </div>
+                `;
+            }
+        } catch (e) {
+            console.error('Error buscando cliente:', e);
+        }
+    }, 200);
+}
+
+function seleccionarClientePos(cliente) {
+    currentPosCliente = cliente;
+    const headerName = document.getElementById('headerClienteNombre');
+    const checkoutName = document.getElementById('checkoutClienteNombre');
+
+    if (cliente) {
+        if (headerName) headerName.innerText = 'Cliente: ' + cliente.nombre;
+        if (checkoutName) checkoutName.innerText = cliente.nombre;
+    } else {
+        if (headerName) headerName.innerText = 'Cliente: Contado';
+        if (checkoutName) checkoutName.innerText = 'Cliente Contado';
+    }
+
+    closeSeleccionarClienteModal();
+
+    if (document.getElementById('checkoutModal') && document.getElementById('checkoutModal').style.display === 'flex') {
+        if (currentTipoVenta === 'credito') {
+            setTipoVenta('credito');
+        }
+    }
+}
+
+function setTipoVenta(tipo) {
+    currentTipoVenta = tipo;
+
+    const btnNormal = document.getElementById('btnTipoVentaNormal');
+    const btnCredito = document.getElementById('btnTipoVentaCredito');
+    const contadoSec = document.getElementById('checkoutContadoSection');
+    const creditoInfo = document.getElementById('checkoutCreditoInfo');
+    const btnConfirm = document.getElementById('btnConfirmCheckout');
+
+    if (!btnNormal || !btnCredito) return;
+
+    if (tipo === 'credito') {
+        if (!currentPosCliente) {
+            alert('Para realizar una venta a crédito, primero debes seleccionar un cliente.');
+            openSeleccionarClienteModal();
+            return;
+        }
+
+        btnNormal.style.background = 'white';
+        btnNormal.style.borderColor = 'var(--border-color)';
+        btnNormal.style.color = 'var(--text-main)';
+
+        btnCredito.style.background = '#d97706';
+        btnCredito.style.borderColor = '#d97706';
+        btnCredito.style.color = 'white';
+
+        if (contadoSec) contadoSec.style.display = 'none';
+        if (creditoInfo) creditoInfo.style.display = 'block';
+
+        const saldoActual = parseFloat(currentPosCliente.saldo_deudor || 0);
+        const limite = parseFloat(currentPosCliente.limite_credito || 0);
+        const disponible = limite > 0 ? Math.max(0, limite - saldoActual) : 'Sin límite';
+
+        const saldoEl = document.getElementById('creditoSaldoActual');
+        const limiteEl = document.getElementById('creditoLimiteDisponible');
+        if (saldoEl) saldoEl.innerText = '$' + saldoActual.toFixed(2);
+        if (limiteEl) limiteEl.innerText = typeof disponible === 'number' ? '$' + disponible.toFixed(2) : disponible;
+
+        if (btnConfirm) {
+            btnConfirm.disabled = false;
+            btnConfirm.style.opacity = '1';
+        }
+    } else {
+        btnNormal.style.background = '#059669';
+        btnNormal.style.borderColor = '#059669';
+        btnNormal.style.color = 'white';
+
+        btnCredito.style.background = 'white';
+        btnCredito.style.borderColor = 'var(--border-color)';
+        btnCredito.style.color = 'var(--text-main)';
+
+        if (contadoSec) contadoSec.style.display = 'block';
+        if (creditoInfo) creditoInfo.style.display = 'none';
+
+        calculateVuelto();
+    }
+}
+
+function openCrearClienteRapidoModal() {
+    closeSeleccionarClienteModal();
+    const modal = document.getElementById('modalCrearClienteRapido');
+    if (modal) {
+        modal.style.display = 'flex';
+        document.getElementById('rapidoClienteNombre').value = '';
+        document.getElementById('rapidoClienteIdentificacion').value = '';
+        document.getElementById('rapidoClienteTelefono').value = '';
+        document.getElementById('rapidoClienteLimite').value = '0.00';
+        setTimeout(() => document.getElementById('rapidoClienteNombre').focus(), 100);
+    }
+}
+
+function closeCrearClienteRapidoModal() {
+    const modal = document.getElementById('modalCrearClienteRapido');
+    if (modal) modal.style.display = 'none';
+}
+
+async function ejecutarGuardarClienteRapido() {
+    const nombreInput = document.getElementById('rapidoClienteNombre');
+    const nombre = nombreInput ? nombreInput.value.trim() : '';
+    if (!nombre) {
+        alert('Por favor ingresa el nombre del cliente.');
+        return;
+    }
+
+    try {
+        const response = await fetch('/clientes/api/rapido', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+            },
+            body: JSON.stringify({
+                nombre: nombre,
+                identificacion: document.getElementById('rapidoClienteIdentificacion').value.trim(),
+                telefono: document.getElementById('rapidoClienteTelefono').value.trim(),
+                limite_credito: parseFloat(document.getElementById('rapidoClienteLimite').value) || 0
+            })
+        });
+
+        const data = await response.json();
+        if (data.success && data.cliente) {
+            seleccionarClientePos(data.cliente);
+            closeCrearClienteRapidoModal();
+        } else {
+            alert(data.message || 'Error al crear cliente.');
+        }
+    } catch (e) {
+        console.error('Error al guardar cliente rápido:', e);
+        alert('Ocurrió un error de conexión al guardar el cliente.');
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     tbodyNormal = document.getElementById('ticket-body-normal');
     tbodyTactil = document.getElementById('ticket-body-tactil');
@@ -732,7 +940,12 @@ function procesarCobro() {
     document.getElementById('checkoutMetodoPago').value = 'efectivo';
     document.getElementById('checkoutVueltoDisplay').innerText = '$0.00';
     document.getElementById('checkoutVueltoDisplay').style.color = '#059669';
-    handlePaymentMethodChange(); // Asegurar estado correcto
+    
+    setTipoVenta('normal');
+    const nameEl = document.getElementById('checkoutClienteNombre');
+    if (nameEl) {
+        nameEl.innerText = currentPosCliente ? currentPosCliente.nombre : 'Cliente Contado';
+    }
 
     document.getElementById('checkoutModal').style.display = 'flex';
     setTimeout(() => {
@@ -837,9 +1050,11 @@ async function confirmCheckout() {
                 subtotal: subtotal.toFixed(2),
                 descuento: totalDescuento.toFixed(2),
                 impuestos: impuestos.toFixed(2),
-                metodo_pago: metodoPago,
-                monto_recibido: montoRecibido.toFixed(2),
-                vuelto: vuelto.toFixed(2),
+                metodo_pago: currentTipoVenta === 'credito' ? 'credito' : metodoPago,
+                monto_recibido: currentTipoVenta === 'credito' ? '0.00' : montoRecibido.toFixed(2),
+                vuelto: currentTipoVenta === 'credito' ? '0.00' : vuelto.toFixed(2),
+                cliente_id: currentPosCliente ? currentPosCliente.id : null,
+                tipo_venta: currentTipoVenta,
                 items: items
             })
         });
@@ -849,7 +1064,6 @@ async function confirmCheckout() {
         if (data.success) {
             if (Array.isArray(data.articulos_actualizados)) {
                 data.articulos_actualizados.forEach(art => {
-                    // 1. Actualizar array global windowArticulos
                     if (Array.isArray(windowArticulos)) {
                         const found = windowArticulos.find(a => a.id == art.id);
                         if (found) {
@@ -857,7 +1071,6 @@ async function confirmCheckout() {
                         }
                     }
 
-                    // 2. Actualizar la tarjeta visual en el DOM
                     const el = document.getElementById(`tactil-stock-${art.id}`);
                     if (el) {
                         const unit = (windowSettings.unidad_peso || 'LB').toUpperCase();
@@ -868,8 +1081,11 @@ async function confirmCheckout() {
 
             closeCheckoutModal();
             showTicketPreview(data.venta, items, montoRecibido, vuelto);
+
+            // Reiniciar cliente tras cobrar
+            seleccionarClientePos(null);
         } else {
-            alert('Error al registrar la venta.');
+            alert(data.message || 'Error al registrar la venta.');
         }
     } catch (error) {
         console.error(error);
@@ -892,6 +1108,25 @@ function showTicketPreview(venta, itemsPayload, montoRecibido, vuelto) {
     const fecha = new Date().toLocaleString();
     const ticketId = venta.id.toString().padStart(6, '0');
 
+    let clienteBanner = '';
+    if (venta.tipo_venta === 'credito') {
+        const clienteNom = (venta.cliente ? venta.cliente.nombre : (currentPosCliente ? currentPosCliente.nombre : 'CLIENTE CRÉDITO'));
+        clienteBanner = `
+            <div style="background: #fffbeb; border: 1.5px dashed #fcd34d; color: #d97706; font-weight: 800; padding: 5px; margin-top: 6px; font-size: 11px; text-align: center;">
+                *** VENTA A CRÉDITO ***
+            </div>
+            <div style="margin-top: 4px; font-size: 11px; text-align: center; font-weight: bold;">
+                CLIENTE: ${clienteNom}
+            </div>
+        `;
+    } else if (currentPosCliente) {
+        clienteBanner = `
+            <div style="margin-top: 4px; font-size: 11px; text-align: center; font-weight: bold;">
+                CLIENTE: ${currentPosCliente.nombre}
+            </div>
+        `;
+    }
+
     let html = `
         <div style="text-align: center; margin-bottom: 15px;">
             <h2 style="margin: 0; font-size: 18px;">${empresaNombre}</h2>
@@ -899,6 +1134,7 @@ function showTicketPreview(venta, itemsPayload, montoRecibido, vuelto) {
             <div>${empresaDireccion}</div>
             <div style="margin-top: 5px;">Ticket #${ticketId}</div>
             <div>Fecha: ${fecha}</div>
+            ${clienteBanner}
         </div>
         <hr style="border-top: 1px dashed black; margin: 10px 0;">
         <table style="width: 100%; border-collapse: collapse;">

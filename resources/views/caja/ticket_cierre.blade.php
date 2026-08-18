@@ -63,6 +63,7 @@
     
     <div class="flex"><span>Fondo Inicial:</span> <span>${{ number_format($cajaSesion->monto_inicial, 2) }}</span></div>
     <div class="flex"><span>(+) Ventas Efectivo:</span> <span>${{ number_format($cajaSesion->total_ventas_efectivo, 2) }}</span></div>
+    <div class="flex"><span>(+) Abonos a Crédito:</span> <span>+${{ number_format($cajaSesion->total_abonos_credito ?? \App\Models\Abono::where('caja_sesion_id', $cajaSesion->id)->sum('monto'), 2) }}</span></div>
     <div class="flex"><span>(+) Entradas Manuales:</span> <span>${{ number_format($cajaSesion->total_entradas, 2) }}</span></div>
     <div class="flex"><span>(-) Salidas / Gastos:</span> <span>-${{ number_format($cajaSesion->total_salidas, 2) }}</span></div>
     
@@ -94,7 +95,8 @@
     <div class="bold text-center">OTRAS FORMAS DE PAGO</div>
     <div class="flex"><span>Ventas Tarjeta:</span> <span>${{ number_format($cajaSesion->total_ventas_tarjeta, 2) }}</span></div>
     <div class="flex"><span>Ventas Transferencia:</span> <span>${{ number_format($cajaSesion->total_ventas_transferencia, 2) }}</span></div>
-    <div class="flex bold"><span>TOTAL GENERAL VENTAS:</span> <span>${{ number_format($cajaSesion->total_ventas_efectivo + $cajaSesion->total_ventas_tarjeta + $cajaSesion->total_ventas_transferencia, 2) }}</span></div>
+    <div class="flex"><span>Ventas a Crédito (Fiado):</span> <span>${{ number_format($cajaSesion->total_ventas_credito ?? $cajaSesion->ventas()->where('tipo_venta', 'credito')->where('estado', '!=', 'devuelta')->sum('total'), 2) }}</span></div>
+    <div class="flex bold"><span>TOTAL GENERAL VENTAS:</span> <span>${{ number_format($cajaSesion->total_ventas_efectivo + $cajaSesion->total_ventas_tarjeta + $cajaSesion->total_ventas_transferencia + ($cajaSesion->total_ventas_credito ?? 0), 2) }}</span></div>
 
     @php($totDesc = (float)($cajaSesion->total_descuentos ?? $cajaSesion->ventas()->sum('descuento')))
     @if($totDesc > 0)

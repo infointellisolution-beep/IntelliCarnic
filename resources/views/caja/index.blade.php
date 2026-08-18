@@ -132,6 +132,26 @@
                 </div>
             </div>
 
+            <!-- Ventas a Crédito (Cartera Generada) -->
+            <div style="background: var(--surface-bg); border: 1px solid var(--border-color); padding: 1rem; border-radius: var(--radius-md);">
+                <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Ventas a Crédito</div>
+                <div style="font-size: 1.4rem; font-weight: 700; color: #d97706; margin-top: 0.25rem;">
+                    ${{ number_format($cajaActiva->total_ventas_credito ?? $cajaActiva->ventas()->where('tipo_venta', 'credito')->where('estado', '!=', 'devuelta')->sum('total'), 2) }}
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">(Fiado / Pendiente de Cobro)</div>
+            </div>
+
+            <!-- Abonos a Crédito Recibidos -->
+            <div style="background: var(--surface-bg); border: 1px solid var(--border-color); padding: 1rem; border-radius: var(--radius-md);">
+                <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Abonos a Crédito</div>
+                <div style="font-size: 1.4rem; font-weight: 700; color: #10b981; margin-top: 0.25rem;">
+                    +${{ number_format($cajaActiva->total_abonos_credito ?? \App\Models\Abono::where('caja_sesion_id', $cajaActiva->id)->sum('monto'), 2) }}
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">
+                    {{ \App\Models\Abono::where('caja_sesion_id', $cajaActiva->id)->count() }} abono(s) cobrado(s)
+                </div>
+            </div>
+
             <!-- SALDO ESPERADO EN CAJA (DESTACADO) -->
             <div style="background: linear-gradient(135deg, var(--accent) 0%, #2563eb 100%); color: white; padding: 1rem; border-radius: var(--radius-md); box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);">
                 <div style="font-size: 0.8rem; opacity: 0.9; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Efectivo Esperado en Caja</div>

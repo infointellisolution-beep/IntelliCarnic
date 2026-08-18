@@ -36,6 +36,45 @@ class DatabaseSeeder extends Seeder
             'password' => Hash::make('password'),
         ]);
 
+        // Clientes Demo
+        \App\Models\Cliente::firstOrCreate([
+            'nombre' => 'Carnicería El Ganadero S.A.',
+        ], [
+            'identificacion' => '0801199512345',
+            'telefono' => '9988-1122',
+            'email' => 'ganadero@carnes.com',
+            'direccion' => 'Av. Los Próceres #102, Tegucigalpa',
+            'limite_credito' => 1500.00,
+            'saldo_deudor' => 0.00,
+            'estado' => 'activo',
+            'notas' => 'Cliente mayorista con crédito habilitado.'
+        ]);
+
+        \App\Models\Cliente::firstOrCreate([
+            'nombre' => 'Restaurante Asados El Corral',
+        ], [
+            'identificacion' => '0801199088776',
+            'telefono' => '9544-3322',
+            'email' => 'compras@elcorral.com',
+            'direccion' => 'Col. Palmira, Calle Principal #45',
+            'limite_credito' => 800.00,
+            'saldo_deudor' => 0.00,
+            'estado' => 'activo',
+            'notas' => 'Compras semanales a crédito.'
+        ]);
+
+        \App\Models\Cliente::firstOrCreate([
+            'nombre' => 'María Fernanda Gómez',
+        ], [
+            'identificacion' => '0801198845612',
+            'telefono' => '3322-1100',
+            'email' => 'mfgomez@gmail.com',
+            'direccion' => 'Residencial El Trapiche',
+            'limite_credito' => 200.00,
+            'saldo_deudor' => 0.00,
+            'estado' => 'activo',
+        ]);
+
         DB::table('familias')->delete();
         DB::table('articulos')->delete();
 

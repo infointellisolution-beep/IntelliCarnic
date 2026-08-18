@@ -19,6 +19,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        \Illuminate\Pagination\Paginator::useBootstrapFive();
+
         try {
             if (\Illuminate\Support\Facades\Schema::hasTable('settings')) {
                 $tz = \App\Models\Setting::getValue('timezone', 'America/Managua');

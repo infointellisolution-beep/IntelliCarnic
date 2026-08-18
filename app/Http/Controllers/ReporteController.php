@@ -37,6 +37,10 @@ class ReporteController extends Controller
         $numVentas = $ventasQuery->count();
         $promedioVenta = $numVentas > 0 ? $totalVentasMonto / $numVentas : 0;
 
+        $totalDevolucionesMonto = (float) \App\Models\Devolucion::whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])->sum('total_reembolsado');
+        $countDevoluciones = \App\Models\Devolucion::whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])->count();
+        $totalVentasNeto = max(0, $totalVentasMonto - $totalDevolucionesMonto);
+
         $totalPesoVendido = (float) VentaDetalle::whereHas('venta', function ($q) use ($fechaInicio, $fechaFin) {
             $q->whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']);
         })->sum('cantidad');
@@ -57,10 +61,77 @@ class ReporteController extends Controller
             ->take(10)
             ->get();
 
-        $ventasLista = Venta::with('detalles.articulo')
-            ->whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])
-            ->orderBy('created_at', 'desc')
+        $filtroVenta = $request->get('filtro_venta', 'todas');
+
+        $ventasListaQuery = Venta::with(['detalles.articulo', 'devoluciones.detalles', 'cliente'])
+            ->whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']);
+
+        if ($filtroVenta === 'contado') {
+            $ventasListaQuery->where(function ($q) {
+                $q->where('tipo_venta', 'normal')->orWhereNull('tipo_venta');
+            })->whereNotIn('estado', ['devuelta', 'parcialmente_devuelta']);
+        } elseif ($filtroVenta === 'credito') {
+            $ventasListaQuery->where('tipo_venta', 'credito');
+        } elseif ($filtroVenta === 'devolucion') {
+            $ventasListaQuery->whereIn('estado', ['devuelta', 'parcialmente_devuelta']);
+        }
+
+        $ventasLista = $ventasListaQuery->orderBy('created_at', 'desc')
             ->paginate(15, ['*'], 'page_ventas');
+
+        // Mapeo FIFO de estado e imputación de abonos a ventas a crédito
+        $clientIds = $ventasLista->pluck('cliente_id')->filter()->unique();
+        $clientesAbonosMap = [];
+
+        foreach ($clientIds as $cid) {
+            $clienteObj = \App\Models\Cliente::find($cid);
+            if (!$clienteObj) continue;
+
+            $totalAbonos = (float) $clienteObj->abonos()->sum('monto');
+            $creditSales = $clienteObj->ventas()
+                ->where('tipo_venta', 'credito')
+                ->where('estado', '!=', 'devuelta')
+                ->orderBy('created_at', 'asc')
+                ->get();
+
+            $accumulated = $totalAbonos;
+            foreach ($creditSales as $cs) {
+                $saleTotal = (float) $cs->total;
+                if ($accumulated >= $saleTotal) {
+                    $clientesAbonosMap[$cs->id] = [
+                        'monto_abonado' => $saleTotal,
+                        'saldo_pendiente' => 0.0,
+                        'estado_credito' => 'saldado'
+                    ];
+                    $accumulated -= $saleTotal;
+                } elseif ($accumulated > 0) {
+                    $montoAbonado = $accumulated;
+                    $saldoPen = round($saleTotal - $accumulated, 2);
+                    $clientesAbonosMap[$cs->id] = [
+                        'monto_abonado' => $montoAbonado,
+                        'saldo_pendiente' => $saldoPen,
+                        'estado_credito' => 'parcial'
+                    ];
+                    $accumulated = 0;
+                } else {
+                    $clientesAbonosMap[$cs->id] = [
+                        'monto_abonado' => 0.0,
+                        'saldo_pendiente' => $saleTotal,
+                        'estado_credito' => 'pendiente'
+                    ];
+                }
+            }
+        }
+
+        foreach ($ventasLista as $v) {
+            if ($v->tipo_venta === 'credito') {
+                $v->credito_info = $clientesAbonosMap[$v->id] ?? [
+                    'monto_abonado' => 0.0,
+                    'saldo_pendiente' => (float) $v->total,
+                    'estado_credito' => 'pendiente'
+                ];
+            }
+        }
 
         // 2. Datos para Reporte de Compras
         $comprasQuery = Compra::query()
@@ -164,12 +235,16 @@ class ReporteController extends Controller
             'totalVentasMonto',
             'totalVentasSubtotal',
             'totalVentasImpuestos',
+            'totalDevolucionesMonto',
+            'countDevoluciones',
+            'totalVentasNeto',
             'numVentas',
             'promedioVenta',
             'totalPesoVendido',
             'ventasPorMetodo',
             'topProductosVendidos',
             'ventasLista',
+            'filtroVenta',
             // Compras
             'totalComprasMonto',
             'totalComprasSubtotal',

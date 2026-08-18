@@ -68,6 +68,11 @@ class CajaSesion extends Model
         return $this->hasMany(Devolucion::class, 'caja_sesion_id');
     }
 
+    public function abonos(): HasMany
+    {
+        return $this->hasMany(Abono::class, 'caja_sesion_id');
+    }
+
     /**
      * Calcula el saldo esperado en efectivo en tiempo real
      */
@@ -84,7 +89,9 @@ class CajaSesion extends Model
         $efectivo = (float) $this->ventas()->where('metodo_pago', 'efectivo')->sum('total');
         $tarjeta = (float) $this->ventas()->where('metodo_pago', 'tarjeta')->sum('total');
         $transferencia = (float) $this->ventas()->where('metodo_pago', 'transferencia')->sum('total');
+        $credito = (float) $this->ventas()->where('tipo_venta', 'credito')->where('estado', '!=', 'devuelta')->sum('total');
 
+        $abonos = (float) Abono::where('caja_sesion_id', $this->id)->sum('monto');
         $entradas = (float) $this->movimientos()->where('tipo', 'entrada')->sum('monto');
         $salidas = (float) $this->movimientos()->where('tipo', 'salida')->sum('monto');
         $descuentos = (float) $this->ventas()->sum('descuento');
@@ -93,11 +100,13 @@ class CajaSesion extends Model
         $this->total_ventas_efectivo = $efectivo;
         $this->total_ventas_tarjeta = $tarjeta;
         $this->total_ventas_transferencia = $transferencia;
+        $this->total_ventas_credito = $credito;
+        $this->total_abonos_credito = $abonos;
         $this->total_entradas = $entradas;
         $this->total_salidas = $salidas;
         $this->total_descuentos = $descuentos;
         $this->total_devoluciones = $devoluciones;
-        $this->saldo_esperado = $this->monto_inicial + $efectivo + $entradas - $salidas;
+        $this->saldo_esperado = $this->monto_inicial + $efectivo + $abonos + $entradas - $salidas;
         $this->save();
     }
 }

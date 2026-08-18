@@ -77,6 +77,11 @@
                         </a>
                     </li>
                     <li>
+                        <a href="{{ route('clientes.index') }}" class="{{ request()->routeIs('clientes.*') ? 'active' : '' }}">
+                            <i class="fa-solid fa-users"></i> Clientes
+                        </a>
+                    </li>
+                    <li>
                         <a href="{{ route('reportes.index') }}" class="{{ request()->routeIs('reportes.*') ? 'active' : '' }}">
                             <i class="fa-solid fa-chart-pie"></i> Reportes
                         </a>

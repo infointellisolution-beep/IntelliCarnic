@@ -331,11 +331,13 @@
 <!-- PESTAÑA 1: VENTAS -->
 @if($tab === 'ventas')
     <!-- Tarjetas KPI Ventas -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
         <div class="card" style="padding: 1.25rem;">
-            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">TOTAL VENDIDO</div>
-            <div style="font-size: 1.8rem; font-weight: 800; color: var(--primary); margin-top: 0.25rem;">${{ number_format($totalVentasMonto, 2) }}</div>
-            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Subtotal: ${{ number_format($totalVentasSubtotal, 2) }} | IVA: ${{ number_format($totalVentasImpuestos, 2) }}</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">VENTAS NETAS</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: var(--primary); margin-top: 0.25rem;">${{ number_format($totalVentasNeto, 2) }}</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+                Bruto: ${{ number_format($totalVentasMonto, 2) }} @if($totalDevolucionesMonto > 0) | <span style="color: #dc2626;">Devoluciones: -${{ number_format($totalDevolucionesMonto, 2) }}</span> @endif
+            </div>
         </div>
 
         <div class="card" style="padding: 1.25rem;">
@@ -347,7 +349,13 @@
         <div class="card" style="padding: 1.25rem;">
             <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Nº TRANSACCIONES</div>
             <div style="font-size: 1.8rem; font-weight: 800; color: #6366f1; margin-top: 0.25rem;">{{ $numVentas }}</div>
-            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Tickets/Ventas cobradas</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+                @if($countDevoluciones > 0)
+                    <span style="color: #dc2626; font-weight: 600;">{{ $countDevoluciones }} devolución(es)</span>
+                @else
+                    Tickets/Ventas cobradas
+                @endif
+            </div>
         </div>
 
         <div class="card" style="padding: 1.25rem;">
@@ -430,13 +438,30 @@
 
     <!-- Tabla General de Ventas -->
     <div class="card" style="padding: 1.25rem;">
-        <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem;">Historial Detallado de Ventas</h3>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+            <h3 style="font-size: 1.1rem; font-weight: 700; margin: 0;">Historial Detallado de Ventas</h3>
+            
+            <form method="GET" action="{{ route('reportes.index') }}" style="display: flex; gap: 0.5rem; align-items: center; margin: 0;">
+                <input type="hidden" name="tab" value="ventas">
+                <input type="hidden" name="fecha_inicio" value="{{ $fechaInicio }}">
+                <input type="hidden" name="fecha_fin" value="{{ $fechaFin }}">
+                <label style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted);">Filtrar por Tipo:</label>
+                <select name="filtro_venta" class="input-modern" onchange="this.form.submit()" style="padding: 0.35rem 0.75rem; font-size: 0.85rem; font-weight: 600; min-width: 190px;">
+                    <option value="todas" {{ ($filtroVenta ?? 'todas') === 'todas' ? 'selected' : '' }}>Todas las Ventas</option>
+                    <option value="contado" {{ ($filtroVenta ?? '') === 'contado' ? 'selected' : '' }}>Ventas al Contado</option>
+                    <option value="credito" {{ ($filtroVenta ?? '') === 'credito' ? 'selected' : '' }}>Ventas a Crédito</option>
+                    <option value="devolucion" {{ ($filtroVenta ?? '') === 'devolucion' ? 'selected' : '' }}>Ventas con Devolución</option>
+                </select>
+            </form>
+        </div>
+
         <div style="overflow-x: auto;">
             <table class="table-modern" style="width: 100%;">
                 <thead>
                     <tr>
                         <th>N° Ticket</th>
                         <th>Fecha / Hora</th>
+                        <th>Estado</th>
                         <th>Método Pago</th>
                         <th style="text-align: right;">Subtotal</th>
                         <th style="text-align: right;">Impuestos</th>
@@ -446,15 +471,67 @@
                 </thead>
                 <tbody>
                     @forelse($ventasLista as $v)
-                        <tr>
+                        <tr style="{{ $v->estado === 'devuelta' ? 'background: rgba(239, 68, 68, 0.04);' : ($v->estado === 'parcialmente_devuelta' ? 'background: rgba(245, 158, 11, 0.04);' : ($v->tipo_venta === 'credito' ? 'background: rgba(217, 119, 6, 0.03);' : '')) }}">
                             <td style="font-weight: 700; font-family: monospace; color: var(--primary);">#{{ str_pad($v->id, 6, '0', STR_PAD_LEFT) }}</td>
                             <td>{{ $v->created_at->format('d/m/Y h:i A') }}</td>
                             <td>
-                                <span class="badge badge-info" style="text-transform: uppercase;">{{ $v->metodo_pago }}</span>
+                                @php
+                                    $st = $v->estado;
+                                    $tipo = $v->tipo_venta;
+                                    $crSt = $v->credito_info['estado_credito'] ?? 'pendiente';
+                                    $saldoPen = $v->credito_info['saldo_pendiente'] ?? 0;
+                                @endphp
+
+                                @if($st === 'devuelta')
+                                    <span class="badge" style="background: rgba(220, 38, 38, 0.15); color: #dc2626; font-size: 0.75rem; font-weight: 700;">
+                                        <i class="fa-solid fa-rotate-left"></i> Devuelto
+                                    </span>
+                                @elseif($st === 'parcialmente_devuelta')
+                                    <span class="badge" style="background: rgba(217, 119, 6, 0.15); color: #d97706; font-size: 0.75rem; font-weight: 700;">
+                                        <i class="fa-solid fa-rotate-left"></i> Parc. Devuelto
+                                    </span>
+                                @elseif($tipo === 'credito' && $crSt === 'saldado')
+                                    <span class="badge badge-success" style="font-size: 0.75rem; font-weight: 700;">
+                                        <i class="fa-solid fa-circle-check"></i> Crédito Cancelado
+                                    </span>
+                                @elseif($tipo === 'credito' && $crSt === 'parcial')
+                                    <span class="badge badge-warning" style="font-size: 0.75rem; font-weight: 700;">
+                                        <i class="fa-solid fa-clock-rotate-left"></i> Crédito Parcial (${{ number_format($saldoPen, 2) }} pend.)
+                                    </span>
+                                @elseif($tipo === 'credito')
+                                    <span class="badge" style="background: rgba(217, 119, 6, 0.15); color: #d97706; font-size: 0.75rem; font-weight: 700;">
+                                        <i class="fa-solid fa-clock"></i> Crédito Pendiente
+                                    </span>
+                                @else
+                                    <span class="badge badge-success" style="font-size: 0.75rem; font-weight: 700;">
+                                        <i class="fa-solid fa-check"></i> Pagado (Contado)
+                                    </span>
+                                @endif
+                            </td>
+                            <td>
+                                @if($v->tipo_venta === 'credito')
+                                    <span class="badge" style="background: rgba(217, 119, 6, 0.15); color: #d97706; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">
+                                        CRÉDITO
+                                    </span>
+                                @else
+                                    <span class="badge badge-info" style="text-transform: uppercase;">{{ $v->metodo_pago }}</span>
+                                @endif
                             </td>
                             <td style="text-align: right;">${{ number_format($v->subtotal, 2) }}</td>
                             <td style="text-align: right;">${{ number_format($v->impuestos, 2) }}</td>
-                            <td style="text-align: right; font-weight: 800; color: var(--primary);">${{ number_format($v->total, 2) }}</td>
+                            <td style="text-align: right; font-weight: 800; color: {{ $v->estado === 'devuelta' ? '#dc2626' : 'var(--primary)' }};">
+                                @if($v->estado === 'devuelta')
+                                    <span style="text-decoration: line-through;">${{ number_format($v->total, 2) }}</span>
+                                    <div style="font-size: 0.75rem; color: #dc2626; font-weight: 700;">(Reembolsado)</div>
+                                @elseif($v->estado === 'parcialmente_devuelta')
+                                    ${{ number_format($v->total, 2) }}
+                                    @if($v->devoluciones->isNotEmpty())
+                                        <div style="font-size: 0.75rem; color: #dc2626; font-weight: 600;">(-${{ number_format($v->devoluciones->sum('total_reembolsado'), 2) }})</div>
+                                    @endif
+                                @else
+                                    ${{ number_format($v->total, 2) }}
+                                @endif
+                            </td>
                             <td style="text-align: center;">
                                 <button type="button" class="btn-modern btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.82rem;" onclick="abrirDocumentoVenta({{ json_encode($v) }})">
                                     <i class="fa-solid fa-file-invoice-dollar" style="color: var(--primary);"></i> Ver Documento
@@ -463,14 +540,14 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">No se encontraron registros de ventas en este rango de fechas.</td>
+                            <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">No se encontraron registros de ventas en este rango de fechas.</td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
         <div style="margin-top: 1rem;">
-            {{ $ventasLista->appends(['tab' => 'ventas', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin])->links() }}
+            {{ $ventasLista->appends(['tab' => 'ventas', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin, 'filtro_venta' => $filtroVenta ?? 'todas'])->links() }}
         </div>
     </div>
 @endif
@@ -933,6 +1010,91 @@
         const montoRecibido = parseFloat(venta.monto_recibido || venta.total || 0);
         const vuelto = parseFloat(venta.vuelto || 0);
 
+        let estadoBanner = '';
+        if (venta.estado === 'devuelta') {
+            estadoBanner = `
+                <div style="background: #fef2f2; border: 1.5px dashed #fca5a5; color: #dc2626; font-weight: 800; padding: 5px; margin-top: 6px; font-size: 11px; text-align: center;">
+                    *** VENTA TOTALMENTE DEVUELTA ***
+                </div>
+            `;
+        } else if (venta.estado === 'parcialmente_devuelta') {
+            estadoBanner = `
+                <div style="background: #fffbeb; border: 1.5px dashed #fcd34d; color: #d97706; font-weight: 800; padding: 5px; margin-top: 6px; font-size: 11px; text-align: center;">
+                    *** VENTA PARCIALMENTE DEVUELTA ***
+                </div>
+            `;
+        } else if (venta.tipo_venta === 'credito') {
+            const crInfo = venta.credito_info || {};
+            const stCred = crInfo.estado_credito || 'pendiente';
+            const abonado = parseFloat(crInfo.monto_abonado || 0);
+            const pendiente = parseFloat(crInfo.saldo_pendiente || venta.total || 0);
+
+            if (stCred === 'saldado' || pendiente <= 0) {
+                estadoBanner = `
+                    <div style="background: #f0fdf4; border: 1.5px dashed #16a34a; color: #15803d; font-weight: 800; padding: 6px; margin-top: 6px; font-size: 11px; text-align: center;">
+                        *** CRÉDITO CANCELADO / SALDADO ***<br>
+                        ¡ESTA VENTA FUE TOTALMENTE PAGADA!
+                    </div>
+                `;
+            } else if (stCred === 'parcial') {
+                estadoBanner = `
+                    <div style="background: #fffbeb; border: 1.5px dashed #fcd34d; color: #d97706; font-weight: 800; padding: 6px; margin-top: 6px; font-size: 11px; text-align: center;">
+                        *** CRÉDITO CON ABONO PARCIAL ***<br>
+                        ABONADO: $${abonado.toFixed(2)} | PENDIENTE: $${pendiente.toFixed(2)}
+                    </div>
+                `;
+            } else {
+                estadoBanner = `
+                    <div style="background: #fff7ed; border: 1.5px dashed #fb923c; color: #c2410c; font-weight: 800; padding: 6px; margin-top: 6px; font-size: 11px; text-align: center;">
+                        *** CRÉDITO PENDIENTE DE PAGO ***<br>
+                        SALDO PENDIENTE: $${parseFloat(venta.total || 0).toFixed(2)}
+                    </div>
+                `;
+            }
+        }
+
+        let pagoSectionHtml = '';
+        if (venta.tipo_venta === 'credito') {
+            const crInfo = venta.credito_info || {};
+            const abonado = parseFloat(crInfo.monto_abonado || 0);
+            const pendiente = parseFloat(crInfo.saldo_pendiente || venta.total || 0);
+            const clienteNom = venta.cliente ? venta.cliente.nombre : 'Cliente';
+
+            pagoSectionHtml = `
+                <div style="display: flex; justify-content: space-between;">
+                    <span>MÉTODO DE PAGO:</span>
+                    <span style="font-weight: bold; color: #d97706;">CRÉDITO</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>TITULAR CRÉDITO:</span>
+                    <span style="font-weight: bold;">${clienteNom}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; color: #16a34a; font-weight: bold;">
+                    <span>(-) ABONADO DE ESTA VENTA:</span>
+                    <span>-$${abonado.toFixed(2)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 13px; margin-top: 4px;">
+                    <span>SALDO PENDIENTE TICKET:</span>
+                    <span style="color: ${pendiente > 0 ? '#dc2626' : '#16a34a'};">$${pendiente.toFixed(2)}</span>
+                </div>
+            `;
+        } else {
+            pagoSectionHtml = `
+                <div style="display: flex; justify-content: space-between;">
+                    <span>MÉTODO DE PAGO:</span>
+                    <span style="text-transform: uppercase;">${(venta.metodo_pago || 'EFECTIVO').toUpperCase()}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>ENTREGADO:</span>
+                    <span>$${montoRecibido.toFixed(2)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>CAMBIO/VUELTO:</span>
+                    <span>$${vuelto.toFixed(2)}</span>
+                </div>
+            `;
+        }
+
         let html = `
             <div style="text-align: center; margin-bottom: 15px;">
                 <h2 style="margin: 0; font-size: 18px; font-weight: 800;">${empresaNombre}</h2>
@@ -940,6 +1102,7 @@
                 <div>${empresaDireccion}</div>
                 <div style="margin-top: 5px; font-weight: bold;">Ticket #${ticketNum}</div>
                 <div>Fecha: ${fecha}</div>
+                ${estadoBanner}
             </div>
             <hr style="border-top: 1px dashed black; margin: 10px 0;">
             <table style="width: 100%; border-collapse: collapse;">
@@ -969,22 +1132,11 @@
                 <span>$${parseFloat(venta.impuestos || 0).toFixed(2)}</span>
             </div>
             <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px; margin-top: 5px;">
-                <span>TOTAL:</span>
+                <span>TOTAL VENTA:</span>
                 <span>$${parseFloat(venta.total || 0).toFixed(2)}</span>
             </div>
             <hr style="border-top: 1px dashed black; margin: 10px 0;">
-            <div style="display: flex; justify-content: space-between;">
-                <span>MÉTODO DE PAGO:</span>
-                <span style="text-transform: uppercase;">${(venta.metodo_pago || 'EFECTIVO').toUpperCase()}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-                <span>ENTREGADO:</span>
-                <span>$${montoRecibido.toFixed(2)}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-                <span>CAMBIO/VUELTO:</span>
-                <span>$${vuelto.toFixed(2)}</span>
-            </div>
+            ${pagoSectionHtml}
             <div style="text-align: center; margin-top: 18px; margin-bottom: 5px;">
                 <svg id="ticketBarcodeReporte" style="max-width: 100%;"></svg>
             </div>

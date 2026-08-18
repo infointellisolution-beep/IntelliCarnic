@@ -35,6 +35,8 @@ class VenderController extends Controller
             'metodo_pago' => 'nullable|string',
             'monto_recibido' => 'nullable|numeric',
             'vuelto' => 'nullable|numeric',
+            'cliente_id' => 'nullable|exists:clientes,id',
+            'tipo_venta' => 'nullable|string|in:normal,credito',
             'items' => 'required|array',
             'items.*.articulo_id' => 'required|exists:articulos,id',
             'items.*.codigo_escaneado' => 'nullable|string',
@@ -44,19 +46,56 @@ class VenderController extends Controller
             'items.*.subtotal' => 'required|numeric',
         ]);
 
+        $tipoVenta = $data['tipo_venta'] ?? 'normal';
+        $cliente = null;
+
+        if ($tipoVenta === 'credito') {
+            if (empty($data['cliente_id'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Para realizar una venta a crédito debes seleccionar un cliente.'
+                ], 422);
+            }
+
+            $cliente = \App\Models\Cliente::find($data['cliente_id']);
+            if (!$cliente) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cliente no encontrado.'
+                ], 422);
+            }
+
+            $saldoActual = (float) $cliente->saldo_deudor;
+            $limite = (float) $cliente->limite_credito;
+            $totalVenta = (float) $data['total'];
+
+            if ($limite > 0 && ($saldoActual + $totalVenta) > $limite) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "La venta de $" . number_format($totalVenta, 2) . " supera el límite de crédito del cliente ($" . number_format($limite, 2) . "). Saldo actual: $" . number_format($saldoActual, 2)
+                ], 422);
+            }
+        }
+
         $cajaActiva = \App\Models\CajaSesion::query()->where('estado', 'abierta')->first();
 
         $venta = \App\Models\Venta::create([
+            'cliente_id' => $data['cliente_id'] ?? null,
+            'tipo_venta' => $tipoVenta,
             'subtotal' => $data['subtotal'],
             'descuento' => $data['descuento'] ?? 0,
             'impuestos' => $data['impuestos'],
             'total' => $data['total'],
-            'metodo_pago' => $data['metodo_pago'] ?? 'efectivo',
-            'monto_recibido' => $data['monto_recibido'] ?? $data['total'],
-            'vuelto' => $data['vuelto'] ?? 0,
+            'metodo_pago' => $tipoVenta === 'credito' ? 'credito' : ($data['metodo_pago'] ?? 'efectivo'),
+            'monto_recibido' => $tipoVenta === 'credito' ? 0 : ($data['monto_recibido'] ?? $data['total']),
+            'vuelto' => $tipoVenta === 'credito' ? 0 : ($data['vuelto'] ?? 0),
             'user_id' => auth()->id(),
             'caja_sesion_id' => $cajaActiva?->id,
         ]);
+
+        if ($cliente && $tipoVenta === 'credito') {
+            $cliente->actualizarSaldoDeudor();
+        }
 
         foreach ($data['items'] as $item) {
             $venta->detalles()->create([

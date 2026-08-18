@@ -37,6 +37,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/vender/ticket/{id}', [\App\Http\Controllers\VenderController::class, 'getTicket'])->name('vender.ticket.get');
     Route::post('/vender/devolucion', [\App\Http\Controllers\VenderController::class, 'procesarDevolucion'])->name('vender.devolucion.store');
 
+    // Clientes
+    Route::get('/clientes/api/buscar', [\App\Http\Controllers\ClienteController::class, 'buscar'])->name('clientes.api.buscar');
+    Route::post('/clientes/api/rapido', [\App\Http\Controllers\ClienteController::class, 'storeRapido'])->name('clientes.api.rapido');
+    Route::get('/clientes/abono/{id}/ticket', [\App\Http\Controllers\ClienteController::class, 'getAbonoTicket'])->name('clientes.abono.ticket');
+    Route::post('/clientes/{cliente}/abono', [\App\Http\Controllers\ClienteController::class, 'registrarAbono'])->name('clientes.abono');
+    Route::resource('clientes', \App\Http\Controllers\ClienteController::class);
+
     // Compras (Acceso directo a registro)
     Route::get('/compras', [CompraController::class, 'create'])->name('compras.index');
     Route::get('/compras/crear', [CompraController::class, 'create'])->name('compras.create');

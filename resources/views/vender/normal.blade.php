@@ -4,6 +4,9 @@
 
 @section('header-actions')
 <div style="display: flex; gap: 0.75rem; align-items: center; padding: 0 1rem; margin-right: auto;">
+    <button type="button" class="btn-modern btn-secondary" id="btnHeaderCliente" onclick="openSeleccionarClienteModal()" style="display: inline-flex; align-items: center; gap: 0.5rem; width: auto; padding: 0.45rem 1.1rem; font-size: 0.9rem; font-weight: 700; color: #166534; border: 1.5px solid #22c55e; background: rgba(34, 197, 94, 0.08); cursor: pointer; border-radius: 8px;">
+        <i class="fa-solid fa-user-tag"></i> <span id="headerClienteNombre">Cliente: Contado</span>
+    </button>
     <button type="button" class="btn-modern btn-secondary" onclick="openPreciosEspecialesModal()" style="display: inline-flex; align-items: center; gap: 0.5rem; width: auto; padding: 0.45rem 1.1rem; font-size: 0.9rem; font-weight: 700; color: var(--primary); border: 1.5px solid var(--primary); background: rgba(37,99,235,0.06); cursor: pointer; border-radius: 8px;">
         <i class="fa-solid fa-tags"></i> Precios Especiales
     </button>
