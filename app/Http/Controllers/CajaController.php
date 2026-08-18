@@ -23,7 +23,7 @@ class CajaController extends Controller
 
         if ($cajaActiva) {
             $cajaActiva->recargarTotales();
-            $cajaActiva->load(['movimientos.user', 'user', 'ventas']);
+            $cajaActiva->load(['movimientos.user', 'user', 'ventas', 'devoluciones.detalles', 'devoluciones.user']);
         }
 
         $historialCierres = CajaSesion::query()

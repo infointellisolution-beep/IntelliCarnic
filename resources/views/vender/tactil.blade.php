@@ -10,6 +10,9 @@
     <button type="button" class="btn-modern btn-secondary" onclick="openDescuentoModal()" style="display: inline-flex; align-items: center; gap: 0.5rem; width: auto; padding: 0.45rem 1.1rem; font-size: 0.9rem; font-weight: 700; color: #d97706; border: 1.5px solid #d97706; background: rgba(217, 119, 6, 0.06); cursor: pointer; border-radius: 8px;">
         <i class="fa-solid fa-percent"></i> Descuento
     </button>
+    <button type="button" class="btn-modern btn-secondary" onclick="openDevolucionModal()" style="display: inline-flex; align-items: center; gap: 0.5rem; width: auto; padding: 0.45rem 1.1rem; font-size: 0.9rem; font-weight: 700; color: #dc2626; border: 1.5px solid #dc2626; background: rgba(220, 38, 38, 0.06); cursor: pointer; border-radius: 8px;">
+        <i class="fa-solid fa-rotate-left"></i> Devolución
+    </button>
 </div>
 @endsection
 

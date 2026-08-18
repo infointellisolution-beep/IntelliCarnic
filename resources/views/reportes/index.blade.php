@@ -757,32 +757,57 @@
     </div>
 @endif
 
-<!-- MODAL DOCUMENTO DE VENTA (COMPROBANTE TICKET) -->
+<!-- MODAL DOCUMENTO DE VENTA (TICKET TÉRMICO IDÉNTICO AL TPV) -->
 <div id="modal-documento-venta" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); z-index: 999; align-items: center; justify-content: center; padding: 1rem;">
-    <div style="background: white; border-radius: 14px; max-width: 900px; width: 95%; max-height: 90vh; overflow-y: auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); border: 1px solid var(--border-color);">
-        <div style="padding: 1.25rem 1.75rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);">
-            <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <div style="background: rgba(37, 99, 235, 0.1); color: var(--primary); width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
-                    <i class="fa-solid fa-receipt"></i>
-                </div>
-                <div>
-                    <h2 style="font-size: 1.2rem; font-weight: 800; color: var(--primary); margin: 0;" id="doc-venta-titulo">Comprobante de Venta</h2>
-                    <div style="font-size: 0.85rem; color: var(--text-muted);" id="doc-venta-fecha"></div>
-                </div>
+    <div style="background: white; border-radius: 14px; max-width: 480px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); border: 1px solid var(--border-color); overflow: hidden;">
+        <!-- Header -->
+        <div style="padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+            <div style="font-weight: 800; font-size: 1.1rem; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fa-solid fa-receipt" style="color: var(--primary);"></i> <span id="doc-venta-titulo">Ticket de Venta</span>
             </div>
-            <button type="button" onclick="cerrarDocumentoVenta()" style="background: none; border: none; font-size: 1.4rem; color: var(--text-muted); cursor: pointer;"><i class="fa-solid fa-xmark"></i></button>
+            <button type="button" onclick="cerrarDocumentoVenta()" style="background: none; border: none; font-size: 1.3rem; color: var(--text-muted); cursor: pointer;">&times;</button>
         </div>
 
-        <div style="padding: 1.75rem;" id="doc-venta-body">
-            <!-- Renderizado dinámico vía JS -->
+        <!-- Área Térmica Imprimible -->
+        <div style="padding: 1.25rem; overflow-y: auto; flex: 1; background: #f1f5f9; display: flex; justify-content: center;">
+            <div id="printableTicketAreaReportes" style="background: white; width: 80mm; max-width: 100%; padding: 1.25rem; font-family: 'Courier New', Courier, monospace; font-size: 12px; color: black; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border-radius: 4px;">
+                <!-- Renderizado dinámico vía JS -->
+            </div>
         </div>
 
-        <div style="padding: 1.25rem 1.75rem; border-top: 1px solid var(--border-color); background: #f8fafc; display: flex; justify-content: space-between; align-items: center; border-bottom-left-radius: 14px; border-bottom-right-radius: 14px;">
-            <button type="button" class="btn-modern btn-primary" onclick="window.print()"><i class="fa-solid fa-print"></i> Imprimir Comprobante</button>
-            <button type="button" class="btn-modern btn-secondary" onclick="cerrarDocumentoVenta()">Cerrar Ventana</button>
+        <!-- Footer -->
+        <div style="padding: 0.85rem 1.25rem; border-top: 1px solid var(--border-color); background: #f8fafc; display: flex; justify-content: space-between; align-items: center;">
+            <button type="button" class="btn-modern btn-secondary" style="width: auto; padding: 0.5rem 1rem;" onclick="cerrarDocumentoVenta()">Cerrar</button>
+            <button type="button" class="btn-modern btn-primary" style="width: auto; padding: 0.5rem 1.25rem;" onclick="imprimirTicketReportes()"><i class="fa-solid fa-print"></i> Imprimir Comprobante</button>
         </div>
     </div>
 </div>
+
+<style>
+@media print {
+    body * {
+        visibility: hidden !important;
+    }
+    #printableTicketAreaReportes, #printableTicketAreaReportes * {
+        visibility: visible !important;
+    }
+    #printableTicketAreaReportes {
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 80mm !important;
+        margin: 0 !important;
+        padding: 5mm !important;
+        background: white !important;
+        color: black !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        font-family: 'Courier New', Courier, monospace !important;
+        font-size: 12px !important;
+        z-index: 99999 !important;
+    }
+}
+</style>
 
 <!-- MODAL DOCUMENTO DE COMPRA (COMPROBANTE RECEPCIÓN) -->
 <div id="modal-documento-compra" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); z-index: 999; align-items: center; justify-content: center; padding: 1rem;">
@@ -867,92 +892,130 @@
     function abrirDocumentoVenta(venta) {
         const modal = document.getElementById('modal-documento-venta');
         const ticketNum = String(venta.id).padStart(6, '0');
-        document.getElementById('doc-venta-titulo').innerText = `Comprobante de Venta Ticket #${ticketNum}`;
-        document.getElementById('doc-venta-fecha').innerText = `Fecha: ${venta.created_at ? new Date(venta.created_at).toLocaleString() : ''} | Estado: PAGADO`;
+        document.getElementById('doc-venta-titulo').innerText = `Ticket #${ticketNum}`;
 
-        let html = `
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
-                <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 10px; padding: 1rem;">
-                    <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">N° Ticket</div>
-                    <div style="font-weight: 800; font-family: monospace; font-size: 1.15rem; color: var(--primary); margin-top: 0.2rem;">#${ticketNum}</div>
-                </div>
-                <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 10px; padding: 1rem;">
-                    <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Método de Pago</div>
-                    <div style="font-weight: 700; font-size: 1.05rem; text-transform: uppercase; color: var(--text-main); margin-top: 0.2rem;">
-                        <i class="fa-solid fa-credit-card" style="color: var(--primary);"></i> ${(venta.metodo_pago || 'EFECTIVO').toUpperCase()}
-                    </div>
-                </div>
-                <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 10px; padding: 1rem;">
-                    <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Total Cobrado</div>
-                    <div style="font-weight: 800; font-size: 1.2rem; color: var(--primary); margin-top: 0.2rem;">$${parseFloat(venta.total || 0).toFixed(2)}</div>
-                </div>
-            </div>
+        const empresaNombre = "{{ $settings['empresa_nombre'] ?? 'IntelliCarnic' }}";
+        const empresaRuc = "{{ $settings['empresa_ruc'] ?? '000000000' }}";
+        const empresaDireccion = "{{ $settings['empresa_direccion'] ?? 'Dirección de la empresa' }}";
+        const fecha = venta.created_at ? new Date(venta.created_at).toLocaleString() : new Date().toLocaleString();
 
-            <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.85rem; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
-                <i class="fa-solid fa-list-check" style="color: var(--primary);"></i> Desglose de Productos Comercializados
-            </h4>
-            <div style="overflow-x: auto; margin-bottom: 1.5rem; border: 1px solid var(--border-color); border-radius: 10px;">
-                <table class="table-modern" style="width: 100%; margin: 0;">
-                    <thead>
-                        <tr style="background: #f8fafc;">
-                            <th style="padding: 0.85rem 1rem;">Descripción del Producto</th>
-                            <th style="padding: 0.85rem 1rem; text-align: right;">Cantidad / Peso</th>
-                            <th style="padding: 0.85rem 1rem; text-align: right;">Precio Unit. ($)</th>
-                            <th style="padding: 0.85rem 1rem; text-align: right;">Subtotal ($)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        `;
+        let itemsHtml = '';
+        let totalDescuentoCalculado = 0;
 
         if (venta.detalles && venta.detalles.length > 0) {
             venta.detalles.forEach(d => {
-                const desc = d.articulo ? d.articulo.descripcion : 'Producto General';
-                const sku = d.articulo ? d.articulo.codigo : 'N/A';
-                const cant = parseFloat(d.cantidad || 0).toFixed(2);
-                const precio = parseFloat(d.precio_unitario || 0).toFixed(2);
-                const sub = parseFloat(d.subtotal || 0).toFixed(2);
+                const desc = d.articulo ? d.articulo.descripcion : 'Producto';
+                const cant = parseFloat(d.cantidad || 0);
+                const sub = parseFloat(d.subtotal || 0);
+                const itemDesc = parseFloat(d.descuento || 0);
+                totalDescuentoCalculado += itemDesc;
 
-                html += `
+                let descText = '';
+                if (itemDesc > 0) {
+                    descText = `<div style="font-size: 11px; color: #475569; font-style: italic;">↳ Desc: -$${itemDesc.toFixed(2)}</div>`;
+                }
+
+                itemsHtml += `
                     <tr>
-                        <td style="padding: 0.85rem 1rem;">
-                            <div style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">${desc}</div>
-                            <div style="font-size: 0.8rem; color: var(--text-muted); font-family: monospace; margin-top: 2px;">SKU / Código: ${sku}</div>
+                        <td style="text-align: left; padding: 2px 0; vertical-align: top;">${cant}</td>
+                        <td style="text-align: left; padding: 2px 0;">
+                            <div>${desc}</div>
+                            ${descText}
                         </td>
-                        <td style="padding: 0.85rem 1rem; text-align: right; font-weight: 700; font-size: 0.95rem;">${cant} ${unidadPesoGlobal}</td>
-                        <td style="padding: 0.85rem 1rem; text-align: right;">$${precio}</td>
-                        <td style="padding: 0.85rem 1rem; text-align: right; font-weight: 800; color: var(--primary); font-size: 1rem;">$${sub}</td>
+                        <td style="text-align: right; padding: 2px 0; vertical-align: top;">$${sub.toFixed(2)}</td>
                     </tr>
                 `;
             });
-        } else {
-            html += `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 2rem;">Sin detalles de ítems registrados.</td></tr>`;
         }
 
-        html += `
-                    </tbody>
-                </table>
-            </div>
+        const descFinal = parseFloat(venta.descuento || 0) > 0 ? parseFloat(venta.descuento) : totalDescuentoCalculado;
+        const subtotalBruto = parseFloat(venta.subtotal || 0) + descFinal;
+        const montoRecibido = parseFloat(venta.monto_recibido || venta.total || 0);
+        const vuelto = parseFloat(venta.vuelto || 0);
 
-            <div style="background: #f8fafc; border-radius: 10px; padding: 1.25rem; border: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
-                <div style="min-width: 250px; display: flex; flex-direction: column; gap: 0.4rem;">
-                    <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
-                        <span style="color: var(--text-muted);">Subtotal:</span>
-                        <span style="font-weight: 600;">$${parseFloat(venta.subtotal || 0).toFixed(2)}</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
-                        <span style="color: var(--text-muted);">Impuestos (IVA):</span>
-                        <span style="font-weight: 600;">$${parseFloat(venta.impuestos || 0).toFixed(2)}</span>
-                    </div>
-                    <div style="border-top: 2px solid var(--border-color); margin-top: 0.4rem; padding-top: 0.4rem; display: flex; justify-content: space-between; font-size: 1.25rem; font-weight: 800; color: var(--primary);">
-                        <span>TOTAL:</span>
-                        <span>$${parseFloat(venta.total || 0).toFixed(2)}</span>
-                    </div>
-                </div>
+        let html = `
+            <div style="text-align: center; margin-bottom: 15px;">
+                <h2 style="margin: 0; font-size: 18px; font-weight: 800;">${empresaNombre}</h2>
+                <div>RUC/NIT: ${empresaRuc}</div>
+                <div>${empresaDireccion}</div>
+                <div style="margin-top: 5px; font-weight: bold;">Ticket #${ticketNum}</div>
+                <div>Fecha: ${fecha}</div>
+            </div>
+            <hr style="border-top: 1px dashed black; margin: 10px 0;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="border-bottom: 1px solid black;">
+                        <th style="text-align: left; padding: 2px 0;">CANT</th>
+                        <th style="text-align: left; padding: 2px 0;">DESCRIPCIÓN</th>
+                        <th style="text-align: right; padding: 2px 0;">IMPORTE</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${itemsHtml}
+                </tbody>
+            </table>
+            <hr style="border-top: 1px dashed black; margin: 10px 0;">
+            <div style="display: flex; justify-content: space-between;">
+                <span>SUBTOTAL:</span>
+                <span>$${subtotalBruto.toFixed(2)}</span>
+            </div>
+            ${descFinal > 0 ? `
+            <div style="display: flex; justify-content: space-between; font-weight: bold; color: #000;">
+                <span>DESCUENTO:</span>
+                <span>-$${descFinal.toFixed(2)}</span>
+            </div>` : ''}
+            <div style="display: flex; justify-content: space-between;">
+                <span>IMPUESTOS:</span>
+                <span>$${parseFloat(venta.impuestos || 0).toFixed(2)}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px; margin-top: 5px;">
+                <span>TOTAL:</span>
+                <span>$${parseFloat(venta.total || 0).toFixed(2)}</span>
+            </div>
+            <hr style="border-top: 1px dashed black; margin: 10px 0;">
+            <div style="display: flex; justify-content: space-between;">
+                <span>MÉTODO DE PAGO:</span>
+                <span style="text-transform: uppercase;">${(venta.metodo_pago || 'EFECTIVO').toUpperCase()}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span>ENTREGADO:</span>
+                <span>$${montoRecibido.toFixed(2)}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span>CAMBIO/VUELTO:</span>
+                <span>$${vuelto.toFixed(2)}</span>
+            </div>
+            <div style="text-align: center; margin-top: 18px; margin-bottom: 5px;">
+                <svg id="ticketBarcodeReporte" style="max-width: 100%;"></svg>
+            </div>
+            <div style="text-align: center; margin-top: 8px; font-size: 11px;">
+                ¡Gracias por su compra!
             </div>
         `;
 
-        document.getElementById('doc-venta-body').innerHTML = html;
+        document.getElementById('printableTicketAreaReportes').innerHTML = html;
         modal.style.display = 'flex';
+
+        setTimeout(() => {
+            try {
+                if (typeof JsBarcode === 'function') {
+                    JsBarcode("#ticketBarcodeReporte", ticketNum, {
+                        format: "CODE128",
+                        width: 1.6,
+                        height: 40,
+                        displayValue: true,
+                        fontSize: 12,
+                        margin: 4
+                    });
+                }
+            } catch (e) {
+                console.error("Error Barcode Reporte:", e);
+            }
+        }, 50);
+    }
+
+    function imprimirTicketReportes() {
+        window.print();
     }
 
     function cerrarDocumentoVenta() {

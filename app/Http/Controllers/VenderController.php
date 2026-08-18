@@ -159,4 +159,201 @@ class VenderController extends Controller
             'articulos_actualizados' => $articulosActualizados,
         ]);
     }
+
+    public function getTicket($id)
+    {
+        // Limpiar identificador (quitar ceros a la izquierda o prefijos si vienen ej. "T-00012")
+        $cleanId = preg_replace('/\D/', '', $id);
+        if (!$cleanId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Número de ticket inválido.'
+            ], 404);
+        }
+
+        $venta = \App\Models\Venta::with(['detalles.articulo', 'user'])->find($cleanId);
+
+        if (!$venta) {
+            return response()->json([
+                'success' => false,
+                'message' => "No se encontró ningún ticket con el folio #{$id}."
+            ], 404);
+        }
+
+        $items = [];
+        $totalDevolvible = 0;
+
+        foreach ($venta->detalles as $det) {
+            $cantVendida = (float) $det->cantidad;
+            $cantDevuelta = (float) $det->cantidad_devuelta;
+            $cantDisponible = max(0, round($cantVendida - $cantDevuelta, 3));
+            
+            // Precio unitario efectivo considerando descuento aplicado
+            $precioEfectivo = $cantVendida > 0 ? round((float)$det->subtotal / $cantVendida, 2) : (float)$det->precio_unitario;
+
+            $totalDevolvible += ($cantDisponible * $precioEfectivo);
+
+            $items[] = [
+                'id' => $det->id,
+                'articulo_id' => $det->articulo_id,
+                'descripcion' => $det->articulo?->descripcion ?? 'Artículo Eliminado',
+                'codigo' => $det->articulo?->codigo ?? '-',
+                'cantidad_vendida' => $cantVendida,
+                'cantidad_devuelta' => $cantDevuelta,
+                'cantidad_disponible' => $cantDisponible,
+                'precio_unitario' => (float)$det->precio_unitario,
+                'descuento' => (float)$det->descuento,
+                'subtotal' => (float)$det->subtotal,
+                'precio_efectivo' => $precioEfectivo,
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'ticket' => [
+                'id' => $venta->id,
+                'folio' => str_pad($venta->id, 6, '0', STR_PAD_LEFT),
+                'fecha' => $venta->created_at->format('d/m/Y H:i'),
+                'cajero' => $venta->user?->name ?? 'Sistema',
+                'metodo_pago' => strtoupper($venta->metodo_pago ?? 'EFECTIVO'),
+                'subtotal' => (float)$venta->subtotal,
+                'descuento' => (float)$venta->descuento,
+                'impuestos' => (float)$venta->impuestos,
+                'total' => (float)$venta->total,
+                'estado' => $venta->estado ?? 'completada',
+                'total_devolvible' => round($totalDevolvible, 2),
+                'items' => $items,
+            ]
+        ]);
+    }
+
+    public function procesarDevolucion(Request $request)
+    {
+        $data = $request->validate([
+            'venta_id' => 'required|exists:ventas,id',
+            'metodo_reembolso' => 'required|string',
+            'motivo' => 'nullable|string',
+            'reingresar_stock' => 'nullable|boolean',
+            'items' => 'required|array|min:1',
+            'items.*.venta_detalle_id' => 'required|exists:venta_detalles,id',
+            'items.*.cantidad_devolver' => 'required|numeric|min:0.001',
+        ]);
+
+        $venta = \App\Models\Venta::with('detalles.articulo')->findOrFail($data['venta_id']);
+        $reingresarStock = $data['reingresar_stock'] ?? true;
+
+        $itemsProcesados = [];
+        $totalReembolsado = 0;
+
+        foreach ($data['items'] as $itemInput) {
+            $detalle = $venta->detalles->firstWhere('id', $itemInput['venta_detalle_id']);
+            if (!$detalle) continue;
+
+            $cantDisponible = max(0, round((float)$detalle->cantidad - (float)$detalle->cantidad_devuelta, 3));
+            $cantDevolver = (float) $itemInput['cantidad_devolver'];
+
+            if ($cantDevolver <= 0 || $cantDevolver > $cantDisponible) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "La cantidad a devolver para '{$detalle->articulo?->descripcion}' excede lo disponible ({$cantDisponible})."
+                ], 422);
+            }
+
+            $precioEfectivo = (float)$detalle->cantidad > 0 ? ((float)$detalle->subtotal / (float)$detalle->cantidad) : (float)$detalle->precio_unitario;
+            $subtotalItem = round($precioEfectivo * $cantDevolver, 2);
+            $totalReembolsado += $subtotalItem;
+
+            $itemsProcesados[] = [
+                'detalle' => $detalle,
+                'cantidad' => $cantDevolver,
+                'precio_unitario' => (float)$detalle->precio_unitario,
+                'subtotal' => $subtotalItem,
+            ];
+        }
+
+        if (empty($itemsProcesados)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se seleccionó ningún artículo válido para devolver.'
+            ], 422);
+        }
+
+        $cajaActiva = \App\Models\CajaSesion::where('estado', 'abierta')->first();
+
+        // 1. Crear registro de devolución
+        $devolucion = \App\Models\Devolucion::create([
+            'venta_id' => $venta->id,
+            'user_id' => auth()->id(),
+            'caja_sesion_id' => $cajaActiva?->id,
+            'total_reembolsado' => $totalReembolsado,
+            'metodo_reembolso' => $data['metodo_reembolso'],
+            'motivo' => $data['motivo'] ?: 'Devolución de cliente',
+        ]);
+
+        $articulosActualizados = [];
+
+        // 2. Procesar detalles y reintegrar stock
+        foreach ($itemsProcesados as $proc) {
+            $det = $proc['detalle'];
+            $devolucion->detalles()->create([
+                'venta_detalle_id' => $det->id,
+                'articulo_id' => $det->articulo_id,
+                'cantidad' => $proc['cantidad'],
+                'precio_unitario' => $proc['precio_unitario'],
+                'subtotal' => $proc['subtotal'],
+                'reingresar_stock' => $reingresarStock,
+            ]);
+
+            // Actualizar cantidad_devuelta en la venta original
+            $det->cantidad_devuelta = round((float)$det->cantidad_devuelta + $proc['cantidad'], 3);
+            $det->save();
+
+            // Reingresar stock
+            if ($reingresarStock && $det->articulo) {
+                $art = $det->articulo;
+                $art->stock = round((float)$art->stock + $proc['cantidad'], 3);
+                if ($art->estado === 'sin_stock' && $art->stock > 0) {
+                    $art->estado = 'activo';
+                }
+                $art->save();
+
+                $articulosActualizados[] = [
+                    'id' => $art->id,
+                    'stock' => floatval($art->stock),
+                ];
+            }
+        }
+
+        // 3. Actualizar estado de la venta
+        $venta->refresh();
+        $totalVendida = $venta->detalles->sum('cantidad');
+        $totalDevuelta = $venta->detalles->sum('cantidad_devuelta');
+
+        if ($totalDevuelta >= $totalVendida) {
+            $venta->estado = 'devuelta';
+        } else {
+            $venta->estado = 'parcialmente_devuelta';
+        }
+        $venta->save();
+
+        // 4. Si fue reembolso en efectivo, registrar salida de caja
+        if ($data['metodo_reembolso'] === 'efectivo' && $cajaActiva) {
+            \App\Models\CajaMovimiento::create([
+                'caja_sesion_id' => $cajaActiva->id,
+                'user_id' => auth()->id(),
+                'tipo' => 'salida',
+                'monto' => $totalReembolsado,
+                'concepto' => "Reembolso Devolución Ticket #{$venta->id}" . ($data['motivo'] ? " ({$data['motivo']})" : ''),
+                'observaciones' => "Reembolso en caja por devolución #{$devolucion->id}",
+            ]);
+            $cajaActiva->recargarTotales();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Devolución procesada correctamente.',
+            'devolucion' => $devolucion->load(['detalles.articulo', 'venta', 'user']),
+            'articulos_actualizados' => $articulosActualizados,
+        ]);
+    }
 }

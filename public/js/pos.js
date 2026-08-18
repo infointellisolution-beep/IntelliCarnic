@@ -569,8 +569,13 @@ function updateCartTotalRow(index, newValue) {
 
         let item = cart[index];
         if (item.cantidad > 0) {
-            let factorDescuento = 1 - (item.descuento / 100);
-            item.precio = newTotal / (item.cantidad * factorDescuento);
+            if (item.descuento_tipo === 'fijo') {
+                item.precio = (newTotal + (item.descuento || 0)) / item.cantidad;
+            } else {
+                let pct = parseFloat(item.descuento_valor) || 0;
+                let factor = Math.max(0.01, 1 - (pct / 100));
+                item.precio = newTotal / (item.cantidad * factor);
+            }
         } else {
             item.precio = 0;
         }
@@ -710,7 +715,9 @@ function procesarCobro() {
     let impuestos = 0;
 
     cart.forEach(item => {
-        const itemTotal = item.precio * item.cantidad * (1 - item.descuento / 100);
+        const itemBruto = item.precio * item.cantidad;
+        const itemDesc = item.descuento || 0;
+        const itemTotal = Math.max(0, itemBruto - itemDesc);
         const itemSubtotal = itemTotal / (1 + (item.iva_rate / 100));
         subtotal += itemSubtotal;
         total += itemTotal;
@@ -969,13 +976,33 @@ function showTicketPreview(venta, itemsPayload, montoRecibido, vuelto) {
             <span>CAMBIO/VUELTO:</span>
             <span>$${vuelto.toFixed(2)}</span>
         </div>
-        <div style="text-align: center; margin-top: 20px;">
+        <div style="text-align: center; margin-top: 18px; margin-bottom: 5px;">
+            <svg id="ticketBarcodePos" style="max-width: 100%;"></svg>
+        </div>
+        <div style="text-align: center; margin-top: 8px; font-size: 11px;">
             ¡Gracias por su compra!
         </div>
     `;
 
     ticketArea.innerHTML = html;
     document.getElementById('ticketModal').style.display = 'flex';
+
+    setTimeout(() => {
+        try {
+            if (typeof JsBarcode === 'function') {
+                JsBarcode("#ticketBarcodePos", ticketId, {
+                    format: "CODE128",
+                    width: 1.6,
+                    height: 40,
+                    displayValue: true,
+                    fontSize: 12,
+                    margin: 4
+                });
+            }
+        } catch (e) {
+            console.error("Error Barcode Ticket:", e);
+        }
+    }, 50);
 }
 
 function closeTicketModal() {
@@ -1293,5 +1320,383 @@ function quitarDescuentoSeleccionado() {
     }
     closeDescuentoModal();
 }
+
+// === GESTIÓN DE DEVOLUCIONES ===
+
+let currentDevolucionTicket = null;
+let devolucionItemsState = [];
+
+function openDevolucionModal() {
+    const modal = document.getElementById('modalDevolucion');
+    if (!modal) return;
+
+    currentDevolucionTicket = null;
+    devolucionItemsState = [];
+
+    const input = document.getElementById('devolucionTicketInput');
+    if (input) input.value = '';
+
+    const content = document.getElementById('devolucionTicketContent');
+    if (content) content.style.display = 'none';
+
+    const loader = document.getElementById('devolucionLoader');
+    if (loader) loader.style.display = 'none';
+
+    const btnConfirm = document.getElementById('btnConfirmarDevolucion');
+    if (btnConfirm) {
+        btnConfirm.disabled = true;
+        btnConfirm.style.opacity = '0.5';
+    }
+
+    modal.style.display = 'flex';
+    setTimeout(() => {
+        if (input) input.focus();
+    }, 100);
+}
+
+function closeDevolucionModal() {
+    const modal = document.getElementById('modalDevolucion');
+    if (modal) modal.style.display = 'none';
+}
+
+async function buscarTicketDevolucion() {
+    const input = document.getElementById('devolucionTicketInput');
+    const rawVal = input ? input.value.trim() : '';
+
+    if (!rawVal) {
+        showErrorModal('Ingresa un Ticket', 'Por favor ingresa o escanea el número de ticket a consultar.');
+        return;
+    }
+
+    const loader = document.getElementById('devolucionLoader');
+    const content = document.getElementById('devolucionTicketContent');
+
+    if (loader) loader.style.display = 'block';
+    if (content) content.style.display = 'none';
+
+    try {
+        const response = await fetch(`/vender/ticket/${encodeURIComponent(rawVal)}`);
+        const data = await response.json();
+
+        if (loader) loader.style.display = 'none';
+
+        if (data.success && data.ticket) {
+            currentDevolucionTicket = data.ticket;
+            renderDevolucionTicket(data.ticket);
+            if (content) content.style.display = 'block';
+        } else {
+            showErrorModal('Ticket No Encontrado', data.message || 'No se encontró ninguna venta con ese folio.');
+        }
+    } catch (error) {
+        console.error(error);
+        if (loader) loader.style.display = 'none';
+        showErrorModal('Error de Conexión', 'Ocurrió un error al consultar el ticket.');
+    }
+}
+
+function renderDevolucionTicket(ticket) {
+    document.getElementById('devInfoFolio').textContent = `#${ticket.folio}`;
+    document.getElementById('devInfoFecha').textContent = ticket.fecha;
+    document.getElementById('devInfoCajero').textContent = ticket.cajero;
+    document.getElementById('devInfoPago').textContent = ticket.metodo_pago;
+    document.getElementById('devInfoTotal').textContent = `$${parseFloat(ticket.total).toFixed(2)}`;
+
+    const tbody = document.getElementById('devolucionItemsBody');
+    if (!tbody) return;
+
+    devolucionItemsState = ticket.items.map(item => ({
+        venta_detalle_id: item.id,
+        articulo_id: item.articulo_id,
+        descripcion: item.descripcion,
+        cantidad_vendida: item.cantidad_vendida,
+        cantidad_devuelta: item.cantidad_devuelta,
+        cantidad_disponible: item.cantidad_disponible,
+        precio_efectivo: item.precio_efectivo,
+        selected: item.cantidad_disponible > 0,
+        cantidad_a_devolver: item.cantidad_disponible > 0 ? item.cantidad_disponible : 0,
+    }));
+
+    let html = '';
+    const unit = (windowSettings && windowSettings.unidad_peso ? windowSettings.unidad_peso : 'kg').toUpperCase();
+
+    devolucionItemsState.forEach((it, idx) => {
+        const isDisponble = it.cantidad_disponible > 0;
+        const subtotalReembolso = it.cantidad_a_devolver * it.precio_efectivo;
+
+        html += `
+            <tr style="border-bottom: 1px solid var(--border-color); background: ${isDisponble ? 'white' : '#f8fafc'}; opacity: ${isDisponble ? '1' : '0.6'};">
+                <td style="text-align: center; padding: 0.5rem;">
+                    <input type="checkbox" id="devCheck_${idx}" ${it.selected ? 'checked' : ''} ${!isDisponble ? 'disabled' : ''} onchange="toggleDevolucionItem(${idx}, this.checked)" style="transform: scale(1.1); cursor: pointer;">
+                </td>
+                <td style="padding: 0.5rem 0.75rem;">
+                    <strong style="color: var(--text-main);">${it.descripcion}</strong>
+                    ${!isDisponble ? '<div style="font-size: 0.75rem; color: #dc2626; font-weight: 700;">Totalmente devuelto</div>' : ''}
+                </td>
+                <td style="text-align: center; padding: 0.5rem; color: var(--text-muted); font-weight: 600;">
+                    ${it.cantidad_vendida}
+                </td>
+                <td style="text-align: center; padding: 0.5rem; color: #dc2626; font-weight: 600;">
+                    ${it.cantidad_devuelta}
+                </td>
+                <td style="text-align: center; padding: 0.5rem;">
+                    <input type="number" step="any" min="0.001" max="${it.cantidad_disponible}" value="${it.cantidad_a_devolver}" ${!isDisponble ? 'disabled' : ''} class="input-modern" style="width: 85px; text-align: center; padding: 0.25rem; font-weight: 700; ${isDisponble ? 'background: #eff6ff;' : ''}" onchange="updateDevolucionCantidad(${idx}, this.value)" oninput="updateDevolucionCantidad(${idx}, this.value)">
+                </td>
+                <td style="text-align: right; padding: 0.5rem 0.75rem; font-weight: 600;">
+                    $${it.precio_efectivo.toFixed(2)}
+                </td>
+                <td style="text-align: right; padding: 0.5rem 0.75rem; font-weight: 800; color: #dc2626;" id="devSubtotalRow_${idx}">
+                    $${subtotalReembolso.toFixed(2)}
+                </td>
+            </tr>
+        `;
+    });
+
+    tbody.innerHTML = html;
+    recalcularTotalDevolucion();
+}
+
+function toggleDevolucionItem(idx, isChecked) {
+    if (devolucionItemsState[idx]) {
+        devolucionItemsState[idx].selected = isChecked;
+        recalcularTotalDevolucion();
+    }
+}
+
+function toggleSelectAllDevolucion(isChecked) {
+    devolucionItemsState.forEach((it, idx) => {
+        if (it.cantidad_disponible > 0) {
+            it.selected = isChecked;
+            const el = document.getElementById(`devCheck_${idx}`);
+            if (el) el.checked = isChecked;
+        }
+    });
+    recalcularTotalDevolucion();
+}
+
+function updateDevolucionCantidad(idx, val) {
+    if (!devolucionItemsState[idx]) return;
+    const it = devolucionItemsState[idx];
+    let num = parseFloat(val);
+
+    if (isNaN(num) || num <= 0) {
+        num = 0;
+    } else if (num > it.cantidad_disponible) {
+        num = it.cantidad_disponible;
+    }
+
+    it.cantidad_a_devolver = num;
+    if (num > 0 && !it.selected) {
+        it.selected = true;
+        const el = document.getElementById(`devCheck_${idx}`);
+        if (el) el.checked = true;
+    }
+
+    const rowSub = document.getElementById(`devSubtotalRow_${idx}`);
+    if (rowSub) {
+        const sub = num * it.precio_efectivo;
+        rowSub.textContent = '$' + sub.toFixed(2);
+    }
+
+    recalcularTotalDevolucion();
+}
+
+function recalcularTotalDevolucion() {
+    let total = 0;
+    let selectedCount = 0;
+
+    devolucionItemsState.forEach(it => {
+        if (it.selected && it.cantidad_a_devolver > 0) {
+            total += (it.cantidad_a_devolver * it.precio_efectivo);
+            selectedCount++;
+        }
+    });
+
+    const display = document.getElementById('devTotalReembolsoDisplay');
+    const label = document.getElementById('devItemsCountLabel');
+    const btnConfirm = document.getElementById('btnConfirmarDevolucion');
+
+    if (display) display.textContent = '$' + total.toFixed(2);
+    if (label) label.textContent = `${selectedCount} artículo(s) seleccionado(s)`;
+
+    if (btnConfirm) {
+        if (selectedCount > 0 && total > 0) {
+            btnConfirm.disabled = false;
+            btnConfirm.style.opacity = '1';
+        } else {
+            btnConfirm.disabled = true;
+            btnConfirm.style.opacity = '0.5';
+        }
+    }
+}
+
+async function ejecutarProcesarDevolucion() {
+    if (!currentDevolucionTicket) return;
+
+    const itemsToReturn = [];
+    devolucionItemsState.forEach(it => {
+        if (it.selected && it.cantidad_a_devolver > 0) {
+            itemsToReturn.push({
+                venta_detalle_id: it.venta_detalle_id,
+                cantidad_devolver: it.cantidad_a_devolver
+            });
+        }
+    });
+
+    if (itemsToReturn.length === 0) {
+        showErrorModal('Sin artículos', 'Selecciona al menos un artículo con cantidad mayor a 0 para devolver.');
+        return;
+    }
+
+    const metodoReembolso = document.getElementById('devMetodoReembolso').value;
+    const motivo = document.getElementById('devMotivo').value.trim();
+    const reingresarStock = document.getElementById('devReingresarStock').checked;
+
+    const btnConfirm = document.getElementById('btnConfirmarDevolucion');
+    if (btnConfirm) {
+        btnConfirm.disabled = true;
+        btnConfirm.innerText = 'Procesando Devolución...';
+    }
+
+    try {
+        const response = await fetch('/vender/devolucion', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+            },
+            body: JSON.stringify({
+                venta_id: currentDevolucionTicket.id,
+                metodo_reembolso: metodoReembolso,
+                motivo: motivo,
+                reingresar_stock: reingresarStock,
+                items: itemsToReturn
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // 1. Actualizar stock visual en TPV si vino en la respuesta
+            if (Array.isArray(data.articulos_actualizados)) {
+                data.articulos_actualizados.forEach(art => {
+                    if (Array.isArray(windowArticulos)) {
+                        const found = windowArticulos.find(a => a.id == art.id);
+                        if (found) found.stock = art.stock;
+                    }
+                    const el = document.getElementById(`tactil-stock-${art.id}`);
+                    if (el) {
+                        const unit = (windowSettings && windowSettings.unidad_peso ? windowSettings.unidad_peso : 'kg').toUpperCase();
+                        el.innerText = `Stock: ${art.stock} ${unit}`;
+                    }
+                });
+            }
+
+            closeDevolucionModal();
+            showDevolucionTicketPreview(data.devolucion);
+        } else {
+            showErrorModal('Error al Devolver', data.message || 'No se pudo procesar la devolución.');
+        }
+    } catch (error) {
+        console.error(error);
+        showErrorModal('Error de Conexión', 'Ocurrió un error al procesar la devolución.');
+    } finally {
+        if (btnConfirm) {
+            btnConfirm.disabled = false;
+            btnConfirm.innerHTML = '<i class="fa-solid fa-check"></i> Confirmar y Procesar Devolución';
+        }
+    }
+}
+
+function showDevolucionTicketPreview(devolucion) {
+    const ticketArea = document.getElementById('printableTicketArea');
+    if (!ticketArea) return;
+
+    const empresaNombre = windowSettings.empresa_nombre || 'IntelliCarnic';
+    const empresaRuc = windowSettings.empresa_ruc || '000000000';
+    const empresaDireccion = windowSettings.empresa_direccion || 'Dirección';
+
+    const fecha = new Date().toLocaleString();
+    const folioDev = (devolucion.id || '1').toString().padStart(6, '0');
+    const ticketOrig = (devolucion.venta_id || '').toString().padStart(6, '0');
+
+    let html = `
+        <div style="text-align: center; margin-bottom: 15px;">
+            <h2 style="margin: 0; font-size: 18px;">${empresaNombre}</h2>
+            <div>RUC/NIT: ${empresaRuc}</div>
+            <div>${empresaDireccion}</div>
+            <div style="margin-top: 5px; font-weight: bold; color: #dc2626;">COMPROBANTE DE DEVOLUCIÓN</div>
+            <div style="margin-top: 2px;">Devolución #${folioDev} | Ticket Orig: #${ticketOrig}</div>
+            <div>Fecha: ${fecha}</div>
+        </div>
+        <hr style="border-top: 1px dashed black; margin: 10px 0;">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="border-bottom: 1px solid black;">
+                    <th style="text-align: left; padding: 2px 0;">CANT</th>
+                    <th style="text-align: left; padding: 2px 0;">ARTÍCULO DEVUELTO</th>
+                    <th style="text-align: right; padding: 2px 0;">REEMBOLSO</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    if (Array.isArray(devolucion.detalles)) {
+        devolucion.detalles.forEach(d => {
+            const nom = d.articulo ? d.articulo.descripcion : 'Artículo';
+            html += `
+                <tr>
+                    <td style="text-align: left; padding: 2px 0; vertical-align: top;">${d.cantidad}</td>
+                    <td style="text-align: left; padding: 2px 0;">${nom}</td>
+                    <td style="text-align: right; padding: 2px 0; vertical-align: top;">-$${parseFloat(d.subtotal).toFixed(2)}</td>
+                </tr>
+            `;
+        });
+    }
+
+    html += `
+            </tbody>
+        </table>
+        <hr style="border-top: 1px dashed black; margin: 10px 0;">
+        <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 15px; color: #dc2626;">
+            <span>TOTAL REEMBOLSADO:</span>
+            <span>-$${parseFloat(devolucion.total_reembolsado).toFixed(2)}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-top: 4px;">
+            <span>MÉTODO REEMBOLSO:</span>
+            <span style="text-transform: uppercase;">${devolucion.metodo_reembolso}</span>
+        </div>
+        ${devolucion.motivo ? `
+        <div style="margin-top: 6px; font-size: 11px; color: #475569;">
+            <strong>Motivo:</strong> ${devolucion.motivo}
+        </div>` : ''}
+        <div style="text-align: center; margin-top: 18px; margin-bottom: 5px;">
+            <svg id="ticketBarcodeDevolucion" style="max-width: 100%;"></svg>
+        </div>
+        <div style="text-align: center; margin-top: 8px; font-size: 11px;">
+            Devolución realizada conforme por el cliente
+        </div>
+    `;
+
+    ticketArea.innerHTML = html;
+    document.getElementById('ticketModal').style.display = 'flex';
+
+    setTimeout(() => {
+        try {
+            if (typeof JsBarcode === 'function') {
+                JsBarcode("#ticketBarcodeDevolucion", folioDev, {
+                    format: "CODE128",
+                    width: 1.6,
+                    height: 40,
+                    displayValue: true,
+                    fontSize: 12,
+                    margin: 4
+                });
+            }
+        } catch (e) {
+            console.error("Error Barcode Devolución:", e);
+        }
+    }, 50);
+}
+
 
 

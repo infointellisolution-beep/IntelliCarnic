@@ -121,6 +121,17 @@
                 </div>
             </div>
 
+            <!-- Devoluciones Realizadas -->
+            <div style="background: var(--surface-bg); border: 1px solid var(--border-color); padding: 1rem; border-radius: var(--radius-md);">
+                <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Devoluciones</div>
+                <div style="font-size: 1.4rem; font-weight: 700; color: #dc2626; margin-top: 0.25rem;">
+                    -${{ number_format($cajaActiva->total_devoluciones ?? $cajaActiva->devoluciones()->sum('total_reembolsado'), 2) }}
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">
+                    {{ $cajaActiva->devoluciones()->count() }} devolución(es)
+                </div>
+            </div>
+
             <!-- SALDO ESPERADO EN CAJA (DESTACADO) -->
             <div style="background: linear-gradient(135deg, var(--accent) 0%, #2563eb 100%); color: white; padding: 1rem; border-radius: var(--radius-md); box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);">
                 <div style="font-size: 0.8rem; opacity: 0.9; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Efectivo Esperado en Caja</div>
@@ -163,6 +174,8 @@
                             <td style="padding: 0.75rem 1rem;">
                                 @if($mov->tipo === 'entrada')
                                     <span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6;">Entrada</span>
+                                @elseif(str_contains(strtolower($mov->concepto), 'devoluci'))
+                                    <span class="badge" style="background: rgba(220, 38, 38, 0.15); color: #dc2626;"><i class="fa-solid fa-rotate-left"></i> Devolución</span>
                                 @else
                                     <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">Salida</span>
                                 @endif

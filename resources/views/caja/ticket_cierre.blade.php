@@ -101,6 +101,11 @@
         <div class="flex" style="color: #444; margin-top: 4px;"><span>(-) Descuentos Otorgados:</span> <span>-${{ number_format($totDesc, 2) }}</span></div>
     @endif
 
+    @php($totDev = (float)($cajaSesion->total_devoluciones ?? $cajaSesion->devoluciones()->sum('total_reembolsado')))
+    @if($totDev > 0)
+        <div class="flex" style="color: #dc2626; margin-top: 4px;"><span>(-) Devoluciones Realizadas:</span> <span>-${{ number_format($totDev, 2) }}</span></div>
+    @endif
+
     @if($cajaSesion->observaciones)
         <div class="divider"></div>
         <div class="bold">OBSERVACIONES:</div>

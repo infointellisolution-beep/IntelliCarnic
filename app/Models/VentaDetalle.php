@@ -17,4 +17,9 @@ class VentaDetalle extends Model
     {
         return $this->belongsTo(Venta::class);
     }
+
+    public function devolucionDetalles()
+    {
+        return $this->hasMany(DevolucionDetalle::class);
+    }
 }

@@ -205,4 +205,141 @@
     </div>
 </div>
 
+<!-- Modal de Devoluciones -->
+<div id="modalDevolucion" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(3px); z-index: 105; align-items: center; justify-content: center; padding: 1rem;">
+    <div style="background: white; border-radius: 14px; width: 720px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); border: 1px solid var(--border-color); overflow: hidden;">
+        <!-- Header -->
+        <div style="padding: 1.1rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+            <div style="font-weight: 800; font-size: 1.15rem; color: #dc2626; display: flex; align-items: center; gap: 0.6rem;">
+                <i class="fa-solid fa-rotate-left"></i> Devolución de Venta / Ticket
+            </div>
+            <button type="button" onclick="closeDevolucionModal()" style="background: none; border: none; font-size: 1.3rem; color: var(--text-muted); cursor: pointer;">&times;</button>
+        </div>
+
+        <!-- Body Scrollable -->
+        <div style="padding: 1.25rem 1.5rem; overflow-y: auto; flex: 1;">
+            <!-- Buscador de Ticket -->
+            <div style="margin-bottom: 1.25rem;">
+                <label style="font-size: 0.85rem; font-weight: 700; color: #475569; margin-bottom: 0.4rem; display: block;">
+                    Número de Ticket / Código de Factura
+                </label>
+                <div style="display: flex; gap: 0.5rem;">
+                    <div style="position: relative; flex: 1;">
+                        <input type="text" id="devolucionTicketInput" class="input-modern" placeholder="Ej: 12 o escanee el código del ticket..." style="font-size: 1.05rem; font-weight: 600;" onkeydown="if(event.key==='Enter'){event.preventDefault();buscarTicketDevolucion();}">
+                    </div>
+                    <button type="button" class="btn-modern btn-primary" onclick="buscarTicketDevolucion()" style="width: auto; padding: 0 1.25rem; background: #dc2626; border-color: #dc2626; display: inline-flex; align-items: center; gap: 0.5rem;">
+                        <i class="fa-solid fa-magnifying-glass"></i> Buscar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loader / Mensaje de Estado -->
+            <div id="devolucionLoader" style="display: none; text-align: center; padding: 2rem 0;">
+                <i class="fa-solid fa-spinner fa-spin" style="font-size: 2rem; color: #dc2626;"></i>
+                <div style="margin-top: 0.5rem; font-weight: 600; color: var(--text-muted);">Consultando ticket...</div>
+            </div>
+
+            <!-- Información del Ticket Encontrado -->
+            <div id="devolucionTicketContent" style="display: none;">
+                <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 10px; padding: 0.85rem 1rem; margin-bottom: 1.25rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
+                    <div>
+                        <span style="color: var(--text-muted); display: block; font-size: 0.75rem; text-transform: uppercase;">Ticket</span>
+                        <strong id="devInfoFolio" style="font-size: 1rem; color: var(--text-main);">#000000</strong>
+                    </div>
+                    <div>
+                        <span style="color: var(--text-muted); display: block; font-size: 0.75rem; text-transform: uppercase;">Fecha</span>
+                        <strong id="devInfoFecha" style="color: var(--text-main);">-</strong>
+                    </div>
+                    <div>
+                        <span style="color: var(--text-muted); display: block; font-size: 0.75rem; text-transform: uppercase;">Cajero</span>
+                        <strong id="devInfoCajero" style="color: var(--text-main);">-</strong>
+                    </div>
+                    <div>
+                        <span style="color: var(--text-muted); display: block; font-size: 0.75rem; text-transform: uppercase;">Pago Orig.</span>
+                        <strong id="devInfoPago" style="color: var(--text-main);">-</strong>
+                    </div>
+                    <div>
+                        <span style="color: var(--text-muted); display: block; font-size: 0.75rem; text-transform: uppercase;">Total Venta</span>
+                        <strong id="devInfoTotal" style="color: var(--primary); font-size: 1rem;">$0.00</strong>
+                    </div>
+                </div>
+
+                <div style="font-size: 0.85rem; font-weight: 700; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase;">
+                    Selecciona los artículos y cantidad a devolver:
+                </div>
+
+                <!-- Tabla de Artículos -->
+                <div style="border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; margin-bottom: 1.25rem;">
+                    <table class="modern-table" style="margin: 0; width: 100%; font-size: 0.85rem; border-collapse: collapse;">
+                        <thead style="background: #f1f5f9;">
+                            <tr>
+                                <th style="width: 35px; text-align: center; padding: 0.5rem;">
+                                    <input type="checkbox" id="devSelectAllCheck" onchange="toggleSelectAllDevolucion(this.checked)" style="transform: scale(1.1); cursor: pointer;">
+                                </th>
+                                <th style="padding: 0.5rem 0.75rem;">Artículo</th>
+                                <th style="text-align: center; padding: 0.5rem; width: 70px;">Vendido</th>
+                                <th style="text-align: center; padding: 0.5rem; width: 70px;">Devuelto</th>
+                                <th style="text-align: center; padding: 0.5rem; width: 100px;">A Devolver</th>
+                                <th style="text-align: right; padding: 0.5rem 0.75rem; width: 85px;">Precio</th>
+                                <th style="text-align: right; padding: 0.5rem 0.75rem; width: 95px;">Reembolso</th>
+                            </tr>
+                        </thead>
+                        <tbody id="devolucionItemsBody">
+                            <!-- Filas dinámicas -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Opciones de Devolución -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div>
+                        <label style="font-size: 0.8rem; font-weight: 700; color: #475569; display: block; margin-bottom: 0.35rem;">
+                            Método de Reembolso:
+                        </label>
+                        <select id="devMetodoReembolso" class="input-modern" style="padding: 0.45rem 0.75rem; font-weight: 600;">
+                            <option value="efectivo">Efectivo (Salida de Caja)</option>
+                            <option value="tarjeta">Tarjeta / Reversión</option>
+                            <option value="transferencia">Transferencia</option>
+                            <option value="vale">Vale / Saldo a Favor</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.8rem; font-weight: 700; color: #475569; display: block; margin-bottom: 0.35rem;">
+                            Motivo de Devolución:
+                        </label>
+                        <input type="text" id="devMotivo" class="input-modern" placeholder="Ej: Producto en mal estado / Cambio..." style="padding: 0.45rem 0.75rem;">
+                    </div>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.25rem;">
+                    <input type="checkbox" id="devReingresarStock" checked style="transform: scale(1.15); cursor: pointer;">
+                    <label for="devReingresarStock" style="font-size: 0.85rem; font-weight: 600; color: var(--text-main); cursor: pointer; margin: 0;">
+                        Reingresar los artículos devueltos al stock / inventario
+                    </label>
+                </div>
+
+                <!-- Total Reembolso Box -->
+                <div style="background: #fef2f2; border: 1.5px solid #fecaca; border-radius: 10px; padding: 0.85rem 1.25rem; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span style="font-size: 0.8rem; font-weight: 700; color: #991b1b; text-transform: uppercase; display: block;">Total a Reembolsar al Cliente:</span>
+                        <span id="devItemsCountLabel" style="font-size: 0.75rem; color: #b91c1c;">0 artículo(s) seleccionado(s)</span>
+                    </div>
+                    <div id="devTotalReembolsoDisplay" style="font-size: 1.75rem; font-weight: 800; color: #dc2626;">
+                        $0.00
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="padding: 0.85rem 1.5rem; border-top: 1px solid var(--border-color); background: #f8fafc; display: flex; justify-content: flex-end; gap: 0.75rem;">
+            <button type="button" class="btn-modern btn-secondary" style="width: auto; padding: 0.5rem 1.25rem;" onclick="closeDevolucionModal()">Cerrar</button>
+            <button type="button" id="btnConfirmarDevolucion" class="btn-modern btn-primary" style="width: auto; padding: 0.5rem 1.5rem; background: #dc2626; border-color: #dc2626; opacity: 0.5;" onclick="ejecutarProcesarDevolucion()" disabled>
+                <i class="fa-solid fa-check"></i> Confirmar y Procesar Devolución
+            </button>
+        </div>
+    </div>
+</div>
+
+
 

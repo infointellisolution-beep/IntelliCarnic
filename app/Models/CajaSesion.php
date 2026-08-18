@@ -22,6 +22,7 @@ class CajaSesion extends Model
         'total_entradas',
         'total_salidas',
         'total_descuentos',
+        'total_devoluciones',
         'saldo_esperado',
         'saldo_real',
         'diferencia',
@@ -39,6 +40,7 @@ class CajaSesion extends Model
         'total_entradas' => 'decimal:2',
         'total_salidas' => 'decimal:2',
         'total_descuentos' => 'decimal:2',
+        'total_devoluciones' => 'decimal:2',
         'saldo_esperado' => 'decimal:2',
         'saldo_real' => 'decimal:2',
         'diferencia' => 'decimal:2',
@@ -61,6 +63,11 @@ class CajaSesion extends Model
         return $this->hasMany(Venta::class, 'caja_sesion_id');
     }
 
+    public function devoluciones(): HasMany
+    {
+        return $this->hasMany(Devolucion::class, 'caja_sesion_id');
+    }
+
     /**
      * Calcula el saldo esperado en efectivo en tiempo real
      */
@@ -81,6 +88,7 @@ class CajaSesion extends Model
         $entradas = (float) $this->movimientos()->where('tipo', 'entrada')->sum('monto');
         $salidas = (float) $this->movimientos()->where('tipo', 'salida')->sum('monto');
         $descuentos = (float) $this->ventas()->sum('descuento');
+        $devoluciones = (float) Devolucion::where('caja_sesion_id', $this->id)->sum('total_reembolsado');
 
         $this->total_ventas_efectivo = $efectivo;
         $this->total_ventas_tarjeta = $tarjeta;
@@ -88,6 +96,7 @@ class CajaSesion extends Model
         $this->total_entradas = $entradas;
         $this->total_salidas = $salidas;
         $this->total_descuentos = $descuentos;
+        $this->total_devoluciones = $devoluciones;
         $this->saldo_esperado = $this->monto_inicial + $efectivo + $entradas - $salidas;
         $this->save();
     }

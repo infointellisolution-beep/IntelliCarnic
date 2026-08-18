@@ -34,6 +34,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/vender/normal', [\App\Http\Controllers\VenderController::class, 'normal'])->name('vender.normal');
     Route::get('/vender/tactil', [\App\Http\Controllers\VenderController::class, 'tactil'])->name('vender.tactil');
     Route::post('/vender/cobrar', [\App\Http\Controllers\VenderController::class, 'cobrar'])->name('vender.cobrar');
+    Route::get('/vender/ticket/{id}', [\App\Http\Controllers\VenderController::class, 'getTicket'])->name('vender.ticket.get');
+    Route::post('/vender/devolucion', [\App\Http\Controllers\VenderController::class, 'procesarDevolucion'])->name('vender.devolucion.store');
 
     // Compras (Acceso directo a registro)
     Route::get('/compras', [CompraController::class, 'create'])->name('compras.index');

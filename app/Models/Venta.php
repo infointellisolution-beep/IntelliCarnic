@@ -13,8 +13,18 @@ class Venta extends Model
         return $this->hasMany(VentaDetalle::class);
     }
 
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function cajaSesion()
     {
         return $this->belongsTo(CajaSesion::class, 'caja_sesion_id');
+    }
+
+    public function devoluciones()
+    {
+        return $this->hasMany(Devolucion::class);
     }
 }
