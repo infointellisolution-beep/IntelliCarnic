@@ -110,6 +110,17 @@
                 <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">(No afecta efectivo físico)</div>
             </div>
 
+            <!-- Descuentos Aplicados -->
+            <div style="background: var(--surface-bg); border: 1px solid var(--border-color); padding: 1rem; border-radius: var(--radius-md);">
+                <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Descuentos Aplicados</div>
+                <div style="font-size: 1.4rem; font-weight: 700; color: #d97706; margin-top: 0.25rem;">
+                    -${{ number_format($cajaActiva->total_descuentos ?? $cajaActiva->ventas()->sum('descuento'), 2) }}
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">
+                    {{ $cajaActiva->ventas()->where('descuento', '>', 0)->count() }} venta(s) con descuento
+                </div>
+            </div>
+
             <!-- SALDO ESPERADO EN CAJA (DESTACADO) -->
             <div style="background: linear-gradient(135deg, var(--accent) 0%, #2563eb 100%); color: white; padding: 1rem; border-radius: var(--radius-md); box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);">
                 <div style="font-size: 0.8rem; opacity: 0.9; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Efectivo Esperado en Caja</div>

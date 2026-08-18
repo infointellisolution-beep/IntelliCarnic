@@ -30,6 +30,7 @@ class VenderController extends Controller
         $data = $request->validate([
             'total' => 'required|numeric',
             'subtotal' => 'required|numeric',
+            'descuento' => 'nullable|numeric',
             'impuestos' => 'required|numeric',
             'metodo_pago' => 'nullable|string',
             'monto_recibido' => 'nullable|numeric',
@@ -39,6 +40,7 @@ class VenderController extends Controller
             'items.*.codigo_escaneado' => 'nullable|string',
             'items.*.cantidad' => 'required|numeric',
             'items.*.precio' => 'required|numeric',
+            'items.*.descuento' => 'nullable|numeric',
             'items.*.subtotal' => 'required|numeric',
         ]);
 
@@ -46,6 +48,7 @@ class VenderController extends Controller
 
         $venta = \App\Models\Venta::create([
             'subtotal' => $data['subtotal'],
+            'descuento' => $data['descuento'] ?? 0,
             'impuestos' => $data['impuestos'],
             'total' => $data['total'],
             'metodo_pago' => $data['metodo_pago'] ?? 'efectivo',
@@ -55,15 +58,12 @@ class VenderController extends Controller
             'caja_sesion_id' => $cajaActiva?->id,
         ]);
 
-        if ($cajaActiva) {
-            $cajaActiva->recargarTotales();
-        }
-
         foreach ($data['items'] as $item) {
             $venta->detalles()->create([
                 'articulo_id' => $item['articulo_id'],
                 'cantidad' => $item['cantidad'],
                 'precio_unitario' => $item['precio'],
+                'descuento' => $item['descuento'] ?? 0,
                 'subtotal' => $item['subtotal'],
             ]);
 
@@ -136,6 +136,10 @@ class VenderController extends Controller
                     }
                 }
             }
+        }
+
+        if ($cajaActiva) {
+            $cajaActiva->recargarTotales();
         }
 
         $articulosActualizados = [];

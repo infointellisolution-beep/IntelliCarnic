@@ -96,6 +96,11 @@
     <div class="flex"><span>Ventas Transferencia:</span> <span>${{ number_format($cajaSesion->total_ventas_transferencia, 2) }}</span></div>
     <div class="flex bold"><span>TOTAL GENERAL VENTAS:</span> <span>${{ number_format($cajaSesion->total_ventas_efectivo + $cajaSesion->total_ventas_tarjeta + $cajaSesion->total_ventas_transferencia, 2) }}</span></div>
 
+    @php($totDesc = (float)($cajaSesion->total_descuentos ?? $cajaSesion->ventas()->sum('descuento')))
+    @if($totDesc > 0)
+        <div class="flex" style="color: #444; margin-top: 4px;"><span>(-) Descuentos Otorgados:</span> <span>-${{ number_format($totDesc, 2) }}</span></div>
+    @endif
+
     @if($cajaSesion->observaciones)
         <div class="divider"></div>
         <div class="bold">OBSERVACIONES:</div>

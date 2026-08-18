@@ -2,7 +2,16 @@
 
 @section('title', 'Venta Normal')
 
-
+@section('header-actions')
+<div style="display: flex; gap: 0.75rem; align-items: center; padding: 0 1rem; margin-right: auto;">
+    <button type="button" class="btn-modern btn-secondary" onclick="openPreciosEspecialesModal()" style="display: inline-flex; align-items: center; gap: 0.5rem; width: auto; padding: 0.45rem 1.1rem; font-size: 0.9rem; font-weight: 700; color: var(--primary); border: 1.5px solid var(--primary); background: rgba(37,99,235,0.06); cursor: pointer; border-radius: 8px;">
+        <i class="fa-solid fa-tags"></i> Precios Especiales
+    </button>
+    <button type="button" class="btn-modern btn-secondary" onclick="openDescuentoModal()" style="display: inline-flex; align-items: center; gap: 0.5rem; width: auto; padding: 0.45rem 1.1rem; font-size: 0.9rem; font-weight: 700; color: #d97706; border: 1.5px solid #d97706; background: rgba(217, 119, 6, 0.06); cursor: pointer; border-radius: 8px;">
+        <i class="fa-solid fa-percent"></i> Descuento
+    </button>
+</div>
+@endsection
 
 @section('content')
 <div class="venta-normal-layout" style="height: calc(100vh - 64px - 4rem);">

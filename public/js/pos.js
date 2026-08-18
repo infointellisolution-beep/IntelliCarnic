@@ -471,6 +471,8 @@ function addToCart(articulo, quantity = 1, rawBarcode = '') {
             precio: parseFloat(effective.pvp),
             iva_rate: effective.iva,
             cantidad: quantity,
+            descuento_tipo: 'porcentaje',
+            descuento_valor: 0,
             descuento: 0,
             codigo_escaneado: rawBarcode || '',
             articulo: articulo
@@ -584,7 +586,18 @@ function renderCart() {
     
     // Calcular totales primero
     cart.forEach((item) => {
-        totalSuma += item.precio * item.cantidad * (1 - item.descuento / 100);
+        const subtotalBruto = item.precio * item.cantidad;
+        let descuentoMonto = 0;
+        if (item.descuento_tipo === 'fijo') {
+            descuentoMonto = Math.min(subtotalBruto, parseFloat(item.descuento_valor) || 0);
+        } else {
+            const pct = parseFloat(item.descuento_valor) || 0;
+            descuentoMonto = subtotalBruto * (pct / 100);
+        }
+        item.descuento = descuentoMonto;
+        const totalFila = Math.max(0, subtotalBruto - descuentoMonto);
+
+        totalSuma += totalFila;
         totalCantidades += item.cantidad;
     });
 
@@ -592,10 +605,16 @@ function renderCart() {
     if (tbodyNormal) {
         let html = '';
         cart.forEach((item, index) => {
-            const totalFila = item.precio * item.cantidad * (1 - item.descuento / 100);
+            const subtotalBruto = item.precio * item.cantidad;
+            const totalFila = Math.max(0, subtotalBruto - (item.descuento || 0));
             const isSelected = index === currentSelectedIndex;
             const bgClass = isSelected ? 'background: #eff6ff; border-bottom: 1px solid #bfdbfe;' : 'border-bottom: 1px solid var(--border-color);';
             
+            let descText = '0.00';
+            if (item.descuento > 0) {
+                descText = item.descuento_tipo === 'fijo' ? `-$${item.descuento.toFixed(2)}` : `${item.descuento_valor}%`;
+            }
+
             html += `
                 <tr style="${bgClass} cursor: pointer; transition: background 0.2s;" onclick="selectRow(${index})">
                     <td style="padding: 0.75rem;">${item.codigo || '-'}</td>
@@ -606,7 +625,7 @@ function renderCart() {
                     <td style="padding: 0.75rem; text-align: right;">
                         <input type="number" step="any" min="0" value="${item.precio.toFixed(2)}" class="input-modern" style="width: 80px; text-align: right; padding: 0.25rem; font-weight: 600; background: ${isSelected ? '#bfdbfe' : '#f8fafc'};" onclick="event.stopPropagation()" onchange="updateCartPrice(${index}, this.value)">
                     </td>
-                    <td style="padding: 0.75rem; text-align: right;">${item.descuento.toFixed(2)}</td>
+                    <td style="padding: 0.75rem; text-align: right; font-weight: 700; color: ${item.descuento > 0 ? '#d97706' : 'inherit'};">${descText}</td>
                     <td style="padding: 0.75rem; text-align: right;">${item.iva_rate}%</td>
                     <td style="padding: 0.25rem 0.75rem; text-align: right;">
                         <input type="number" step="any" min="0" value="${totalFila.toFixed(2)}" class="input-modern" style="width: 90px; text-align: right; padding: 0.25rem; font-weight: 700; color: var(--primary); background: ${isSelected ? '#bfdbfe' : '#f8fafc'};" onclick="event.stopPropagation()" onchange="updateCartTotalRow(${index}, this.value)">
@@ -624,16 +643,28 @@ function renderCart() {
     if (tbodyTactil) {
         let html = '';
         cart.forEach((item, index) => {
-            const totalFila = item.precio * item.cantidad * (1 - item.descuento / 100);
+            const subtotalBruto = item.precio * item.cantidad;
+            const totalFila = Math.max(0, subtotalBruto - (item.descuento || 0));
             const isSelected = index === currentSelectedIndex;
             const bgClass = isSelected ? 'background: #eff6ff; border-bottom: 1px solid #bfdbfe;' : 'border-bottom: 1px solid var(--border-color);';
             
+            let descBadge = '';
+            if (item.descuento > 0) {
+                let descLabel = item.descuento_tipo === 'fijo' 
+                    ? `-$${item.descuento.toFixed(2)}` 
+                    : `-${item.descuento_valor}% (-$${item.descuento.toFixed(2)})`;
+                descBadge = `<div style="font-size: 0.75rem; color: #d97706; font-weight: 700; display: flex; align-items: center; gap: 0.25rem; margin-top: 0.2rem;"><i class="fa-solid fa-tag"></i> Desc: ${descLabel}</div>`;
+            }
+
             html += `
                 <tr style="${bgClass} cursor: pointer; transition: background 0.2s;" onclick="selectRow(${index})">
                     <td style="padding: 0.25rem 0.75rem; text-align: center;">
                         <input type="number" step="any" min="0" value="${item.cantidad}" class="input-modern" style="width: 80px; text-align: center; padding: 0.25rem; font-weight: 600; background: ${isSelected ? '#bfdbfe' : '#f8fafc'};" onclick="event.stopPropagation()" onchange="updateCartQuantity(${index}, this.value)">
                     </td>
-                    <td style="padding: 0.75rem;">${item.descripcion}</td>
+                    <td style="padding: 0.75rem;">
+                        <div style="font-weight: 600;">${item.descripcion}</div>
+                        ${descBadge}
+                    </td>
                     <td style="padding: 0.25rem 0.75rem; text-align: right;">
                         <input type="number" step="any" min="0" value="${item.precio.toFixed(2)}" class="input-modern" style="width: 80px; text-align: right; padding: 0.25rem; font-weight: 600; background: ${isSelected ? '#bfdbfe' : '#f8fafc'};" onclick="event.stopPropagation()" onchange="updateCartPrice(${index}, this.value)">
                     </td>
@@ -758,14 +789,18 @@ async function confirmCheckout() {
 
     let subtotal = 0;
     let total = 0;
+    let totalDescuento = 0;
     let impuestos = 0;
 
     const items = cart.map(item => {
-        const itemTotal = item.precio * item.cantidad * (1 - item.descuento / 100);
+        const itemBruto = item.precio * item.cantidad;
+        const itemDesc = item.descuento || 0;
+        const itemTotal = Math.max(0, itemBruto - itemDesc);
         const itemSubtotal = itemTotal / (1 + (item.iva_rate / 100));
         
         subtotal += itemSubtotal;
         total += itemTotal;
+        totalDescuento += itemDesc;
         impuestos += (itemTotal - itemSubtotal);
 
         return {
@@ -773,6 +808,7 @@ async function confirmCheckout() {
             codigo_escaneado: item.codigo_escaneado || '',
             cantidad: item.cantidad,
             precio: item.precio,
+            descuento: itemDesc,
             subtotal: itemTotal
         };
     });
@@ -792,6 +828,7 @@ async function confirmCheckout() {
             body: JSON.stringify({
                 total: total.toFixed(2),
                 subtotal: subtotal.toFixed(2),
+                descuento: totalDescuento.toFixed(2),
                 impuestos: impuestos.toFixed(2),
                 metodo_pago: metodoPago,
                 monto_recibido: montoRecibido.toFixed(2),
@@ -839,7 +876,7 @@ async function confirmCheckout() {
 function showTicketPreview(venta, itemsPayload, montoRecibido, vuelto) {
     const ticketArea = document.getElementById('printableTicketArea');
     
-    // Configuración empresa (puedes inyectar esto desde settings si lo tienes)
+    // Configuración empresa
     const empresaNombre = windowSettings.empresa_nombre || 'IntelliCarnic';
     const empresaRuc = windowSettings.empresa_ruc || '000000000';
     const empresaDireccion = windowSettings.empresa_direccion || 'Dirección de la empresa';
@@ -868,16 +905,35 @@ function showTicketPreview(venta, itemsPayload, montoRecibido, vuelto) {
             <tbody>
     `;
 
+    let totalDescuentoVenta = 0;
     cart.forEach(item => {
-        const importe = item.precio * item.cantidad * (1 - item.descuento / 100);
+        const itemBruto = item.precio * item.cantidad;
+        const itemDesc = item.descuento || 0;
+        totalDescuentoVenta += itemDesc;
+        const importe = Math.max(0, itemBruto - itemDesc);
+
+        let descText = '';
+        if (itemDesc > 0) {
+            let label = item.descuento_tipo === 'fijo' 
+                ? `-$${itemDesc.toFixed(2)}` 
+                : `-${item.descuento_valor}% (-$${itemDesc.toFixed(2)})`;
+            descText = `<div style="font-size: 11px; color: #475569; font-style: italic;">↳ Desc: ${label}</div>`;
+        }
+
         html += `
             <tr>
                 <td style="text-align: left; padding: 2px 0; vertical-align: top;">${item.cantidad}</td>
-                <td style="text-align: left; padding: 2px 0;">${item.descripcion}</td>
+                <td style="text-align: left; padding: 2px 0;">
+                    <div>${item.descripcion}</div>
+                    ${descText}
+                </td>
                 <td style="text-align: right; padding: 2px 0; vertical-align: top;">$${importe.toFixed(2)}</td>
             </tr>
         `;
     });
+
+    const descFinal = parseFloat(venta.descuento) || totalDescuentoVenta;
+    const subtotalBruto = parseFloat(venta.subtotal) + descFinal;
 
     html += `
             </tbody>
@@ -885,8 +941,13 @@ function showTicketPreview(venta, itemsPayload, montoRecibido, vuelto) {
         <hr style="border-top: 1px dashed black; margin: 10px 0;">
         <div style="display: flex; justify-content: space-between;">
             <span>SUBTOTAL:</span>
-            <span>$${parseFloat(venta.subtotal).toFixed(2)}</span>
+            <span>$${subtotalBruto.toFixed(2)}</span>
         </div>
+        ${descFinal > 0 ? `
+        <div style="display: flex; justify-content: space-between; font-weight: bold; color: #000;">
+            <span>DESCUENTO:</span>
+            <span>-$${descFinal.toFixed(2)}</span>
+        </div>` : ''}
         <div style="display: flex; justify-content: space-between;">
             <span>IMPUESTOS:</span>
             <span>$${parseFloat(venta.impuestos).toFixed(2)}</span>
@@ -1093,4 +1154,144 @@ function applySpecialPrice(price) {
     }
     closePreciosEspecialesModal();
 }
+
+// === DESCUENTOS (PORCENTAJE / FIJO) ===
+
+let currentTipoDescuento = 'porcentaje'; // 'porcentaje' o 'fijo'
+
+function openDescuentoModal() {
+    if (!cart || cart.length === 0) {
+        showErrorModal('Sin productos en el ticket', 'Agrega primero un producto al ticket para poder aplicarle un descuento.');
+        return;
+    }
+
+    if (currentSelectedIndex === -1 && cart.length === 1) {
+        currentSelectedIndex = 0;
+        renderCart();
+    }
+
+    if (currentSelectedIndex === -1 || !cart[currentSelectedIndex]) {
+        showErrorModal('Selecciona un producto', 'Haz clic en una fila del ticket para seleccionar el producto al que deseas aplicar el descuento.');
+        return;
+    }
+
+    const item = cart[currentSelectedIndex];
+    const modal = document.getElementById('modalDescuento');
+    if (!modal) return;
+
+    const subtotalBruto = item.precio * item.cantidad;
+    document.getElementById('descModalArticuloNombre').textContent = item.descripcion;
+    document.getElementById('descModalArticuloInfo').textContent = `Cantidad: ${item.cantidad} | Precio U: $${item.precio.toFixed(2)} | Subtotal: $${subtotalBruto.toFixed(2)}`;
+
+    // Cargar tipo y valor previo si existía
+    currentTipoDescuento = item.descuento_tipo || 'porcentaje';
+    setTipoDescuento(currentTipoDescuento);
+
+    let val = item.descuento_valor !== undefined && item.descuento_valor > 0 ? item.descuento_valor : (item.descuento > 0 ? item.descuento : '');
+    document.getElementById('inputValorDescuento').value = val || '';
+
+    updateDescuentoPreview();
+    modal.style.display = 'flex';
+    setTimeout(() => {
+        const inp = document.getElementById('inputValorDescuento');
+        if (inp) { inp.focus(); inp.select(); }
+    }, 100);
+}
+
+function closeDescuentoModal() {
+    const modal = document.getElementById('modalDescuento');
+    if (modal) modal.style.display = 'none';
+}
+
+function setTipoDescuento(tipo) {
+    currentTipoDescuento = tipo;
+    const btnPct = document.getElementById('btnTipoDescPorcentaje');
+    const btnFijo = document.getElementById('btnTipoDescFijo');
+    const lbl = document.getElementById('lblValorDescuento');
+    const addon = document.getElementById('addonSimboloDescuento');
+    const presets = document.getElementById('presetsDescuentoPorcentaje');
+
+    if (tipo === 'porcentaje') {
+        if (btnPct) { btnPct.style.background = '#d97706'; btnPct.style.borderColor = '#d97706'; btnPct.style.color = 'white'; }
+        if (btnFijo) { btnFijo.style.background = 'white'; btnFijo.style.borderColor = 'var(--border-color)'; btnFijo.style.color = 'var(--text-main)'; }
+        if (lbl) lbl.textContent = 'Porcentaje de Descuento (%)';
+        if (addon) addon.textContent = '%';
+        if (presets) presets.style.display = 'flex';
+    } else {
+        if (btnFijo) { btnFijo.style.background = '#d97706'; btnFijo.style.borderColor = '#d97706'; btnFijo.style.color = 'white'; }
+        if (btnPct) { btnPct.style.background = 'white'; btnPct.style.borderColor = 'var(--border-color)'; btnPct.style.color = 'var(--text-main)'; }
+        if (lbl) lbl.textContent = 'Monto Fijo de Descuento ($)';
+        if (addon) addon.textContent = '$';
+        if (presets) presets.style.display = 'none';
+    }
+    updateDescuentoPreview();
+}
+
+function setPresetDescuento(pct) {
+    document.getElementById('inputValorDescuento').value = pct;
+    updateDescuentoPreview();
+}
+
+function updateDescuentoPreview() {
+    if (currentSelectedIndex === -1 || !cart[currentSelectedIndex]) return;
+    const item = cart[currentSelectedIndex];
+    const subtotalBruto = item.precio * item.cantidad;
+    const inputVal = parseFloat(document.getElementById('inputValorDescuento').value) || 0;
+
+    let descuentoMonto = 0;
+    if (currentTipoDescuento === 'porcentaje') {
+        descuentoMonto = subtotalBruto * (Math.min(100, Math.max(0, inputVal)) / 100);
+    } else {
+        descuentoMonto = Math.min(subtotalBruto, Math.max(0, inputVal));
+    }
+
+    const totalFinal = Math.max(0, subtotalBruto - descuentoMonto);
+
+    const prevSub = document.getElementById('prevSubtotalOriginal');
+    const prevDesc = document.getElementById('prevDescuentoMonto');
+    const prevTot = document.getElementById('prevTotalFinal');
+
+    if (prevSub) prevSub.textContent = '$' + subtotalBruto.toFixed(2);
+    if (prevDesc) prevDesc.textContent = '-$' + descuentoMonto.toFixed(2);
+    if (prevTot) prevTot.textContent = '$' + totalFinal.toFixed(2);
+}
+
+function confirmarDescuento() {
+    if (currentSelectedIndex === -1 || !cart[currentSelectedIndex]) {
+        closeDescuentoModal();
+        return;
+    }
+
+    const item = cart[currentSelectedIndex];
+    const subtotalBruto = item.precio * item.cantidad;
+    const inputVal = parseFloat(document.getElementById('inputValorDescuento').value) || 0;
+
+    if (inputVal <= 0) {
+        quitarDescuentoSeleccionado();
+        return;
+    }
+
+    item.descuento_tipo = currentTipoDescuento;
+    item.descuento_valor = inputVal;
+    
+    if (currentTipoDescuento === 'porcentaje') {
+        item.descuento = subtotalBruto * (Math.min(100, Math.max(0, inputVal)) / 100);
+    } else {
+        item.descuento = Math.min(subtotalBruto, Math.max(0, inputVal));
+    }
+
+    closeDescuentoModal();
+    renderCart();
+}
+
+function quitarDescuentoSeleccionado() {
+    if (currentSelectedIndex !== -1 && cart[currentSelectedIndex]) {
+        cart[currentSelectedIndex].descuento_tipo = 'porcentaje';
+        cart[currentSelectedIndex].descuento_valor = 0;
+        cart[currentSelectedIndex].descuento = 0;
+        renderCart();
+    }
+    closeDescuentoModal();
+}
+
 

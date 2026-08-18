@@ -123,3 +123,86 @@
     </div>
 </div>
 
+<!-- Modal de Descuentos -->
+<div id="modalDescuento" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(3px); z-index: 105; align-items: center; justify-content: center; padding: 1rem;">
+    <div style="background: white; border-radius: 14px; width: 480px; max-width: 95%; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); border: 1px solid var(--border-color); overflow: hidden;">
+        <!-- Header -->
+        <div style="padding: 1.1rem 1.4rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+            <div style="font-weight: 800; font-size: 1.1rem; color: #d97706; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fa-solid fa-percent"></i> Aplicar Descuento
+            </div>
+            <button type="button" onclick="closeDescuentoModal()" style="background: none; border: none; font-size: 1.3rem; color: var(--text-muted); cursor: pointer;">&times;</button>
+        </div>
+
+        <!-- Body -->
+        <div style="padding: 1.25rem 1.4rem;">
+            <!-- Producto Info -->
+            <div style="margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color);">
+                <div id="descModalArticuloNombre" style="font-weight: 700; font-size: 1.05rem; color: var(--text-main);">Artículo</div>
+                <div id="descModalArticuloInfo" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">Cantidad: 1 | Precio U: $0.00</div>
+            </div>
+
+            <!-- Selector de Tipo de Descuento -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1.25rem;">
+                <button type="button" id="btnTipoDescPorcentaje" class="btn-modern" onclick="setTipoDescuento('porcentaje')" style="padding: 0.6rem; font-size: 0.9rem; font-weight: 700; background: #d97706; border: 2px solid #d97706; color: white;">
+                    <i class="fa-solid fa-percent"></i> Por Porcentaje (%)
+                </button>
+                <button type="button" id="btnTipoDescFijo" class="btn-modern btn-secondary" onclick="setTipoDescuento('fijo')" style="padding: 0.6rem; font-size: 0.9rem; font-weight: 700; background: white; border: 2px solid var(--border-color); color: var(--text-main);">
+                    <i class="fa-solid fa-dollar-sign"></i> Descuento Fijo ($)
+                </button>
+            </div>
+
+            <!-- Campo de Entrada -->
+            <div style="margin-bottom: 1rem;">
+                <label id="lblValorDescuento" style="font-size: 0.85rem; font-weight: 700; color: #64748b; margin-bottom: 0.4rem; display: block;">
+                    Porcentaje de Descuento (%)
+                </label>
+                <div style="position: relative;">
+                    <input type="number" id="inputValorDescuento" class="input-modern" step="any" min="0" placeholder="0" style="font-size: 1.4rem; font-weight: 800; text-align: center; color: #d97706;" oninput="updateDescuentoPreview()" onkeydown="if(event.key==='Enter'){event.preventDefault();confirmarDescuento();}">
+                    <span id="addonSimboloDescuento" style="position: absolute; right: 1.2rem; top: 50%; transform: translateY(-50%); font-weight: 800; font-size: 1.2rem; color: #d97706;">%</span>
+                </div>
+            </div>
+
+            <!-- Botones Rápidos / Presets -->
+            <div id="presetsDescuentoPorcentaje" style="display: flex; gap: 0.4rem; margin-bottom: 1.25rem; flex-wrap: wrap;">
+                <button type="button" class="btn-modern btn-secondary" style="width: auto; padding: 0.35rem 0.75rem; font-size: 0.8rem;" onclick="setPresetDescuento(5)">5%</button>
+                <button type="button" class="btn-modern btn-secondary" style="width: auto; padding: 0.35rem 0.75rem; font-size: 0.8rem;" onclick="setPresetDescuento(10)">10%</button>
+                <button type="button" class="btn-modern btn-secondary" style="width: auto; padding: 0.35rem 0.75rem; font-size: 0.8rem;" onclick="setPresetDescuento(15)">15%</button>
+                <button type="button" class="btn-modern btn-secondary" style="width: auto; padding: 0.35rem 0.75rem; font-size: 0.8rem;" onclick="setPresetDescuento(20)">20%</button>
+                <button type="button" class="btn-modern btn-secondary" style="width: auto; padding: 0.35rem 0.75rem; font-size: 0.8rem;" onclick="setPresetDescuento(25)">25%</button>
+                <button type="button" class="btn-modern btn-secondary" style="width: auto; padding: 0.35rem 0.75rem; font-size: 0.8rem;" onclick="setPresetDescuento(50)">50%</button>
+            </div>
+
+            <!-- Previsualización de Cálculos -->
+            <div style="background: #fffbeb; border: 1px dashed #fcd34d; border-radius: 10px; padding: 0.85rem 1rem;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #92400e; margin-bottom: 0.25rem;">
+                    <span>Subtotal Original:</span>
+                    <strong id="prevSubtotalOriginal">$0.00</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.95rem; color: #d97706; font-weight: 700; margin-bottom: 0.25rem;">
+                    <span>Descuento Calculado:</span>
+                    <strong id="prevDescuentoMonto">-$0.00</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 1.1rem; color: #059669; font-weight: 800; border-top: 1px solid #fde68a; padding-top: 0.35rem; margin-top: 0.35rem;">
+                    <span>Total Final:</span>
+                    <strong id="prevTotalFinal">$0.00</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="padding: 0.85rem 1.4rem; border-top: 1px solid var(--border-color); background: #f8fafc; display: flex; justify-content: space-between; align-items: center;">
+            <button type="button" class="btn-modern btn-secondary" style="width: auto; padding: 0.5rem 1rem; color: #ef4444; border-color: #fca5a5;" onclick="quitarDescuentoSeleccionado()">
+                <i class="fa-solid fa-trash"></i> Quitar Descuento
+            </button>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="button" class="btn-modern btn-secondary" style="width: auto; padding: 0.5rem 1rem;" onclick="closeDescuentoModal()">Cancelar</button>
+                <button type="button" class="btn-modern btn-primary" style="width: auto; padding: 0.5rem 1.25rem; background: #d97706; border-color: #d97706;" onclick="confirmarDescuento()">
+                    <i class="fa-solid fa-check"></i> Aplicar Descuento
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+

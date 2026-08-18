@@ -21,6 +21,7 @@ class CajaSesion extends Model
         'total_ventas_transferencia',
         'total_entradas',
         'total_salidas',
+        'total_descuentos',
         'saldo_esperado',
         'saldo_real',
         'diferencia',
@@ -37,6 +38,7 @@ class CajaSesion extends Model
         'total_ventas_transferencia' => 'decimal:2',
         'total_entradas' => 'decimal:2',
         'total_salidas' => 'decimal:2',
+        'total_descuentos' => 'decimal:2',
         'saldo_esperado' => 'decimal:2',
         'saldo_real' => 'decimal:2',
         'diferencia' => 'decimal:2',
@@ -78,12 +80,14 @@ class CajaSesion extends Model
 
         $entradas = (float) $this->movimientos()->where('tipo', 'entrada')->sum('monto');
         $salidas = (float) $this->movimientos()->where('tipo', 'salida')->sum('monto');
+        $descuentos = (float) $this->ventas()->sum('descuento');
 
         $this->total_ventas_efectivo = $efectivo;
         $this->total_ventas_tarjeta = $tarjeta;
         $this->total_ventas_transferencia = $transferencia;
         $this->total_entradas = $entradas;
         $this->total_salidas = $salidas;
+        $this->total_descuentos = $descuentos;
         $this->saldo_esperado = $this->monto_inicial + $efectivo + $entradas - $salidas;
         $this->save();
     }
