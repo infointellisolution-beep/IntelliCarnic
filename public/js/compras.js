@@ -188,7 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     serie: parsedSerie || '',
                     fecha_vencimiento: parsedExpDate || '',
                     cantidad_peso: parsedWeight || 1.0,
-                    costo_unitario: parseFloat(found.precio_sin_iva) || 0.00
+                    costo_unitario: (parseFloat(found.precio_compra) > 0) ? parseFloat(found.precio_compra) : (parseFloat(found.precio_sin_iva) || 0.00)
                 });
 
                 showFeedback(`✓ ¡Escaneado! ${found.descripcion} (${parsedWeight} ${systemUnit.toUpperCase()})`, '#10b981');

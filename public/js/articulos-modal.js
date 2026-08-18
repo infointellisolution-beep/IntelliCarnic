@@ -355,7 +355,7 @@ document.addEventListener('DOMContentLoaded', () => {
         modalMethod.value = '';
         modalMethod.disabled = true;
 
-        ['codigo', 'codigo_cliente', 'item', 'familia_id', 'descripcion', 'precio_sin_iva', 'iva', 'pvp', 'stock', 'stock_minimo', 'estado'].forEach((fieldName) => {
+        ['codigo', 'codigo_cliente', 'item', 'familia_id', 'descripcion', 'precio_compra', 'precio_sin_iva', 'iva', 'pvp', 'stock', 'stock_minimo', 'estado'].forEach((fieldName) => {
             const field = modalForm.querySelector(`[name="${fieldName}"]`);
 
             if (!field) {
@@ -410,6 +410,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setFieldValue('item', articulo.item);
             setFieldValue('familia_id', articulo.familia_id);
             setFieldValue('descripcion', articulo.descripcion);
+            setFieldValue('precio_compra', articulo.precio_compra ?? articulo.precio_sin_iva);
             setFieldValue('precio_sin_iva', articulo.precio_sin_iva);
             setFieldValue('iva', articulo.iva ?? 21);
             setFieldValue('pvp', articulo.pvp);
@@ -630,7 +631,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const detailImagenContainer = document.getElementById('detalle-imagen-container');
     const detailImagen = document.getElementById('detalle-imagen');
 
-    if (detailModal && detailTitle && detailCodigo && detailEstado && detailDescripcion && detailFamilia && detailPrecio && detailIva && detailPvp && detailStock) {
+    if (detailModal && detailTitle && detailCodigo && detailEstado && detailDescripcion && detailFamilia && detailPrecio && detailStock) {
         const basculaContainer = document.getElementById('detalle-codigo-bascula-container');
         const basculaValue = document.getElementById('detalle-codigo-bascula');
         const proveedorContainer = document.getElementById('detalle-codigo-proveedor-container');
@@ -646,9 +647,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 detailCodigoCliente.textContent = articulo.codigo_cliente || 'Sin código';
                 detailDescripcion.textContent = articulo.descripcion || 'Sin descripción';
                 detailFamilia.textContent = articulo.familia_nombre || 'Sin familia';
+                const detailPrecioCompra = document.getElementById('detalle-precio-compra');
+                if (detailPrecioCompra) detailPrecioCompra.textContent = `$${Number(articulo.precio_compra || articulo.precio_sin_iva || 0).toFixed(2)}`;
                 detailPrecio.textContent = `$${Number(articulo.precio_sin_iva || 0).toFixed(2)}`;
-                detailIva.textContent = `${Number(articulo.iva || 0).toFixed(0)}%`;
-                detailPvp.textContent = `$${Number(articulo.pvp || 0).toFixed(2)}`;
+                if (detailIva) detailIva.textContent = `${Number(articulo.iva || 0).toFixed(0)}%`;
+                if (detailPvp) detailPvp.textContent = `$${Number(articulo.pvp || 0).toFixed(2)}`;
                 detailStock.textContent = `${Number(articulo.stock ?? 0).toFixed(3)} ${window.unidadPeso || 'kg'}`;
 
                 // --- Código Dinámico Báscula ---

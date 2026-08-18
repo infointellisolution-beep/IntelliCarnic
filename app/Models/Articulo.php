@@ -17,6 +17,7 @@ class Articulo extends Model
         'item',
         'familia_id',
         'descripcion',
+        'precio_compra',
         'aplica_iva',
         'precio_sin_iva',
         'iva',
@@ -30,6 +31,7 @@ class Articulo extends Model
     protected function casts(): array
     {
         return [
+            'precio_compra' => 'decimal:2',
             'precio_sin_iva' => 'decimal:2',
             'iva' => 'decimal:2',
             'pvp' => 'decimal:2',

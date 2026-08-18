@@ -19,6 +19,9 @@
 
 @section('content')
 @php
+    $usarImpuestos = $usarImpuestos ?? (bool) ((int) ($settings['usar_impuestos'] ?? 1));
+@endphp
+@php
     $currentSearch = $search ?? '';
     $modalArticuloId = old('articulo_id');
     $modalArticulo = $modalArticuloId ? $articulos->firstWhere('id', (int) $modalArticuloId) : null;
@@ -191,9 +194,11 @@
             <tr>
                 <th>Código</th>
                 <th>Descripción</th>
-                <th>Precio S/IVA</th>
-                <th>IVA</th>
-                <th>PVP</th>
+                <th>Precio {{ $usarImpuestos ? 'S/IVA' : 'Venta' }}</th>
+                @if($usarImpuestos)
+                    <th>IVA</th>
+                    <th>PVP</th>
+                @endif
                 <th>Stock</th>
                 <th>Estado</th>
                 <th>Acciones</th>
@@ -234,8 +239,10 @@
                         <div style="font-size: 0.82rem; color: var(--text-muted);">{{ $articulo->familia?->nombre ?: 'Sin familia' }}</div>
                     </td>
                     <td>${{ number_format($articulo->precio_sin_iva, 2) }}</td>
-                    <td>{{ number_format($articulo->effective_iva, 0) }}%</td>
-                    <td style="font-weight: 700;">${{ number_format($articulo->effective_pvp, 2) }}</td>
+                    @if($usarImpuestos)
+                        <td>{{ number_format($articulo->effective_iva, 0) }}%</td>
+                        <td style="font-weight: 700;">${{ number_format($articulo->effective_pvp, 2) }}</td>
+                    @endif
                     <td>
                         @php
                             $badgeClass = 'badge-success';
@@ -395,17 +402,23 @@
                         <strong id="detalle-familia">Informática</strong>
                     </div>
                     <div class="detail-list-item">
-                        <div><strong>Precio sin IVA</strong><span>Base de cálculo</span></div>
+                        <div><strong>Precio de Compra</strong><span>Costo unitario / peso</span></div>
+                        <strong id="detalle-precio-compra" style="color: #d97706;">$0.00</strong>
+                    </div>
+                    <div class="detail-list-item">
+                        <div><strong>Precio de Venta {{ $usarImpuestos ? '(sin IVA)' : '' }}</strong><span>Base de cálculo</span></div>
                         <strong id="detalle-precio">$350.00</strong>
                     </div>
-                    <div class="detail-list-item">
-                        <div><strong>IVA</strong><span>Impuesto aplicado</span></div>
-                        <strong id="detalle-iva">15%</strong>
-                    </div>
-                    <div class="detail-list-item">
-                        <div><strong>PVP</strong><span>Precio de venta</span></div>
-                        <strong id="detalle-pvp">$423.50</strong>
-                    </div>
+                    @if($usarImpuestos)
+                        <div class="detail-list-item">
+                            <div><strong>IVA</strong><span>Impuesto aplicado</span></div>
+                            <strong id="detalle-iva">15%</strong>
+                        </div>
+                        <div class="detail-list-item">
+                            <div><strong>PVP</strong><span>Precio de venta final</span></div>
+                            <strong id="detalle-pvp">$423.50</strong>
+                        </div>
+                    @endif
                     <div class="detail-list-item">
                         <div><strong>Stock</strong><span>Disponibilidad actual</span></div>
                         <strong id="detalle-stock">24 unidades</strong>

@@ -124,7 +124,7 @@ class CompraController extends Controller
                 $articulo = Articulo::find($item['articulo_id']);
                 if ($articulo) {
                     $articulo->stock = $articulo->stock + (float)$item['cantidad_peso'];
-                    $articulo->precio_sin_iva = (float)$item['costo_unitario'];
+                    $articulo->precio_compra = (float)$item['costo_unitario'];
                     
                     // Si el estado estaba sin_stock y ahora hay stock, reactivarlo
                     if ($articulo->estado === 'sin_stock' && $articulo->stock > 0) {

@@ -36,34 +36,35 @@
         <input type="text" class="input-modern" name="descripcion" value="{{ old('descripcion', $modalArticulo->descripcion ?? '') }}" required>
     </div>
     <div class="input-group">
-        <label>Precio sin IVA</label>
+        <label>Precio de Compra (Costo)</label>
+        <input type="number" step="0.01" min="0" class="input-modern" name="precio_compra" id="field-precio-compra" value="{{ old('precio_compra', $modalArticulo->precio_compra ?? '') }}" placeholder="Costo unitario/peso">
+    </div>
+    <div class="input-group">
+        <label>Precio Venta {{ $usarImpuestos ? 'sin IVA' : '' }}</label>
         <input type="number" step="0.01" min="0" class="input-modern" name="precio_sin_iva" id="field-precio-sin-iva" value="{{ old('precio_sin_iva', $modalArticulo->precio_sin_iva ?? '') }}" required oninput="calculatePvp()">
     </div>
-    @if(!$usarImpuestos)
+    @if($usarImpuestos)
+        @if($ivaGlobalEnabled)
+            <input type="hidden" name="iva" id="field-iva" value="{{ $ivaGlobalRate }}">
+            <div class="input-group">
+                <label>IVA global aplicado</label>
+                <input type="text" class="input-modern" value="{{ number_format($ivaGlobalRate, 2) }}%" disabled>
+            </div>
+        @else
+            <div class="input-group">
+                <label>IVA (%)</label>
+                <input type="number" step="0.01" min="0" max="100" class="input-modern" name="iva" id="field-iva" value="{{ old('iva', $modalArticulo->iva ?? 21) }}" required oninput="calculatePvp()">
+            </div>
+            <div class="input-group" style="display: flex; align-items: center; gap: 0.65rem; padding-top: 1.8rem;">
+                <input type="checkbox" id="aplica_iva" name="aplica_iva" value="1" @checked((bool) old('aplica_iva', $modalArticulo->aplica_iva ?? true)) onchange="calculatePvp()">
+                <label for="aplica_iva" style="margin: 0; color: var(--text-main);">Este producto aplica IVA</label>
+            </div>
+        @endif
         <div class="input-group">
-            <label>IVA global aplicado</label>
-            <input type="text" class="input-modern" value="0.00% (Desactivado)" disabled>
-        </div>
-    @elseif($ivaGlobalEnabled)
-        <input type="hidden" name="iva" id="field-iva" value="{{ $ivaGlobalRate }}">
-        <div class="input-group">
-            <label>IVA global aplicado</label>
-            <input type="text" class="input-modern" value="{{ number_format($ivaGlobalRate, 2) }}%" disabled>
-        </div>
-    @else
-        <div class="input-group">
-            <label>IVA (%)</label>
-            <input type="number" step="0.01" min="0" max="100" class="input-modern" name="iva" id="field-iva" value="{{ old('iva', $modalArticulo->iva ?? 21) }}" required oninput="calculatePvp()">
-        </div>
-        <div class="input-group" style="display: flex; align-items: center; gap: 0.65rem; padding-top: 1.8rem;">
-            <input type="checkbox" id="aplica_iva" name="aplica_iva" value="1" @checked((bool) old('aplica_iva', $modalArticulo->aplica_iva ?? true)) onchange="calculatePvp()">
-            <label for="aplica_iva" style="margin: 0; color: var(--text-main);">Este producto aplica IVA</label>
+            <label>PVP (Precio con IVA)</label>
+            <input type="number" step="0.01" min="0" class="input-modern" name="pvp" id="field-pvp" value="{{ old('pvp', $modalArticulo->pvp ?? '') }}" placeholder="Se calcula si lo dejas vacío">
         </div>
     @endif
-    <div class="input-group">
-        <label>PVP</label>
-        <input type="number" step="0.01" min="0" class="input-modern" name="pvp" id="field-pvp" value="{{ old('pvp', $modalArticulo->pvp ?? '') }}" placeholder="Se calcula si lo dejas vacío">
-    </div>
 
 <script>
 function calculatePvp() {

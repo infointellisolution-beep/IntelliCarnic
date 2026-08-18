@@ -80,7 +80,7 @@ class ArticuloController extends Controller
             ->orderBy('nombre', 'asc')
             ->get();
 
-        return view('articulos.index', compact('articulos', 'catalogoArticulos', 'familias', 'search', 'settings'));
+        return view('articulos.index', compact('articulos', 'catalogoArticulos', 'familias', 'search', 'settings', 'usarImpuestos'));
     }
 
     public function create(): View
@@ -118,13 +118,14 @@ class ArticuloController extends Controller
 
         // Si el artículo fue creado con stock inicial (escaneado o manual)
         if ($articulo->stock > 0) {
+            $costoInicial = (float) ($articulo->precio_compra > 0 ? $articulo->precio_compra : $articulo->precio_sin_iva);
             $compra = \App\Models\Compra::create([
                 'numero_factura' => 'INV-INICIAL-' . $articulo->id,
                 'proveedor_nombre' => 'Inventario Inicial',
                 'fecha_compra' => now(),
-                'subtotal' => round($articulo->stock * $articulo->precio_sin_iva, 2),
+                'subtotal' => round($articulo->stock * $costoInicial, 2),
                 'iva' => 0,
-                'total' => round($articulo->stock * $articulo->precio_sin_iva, 2),
+                'total' => round($articulo->stock * $costoInicial, 2),
                 'observaciones' => 'Registro de inventario inicial al crear el producto en catálogo.',
                 'user_id' => \Illuminate\Support\Facades\Auth::id() ?: 1,
             ]);
@@ -137,8 +138,8 @@ class ArticuloController extends Controller
                 'serie' => $request->input('initial_serie') ?: 'SERIE-' . rand(100099, 999999),
                 'fecha_vencimiento' => $request->input('initial_fecha_vencimiento'),
                 'cantidad_peso' => $articulo->stock,
-                'costo_unitario' => $articulo->precio_sin_iva,
-                'subtotal' => round($articulo->stock * $articulo->precio_sin_iva, 2),
+                'costo_unitario' => $costoInicial,
+                'subtotal' => round($articulo->stock * $costoInicial, 2),
             ]);
         }
 
@@ -236,6 +237,7 @@ class ArticuloController extends Controller
             'familia_id' => ['required', 'exists:familias,id'],
             'aplica_iva' => ['nullable', 'boolean'],
             'descripcion' => ['required', 'string', 'max:255'],
+            'precio_compra' => ['nullable', 'numeric', 'min:0'],
             'precio_sin_iva' => ['required', 'numeric', 'min:0'],
             'pvp' => ['nullable', 'numeric', 'min:0'],
             'stock' => ['required', 'numeric', 'min:0'],
