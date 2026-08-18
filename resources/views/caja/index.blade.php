@@ -33,12 +33,12 @@
 </div>
 
 @if(session('status'))
-    <div style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; color: #10b981; padding: 1rem 1.25rem; border-radius: var(--radius-md); margin-bottom: 1.5rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
+    <div style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; color: #10b981; padding: 1rem 1.25rem; border-radius: var(--radius-md); margin-bottom: 1.5rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
         <div><i class="fa-solid fa-circle-check"></i> {{ session('status') }}</div>
         @if(session('cierre_id'))
-            <a href="{{ route('caja.ticketCierre', session('cierre_id')) }}" target="_blank" class="btn-modern btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: white; color: #10b981; border: 1px solid #10b981;">
+            <button type="button" class="btn-modern btn-secondary js-btn-ticket-z" data-url="{{ route('caja.ticketCierre', session('cierre_id')) }}" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: white; color: #10b981; border: 1px solid #10b981; cursor: pointer;">
                 <i class="fa-solid fa-print"></i> Imprimir Ticket de Cierre Z
-            </a>
+            </button>
         @endif
     </div>
 @endif
@@ -62,9 +62,9 @@
                 </span>
             </div>
             <div>
-                <a href="{{ route('caja.ticketCierre', $cajaActiva) }}" target="_blank" style="color: var(--accent); font-size: 0.9rem; font-weight: 600; text-decoration: none;">
+                <button type="button" class="btn-modern btn-secondary js-btn-ticket-z" data-url="{{ route('caja.ticketCierre', $cajaActiva) }}" style="padding: 0.35rem 0.75rem; font-size: 0.85rem; color: var(--accent); font-weight: 600; cursor: pointer;">
                     <i class="fa-solid fa-print"></i> Vista previa Ticket Turno
-                </a>
+                </button>
             </div>
         </div>
 
@@ -381,4 +381,59 @@
         }
     }
 </script>
+
+@push('modals')
+<!-- MODAL TICKET Z PREVIEW -->
+<div id="modal-ticket-z-caja" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center; padding: 1rem;">
+    <div style="background: white; border-radius: 14px; max-width: 520px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); border: 1px solid var(--border-color); overflow: hidden;">
+        <div style="padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+            <div style="font-weight: 800; font-size: 1.1rem; color: var(--primary); display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fa-solid fa-receipt" style="color: #10b981;"></i> Vista Previa Ticket Z
+            </div>
+            <button type="button" id="btn-cerrar-ticket-z-caja" style="background: none; border: none; font-size: 1.4rem; color: var(--text-muted); cursor: pointer;">&times;</button>
+        </div>
+        <div style="flex: 1; min-height: 450px; background: #f1f5f9; padding: 0.5rem;">
+            <iframe id="iframe-ticket-z-caja" src="" style="width: 100%; height: 450px; border: none; border-radius: 8px; background: white;"></iframe>
+        </div>
+        <div style="padding: 0.85rem 1.25rem; border-top: 1px solid var(--border-color); background: #f8fafc; display: flex; justify-content: space-between; align-items: center;">
+            <button type="button" id="btn-imprimir-ticket-z-caja" class="btn-modern btn-primary"><i class="fa-solid fa-print"></i> Imprimir Ticket</button>
+            <button type="button" id="btn-cerrar-ticket-z-caja-2" class="btn-modern btn-secondary">Cerrar</button>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    var modal = document.getElementById('modal-ticket-z-caja');
+    var iframe = document.getElementById('iframe-ticket-z-caja');
+
+    function cerrarTicket() {
+        if (modal) modal.style.display = 'none';
+        if (iframe) iframe.src = '';
+    }
+
+    var btn1 = document.getElementById('btn-cerrar-ticket-z-caja');
+    if (btn1) btn1.addEventListener('click', cerrarTicket);
+
+    var btn2 = document.getElementById('btn-cerrar-ticket-z-caja-2');
+    if (btn2) btn2.addEventListener('click', cerrarTicket);
+
+    var btnPrint = document.getElementById('btn-imprimir-ticket-z-caja');
+    if (btnPrint) btnPrint.addEventListener('click', function() {
+        if (iframe && iframe.contentWindow) iframe.contentWindow.print();
+    });
+
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('.js-btn-ticket-z');
+        if (btn) {
+            e.preventDefault();
+            var url = btn.getAttribute('data-url');
+            if (url && modal && iframe) {
+                iframe.src = url;
+                modal.style.display = 'flex';
+            }
+        }
+    });
+})();
+</script>
+@endpush
 @endsection

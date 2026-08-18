@@ -2,22 +2,15 @@
 
 @section('title', 'TPV Táctil')
 
-@section('content')
 @section('header-actions')
 <div style="display: flex; gap: 0.5rem; align-items: center; padding: 0 1rem; margin-right: auto;">
-    <button class="btn-icon-top"><i class="fa-solid fa-receipt"></i> Ticket</button>
-    <button class="btn-icon-top"><i class="fa-solid fa-utensils"></i> Cocina</button>
-    <button class="btn-icon-top"><i class="fa-solid fa-beer-mug-empty"></i> Barra</button>
-    <div style="border-left: 1px solid var(--border-color); height: 30px; margin: 0 0.5rem;"></div>
-    <button class="btn-icon-top"><i class="fa-solid fa-print"></i> Reimprimir Último</button>
-    <button class="btn-icon-top"><i class="fa-solid fa-list-check"></i> Artículos Servidos</button>
-    <button class="btn-icon-top"><i class="fa-solid fa-user"></i> Elegir Cliente</button>
-    <button class="btn-icon-top"><i class="fa-solid fa-cash-register"></i> Abrir Cajón</button>
-    <button class="btn-icon-top"><i class="fa-solid fa-file-invoice"></i> Reabrir Ticket</button>
-    <button class="btn-icon-top"><i class="fa-solid fa-motorcycle"></i> Pedido a Domicilio</button>
-    <button class="btn-icon-top"><i class="fa-solid fa-users"></i> Usuarios</button>
+    <button type="button" class="btn-modern btn-secondary" onclick="openPreciosEspecialesModal()" style="display: inline-flex; align-items: center; gap: 0.5rem; width: auto; padding: 0.45rem 1.1rem; font-size: 0.9rem; font-weight: 700; color: var(--primary); border: 1.5px solid var(--primary); background: rgba(37,99,235,0.06); cursor: pointer; border-radius: 8px;">
+        <i class="fa-solid fa-tags"></i> Precios Especiales
+    </button>
 </div>
 @endsection
+
+@section('content')
 
 <div class="tactil-layout" style="height: calc(100vh - 64px - 4rem);">
     <!-- Left Panel: Touch Grid (Familias y Artículos) -->

@@ -22,6 +22,7 @@ class Articulo extends Model
         'precio_sin_iva',
         'iva',
         'pvp',
+        'precios_adicionales',
         'stock',
         'stock_minimo',
         'estado',
@@ -38,6 +39,7 @@ class Articulo extends Model
             'stock' => 'decimal:3',
             'stock_minimo' => 'decimal:3',
             'aplica_iva' => 'boolean',
+            'precios_adicionales' => 'array',
         ];
     }
 

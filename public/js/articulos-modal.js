@@ -386,6 +386,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         setCheckboxValue('aplica_iva', true);
+        if (typeof clearPreciosAdicionales === 'function') {
+            clearPreciosAdicionales();
+        }
     };
 
     openCreateButtons.forEach((button) => {
@@ -418,6 +421,21 @@ document.addEventListener('DOMContentLoaded', () => {
             setFieldValue('stock_minimo', articulo.stock_minimo ?? 0);
             setFieldValue('estado', articulo.estado || 'activo');
             setCheckboxValue('aplica_iva', articulo.aplica_iva ?? true);
+
+            if (typeof clearPreciosAdicionales === 'function') {
+                clearPreciosAdicionales();
+                let extraPrices = articulo.precios_adicionales;
+                if (typeof extraPrices === 'string') {
+                    try { extraPrices = JSON.parse(extraPrices); } catch(e) { extraPrices = []; }
+                }
+                if (Array.isArray(extraPrices) && typeof addPrecioAdicionalRow === 'function') {
+                    extraPrices.forEach(p => {
+                        if (p && (p.nombre || p.precio !== undefined)) {
+                            addPrecioAdicionalRow(p.nombre || '', p.precio !== undefined ? p.precio : '');
+                        }
+                    });
+                }
+            }
 
             openModal();
         });

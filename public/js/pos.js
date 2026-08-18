@@ -984,3 +984,113 @@ function updateVisualStockDisplays() {
         renderSearchResults(searchInput.value);
     }
 }
+
+// === PRECIOS ESPECIALES / TARIFAS ===
+
+function openPreciosEspecialesModal() {
+    if (!cart || cart.length === 0) {
+        showErrorModal('Sin productos en el ticket', 'Agrega primero un producto al ticket para poder consultar o aplicar sus precios especiales.');
+        return;
+    }
+
+    // Si hay un solo producto en el ticket y no está seleccionado, seleccionarlo automáticamente
+    if (currentSelectedIndex === -1 && cart.length === 1) {
+        currentSelectedIndex = 0;
+        renderCart();
+    }
+
+    if (currentSelectedIndex === -1 || !cart[currentSelectedIndex]) {
+        showErrorModal('Selecciona un producto', 'Haz clic en una fila del ticket para seleccionar el producto al que deseas aplicar el precio especial.');
+        return;
+    }
+
+    const item = cart[currentSelectedIndex];
+    let fullArticulo = (Array.isArray(windowArticulos) ? windowArticulos.find(a => a.id == item.id) : null) || item.articulo || item;
+
+    const modal = document.getElementById('modalPreciosEspeciales');
+    const nombreEl = document.getElementById('peModalArticuloNombre');
+    const codigoEl = document.getElementById('peModalArticuloCodigo');
+    const listEl = document.getElementById('pePreciosList');
+
+    if (!modal || !listEl) return;
+
+    if (nombreEl) nombreEl.textContent = item.descripcion;
+    if (codigoEl) codigoEl.textContent = `Código: ${item.codigo || '-'} | Cantidad: ${item.cantidad} ${(windowSettings.unidad_peso || 'kg').toUpperCase()}`;
+
+    let effective = getEffectivePrice(fullArticulo);
+    let precioBase = parseFloat(effective.pvp);
+    let currentPrice = parseFloat(item.precio);
+
+    let extraPrices = fullArticulo.precios_adicionales;
+    if (typeof extraPrices === 'string') {
+        try { extraPrices = JSON.parse(extraPrices); } catch(e) { extraPrices = []; }
+    }
+    if (!Array.isArray(extraPrices)) extraPrices = [];
+
+    let html = '';
+
+    // 1. Opción Precio Base / Regular
+    const isBaseActive = Math.abs(currentPrice - precioBase) < 0.01;
+    html += `
+        <div class="pe-price-option" onclick="applySpecialPrice(${precioBase})" style="display: flex; justify-content: space-between; align-items: center; padding: 0.85rem 1rem; border-radius: 10px; border: 2px solid ${isBaseActive ? 'var(--primary)' : 'var(--border-color)'}; background: ${isBaseActive ? 'rgba(37,99,235,0.06)' : 'white'}; cursor: pointer; transition: all 0.15s ease;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='${isBaseActive ? 'var(--primary)' : 'var(--border-color)'}'">
+            <div>
+                <div style="font-weight: 700; color: ${isBaseActive ? 'var(--primary)' : 'var(--text-main)'}; font-size: 0.95rem;">
+                    <i class="fa-solid fa-tag"></i> Precio Base / Regular
+                </div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">Precio estándar de catálogo</div>
+            </div>
+            <div style="text-align: right;">
+                <div style="font-size: 1.25rem; font-weight: 800; color: ${isBaseActive ? 'var(--primary)' : 'var(--text-main)'};">$${precioBase.toFixed(2)}</div>
+                ${isBaseActive ? '<span class="badge badge-success" style="font-size: 0.7rem; padding: 0.15rem 0.45rem;">Activo</span>' : ''}
+            </div>
+        </div>
+    `;
+
+    // 2. Precios adicionales configurados
+    if (extraPrices.length > 0) {
+        extraPrices.forEach((ep) => {
+            if (ep && (ep.nombre || ep.precio !== undefined)) {
+                let priceVal = parseFloat(ep.precio) || 0;
+                const isThisActive = Math.abs(currentPrice - priceVal) < 0.01;
+                html += `
+                    <div class="pe-price-option" onclick="applySpecialPrice(${priceVal})" style="display: flex; justify-content: space-between; align-items: center; padding: 0.85rem 1rem; border-radius: 10px; border: 2px solid ${isThisActive ? 'var(--primary)' : 'var(--border-color)'}; background: ${isThisActive ? 'rgba(37,99,235,0.06)' : 'white'}; cursor: pointer; transition: all 0.15s ease;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='${isThisActive ? 'var(--primary)' : 'var(--border-color)'}'">
+                        <div>
+                            <div style="font-weight: 700; color: ${isThisActive ? 'var(--primary)' : 'var(--text-main)'}; font-size: 0.95rem;">
+                                <i class="fa-solid fa-star" style="color: #f59e0b;"></i> ${ep.nombre || 'Tarifa Especial'}
+                            </div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">Precio adicional configurado</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 1.25rem; font-weight: 800; color: ${isThisActive ? 'var(--primary)' : 'var(--text-main)'};">$${priceVal.toFixed(2)}</div>
+                            ${isThisActive ? '<span class="badge badge-success" style="font-size: 0.7rem; padding: 0.15rem 0.45rem;">Activo</span>' : ''}
+                        </div>
+                    </div>
+                `;
+            }
+        });
+    } else {
+        html += `
+            <div style="padding: 1rem; border-radius: 8px; background: #f8fafc; border: 1px dashed var(--border-color); color: var(--text-muted); font-size: 0.85rem; text-align: center;">
+                <i class="fa-solid fa-circle-info" style="color: #3b82f6; margin-right: 0.35rem;"></i>
+                Este artículo no tiene precios adicionales configurados en el catálogo.
+            </div>
+        `;
+    }
+
+    listEl.innerHTML = html;
+    modal.style.display = 'flex';
+}
+
+function closePreciosEspecialesModal() {
+    const modal = document.getElementById('modalPreciosEspeciales');
+    if (modal) modal.style.display = 'none';
+}
+
+function applySpecialPrice(price) {
+    if (currentSelectedIndex !== -1 && cart[currentSelectedIndex]) {
+        cart[currentSelectedIndex].precio = parseFloat(price);
+        renderCart();
+    }
+    closePreciosEspecialesModal();
+}
+

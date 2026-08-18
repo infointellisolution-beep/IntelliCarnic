@@ -2,33 +2,7 @@
 
 @section('title', 'Venta Normal')
 
-@section('header-actions')
-<div style="display: flex; gap: 0.5rem; align-items: center; padding: 0 1rem; margin-right: auto;">
-    <!-- Grupo Venta -->
-    <div style="display: flex; gap: 0.25rem;">
-        <button class="btn-icon-top"><i class="fa-solid fa-print" style="color: #22c55e;"></i> Reimprimir Último</button>
-        <button class="btn-icon-top"><i class="fa-solid fa-cash-register"></i> Abrir Cajón</button>
-        <button class="btn-icon-top"><i class="fa-solid fa-user-group"></i> Elegir Cliente</button>
-        <button class="btn-icon-top"><i class="fa-solid fa-file-lines"></i> Reabrir Ticket</button>
-    </div>
 
-    <div style="width: 1px; background: var(--border-color); height: 30px; margin: 0 0.5rem;"></div>
-
-    <!-- Grupo Reservas -->
-    <div style="display: flex; gap: 0.25rem;">
-        <button class="btn-icon-top"><i class="fa-solid fa-calendar-check" style="color: #64748b;"></i> Ver Reservas</button>
-        <button class="btn-icon-top"><i class="fa-solid fa-calendar-plus" style="color: #64748b;"></i> Realizar Reserva</button>
-    </div>
-    
-    <div style="width: 1px; background: var(--border-color); height: 30px; margin: 0 0.5rem;"></div>
-    
-    <!-- Grupo Cambios y Devoluciones -->
-    <div style="display: flex; gap: 0.25rem;">
-        <button class="btn-icon-top"><i class="fa-solid fa-rotate-left" style="color: #22c55e;"></i> Camb./Dev./Rectif.</button>
-        <button class="btn-icon-top"><i class="fa-solid fa-ticket" style="color: #ef4444;"></i> Vales Descuento</button>
-    </div>
-</div>
-@endsection
 
 @section('content')
 <div class="venta-normal-layout" style="height: calc(100vh - 64px - 4rem);">

@@ -66,6 +66,43 @@
         </div>
     @endif
 
+    <!-- PRECIOS ADICIONALES -->
+    <div style="grid-column: 1 / -1; margin-top: 0.5rem; padding: 1.1rem; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+            <div>
+                <label style="font-weight: 700; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 0.5rem; font-size: 0.95rem;">
+                    <i class="fa-solid fa-tags" style="color: var(--primary);"></i> Precios Adicionales / Configurar más precios
+                </label>
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;">Configura listas de precios alternativas para este artículo (ej. Mayoreo, Especial, Restaurante).</div>
+            </div>
+            <button type="button" class="btn-modern btn-secondary" style="width: auto; padding: 0.4rem 0.9rem; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 0.4rem;" onclick="addPrecioAdicionalRow()">
+                <i class="fa-solid fa-plus"></i> Añadir precio adicional
+            </button>
+        </div>
+
+        <!-- Encabezados de columnas -->
+        <div style="display: grid; grid-template-columns: 2fr 1.2fr 42px; gap: 0.5rem; margin-bottom: 0.35rem; padding: 0 0.2rem;">
+            <span style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Nombre / Tipo de Precio</span>
+            <span style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Monto ($)</span>
+            <span></span>
+        </div>
+
+        <div id="precios-adicionales-container" style="display: flex; flex-direction: column; gap: 0.5rem;">
+            @php
+                $oldPrecios = old('precios_adicionales', $modalArticulo->precios_adicionales ?? []);
+            @endphp
+            @if(is_array($oldPrecios) && count($oldPrecios) > 0)
+                @foreach($oldPrecios as $idx => $p)
+                    <div class="precio-adicional-row" style="display: grid; grid-template-columns: 2fr 1.2fr 42px; gap: 0.5rem; align-items: center;">
+                        <input type="text" class="input-modern" name="precios_adicionales[{{ $idx }}][nombre]" value="{{ $p['nombre'] ?? '' }}" placeholder="Ej. Precio Mayoreo" style="width: 100%; box-sizing: border-box;">
+                        <input type="number" step="0.01" min="0" class="input-modern" name="precios_adicionales[{{ $idx }}][precio]" value="{{ $p['precio'] ?? '' }}" placeholder="0.00" style="width: 100%; box-sizing: border-box;">
+                        <button type="button" onclick="this.closest('.precio-adicional-row').remove()" style="width: 40px; height: 40px; border-radius: 8px; border: 1px solid #fecaca; background: #fff; color: #ef4444; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Eliminar este precio" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='#fff'">&times;</button>
+                    </div>
+                @endforeach
+            @endif
+        </div>
+    </div>
+
 <script>
 function calculatePvp() {
     const precioBaseInput = document.getElementById('field-precio-sin-iva');
@@ -115,6 +152,28 @@ function updateScaleCodePreview() {
         preview.innerHTML = 'Ingresa un código cliente de hasta 6 dígitos numéricos para previsualizar el código de báscula.';
         preview.style.color = '#64748b';
     }
+}
+
+let precioAdicionalIndex = {{ is_array(old('precios_adicionales', $modalArticulo->precios_adicionales ?? [])) ? count(old('precios_adicionales', $modalArticulo->precios_adicionales ?? [])) : 0 }};
+
+function addPrecioAdicionalRow(nombre = '', precio = '') {
+    const container = document.getElementById('precios-adicionales-container');
+    if (!container) return;
+    const idx = precioAdicionalIndex++;
+    const row = document.createElement('div');
+    row.className = 'precio-adicional-row';
+    row.style.cssText = 'display: grid; grid-template-columns: 2fr 1.2fr 42px; gap: 0.5rem; align-items: center; width: 100%;';
+    row.innerHTML = `
+        <input type="text" class="input-modern" name="precios_adicionales[${idx}][nombre]" value="${nombre}" placeholder="Ej. Precio Mayoreo" style="width: 100%; box-sizing: border-box;">
+        <input type="number" step="0.01" min="0" class="input-modern" name="precios_adicionales[${idx}][precio]" value="${precio}" placeholder="0.00" style="width: 100%; box-sizing: border-box;">
+        <button type="button" onclick="this.closest('.precio-adicional-row').remove()" style="width: 40px; height: 40px; border-radius: 8px; border: 1px solid #fecaca; background: #fff; color: #ef4444; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Eliminar este precio" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='#fff'">&times;</button>
+    `;
+    container.appendChild(row);
+}
+
+function clearPreciosAdicionales() {
+    const container = document.getElementById('precios-adicionales-container');
+    if (container) container.innerHTML = '';
 }
 
 // Ejecutar al iniciar

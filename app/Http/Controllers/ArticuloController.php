@@ -240,6 +240,9 @@ class ArticuloController extends Controller
             'precio_compra' => ['nullable', 'numeric', 'min:0'],
             'precio_sin_iva' => ['required', 'numeric', 'min:0'],
             'pvp' => ['nullable', 'numeric', 'min:0'],
+            'precios_adicionales' => ['nullable', 'array'],
+            'precios_adicionales.*.nombre' => ['nullable', 'string', 'max:100'],
+            'precios_adicionales.*.precio' => ['nullable', 'numeric', 'min:0'],
             'stock' => ['required', 'numeric', 'min:0'],
             'stock_minimo' => ['required', 'numeric', 'min:0'],
             'estado' => ['required', Rule::in(['activo', 'sin_stock', 'inactivo'])],
@@ -250,6 +253,19 @@ class ArticuloController extends Controller
         }
 
         $data = $request->validate($rules);
+
+        if (isset($data['precios_adicionales']) && is_array($data['precios_adicionales'])) {
+            $filtered = [];
+            foreach ($data['precios_adicionales'] as $item) {
+                if (!empty($item['nombre']) && isset($item['precio']) && $item['precio'] !== '' && $item['precio'] !== null) {
+                    $filtered[] = [
+                        'nombre' => trim($item['nombre']),
+                        'precio' => (float) $item['precio'],
+                    ];
+                }
+            }
+            $data['precios_adicionales'] = array_values($filtered);
+        }
 
         return $data;
     }

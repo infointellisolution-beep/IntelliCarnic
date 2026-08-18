@@ -88,3 +88,38 @@
         <button onclick="document.getElementById('errorModal').style.display='none'" class="btn-modern btn-primary" style="width: 100%; justify-content: center; background: #ef4444; border-color: #ef4444;">Entendido</button>
     </div>
 </div>
+
+<!-- Modal de Precios Especiales -->
+<div id="modalPreciosEspeciales" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(3px); z-index: 100; align-items: center; justify-content: center; padding: 1rem;">
+    <div style="background: white; border-radius: 14px; width: 480px; max-width: 95%; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); border: 1px solid var(--border-color); overflow: hidden;">
+        <!-- Header -->
+        <div style="padding: 1.1rem 1.4rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+            <div style="font-weight: 800; font-size: 1.1rem; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fa-solid fa-tags" style="color: var(--primary);"></i> Precios Especiales / Tarifas
+            </div>
+            <button type="button" onclick="closePreciosEspecialesModal()" style="background: none; border: none; font-size: 1.3rem; color: var(--text-muted); cursor: pointer;">&times;</button>
+        </div>
+
+        <!-- Body -->
+        <div style="padding: 1.25rem 1.4rem;">
+            <div style="margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color);">
+                <div id="peModalArticuloNombre" style="font-weight: 700; font-size: 1.05rem; color: var(--text-main);">Artículo</div>
+                <div id="peModalArticuloCodigo" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">Código: -</div>
+            </div>
+
+            <div style="font-size: 0.8rem; font-weight: 700; color: #64748b; margin-bottom: 0.6rem; text-transform: uppercase;">
+                Selecciona la tarifa a aplicar:
+            </div>
+
+            <div id="pePreciosList" style="display: flex; flex-direction: column; gap: 0.6rem; max-height: 320px; overflow-y: auto;">
+                <!-- Se llena dinámicamente -->
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="padding: 0.85rem 1.4rem; border-top: 1px solid var(--border-color); background: #f8fafc; display: flex; justify-content: flex-end;">
+            <button type="button" class="btn-modern btn-secondary" style="width: auto; padding: 0.5rem 1.25rem;" onclick="closePreciosEspecialesModal()">Cerrar</button>
+        </div>
+    </div>
+</div>
+
