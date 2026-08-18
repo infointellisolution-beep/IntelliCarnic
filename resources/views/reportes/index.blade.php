@@ -27,6 +27,11 @@
        style="padding: 0.75rem 1.25rem; font-weight: 700; text-decoration: none; border-bottom: 3px solid {{ $tab === 'compras' ? 'var(--primary)' : 'transparent' }}; color: {{ $tab === 'compras' ? 'var(--primary)' : 'var(--text-muted)' }};">
         <i class="fa-solid fa-truck-ramp-box"></i> Reporte de Compras
     </a>
+    <a href="{{ route('reportes.index', ['tab' => 'caja', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin]) }}" 
+       class="tab-item {{ $tab === 'caja' ? 'active' : '' }}" 
+       style="padding: 0.75rem 1.25rem; font-weight: 700; text-decoration: none; border-bottom: 3px solid {{ $tab === 'caja' ? 'var(--primary)' : 'transparent' }}; color: {{ $tab === 'caja' ? 'var(--primary)' : 'var(--text-muted)' }};">
+        <i class="fa-solid fa-vault"></i> Reporte de Caja
+    </a>
     <a href="{{ route('reportes.index', ['tab' => 'inventario', 'familia_id' => $familiaId, 'filtro_stock' => $filtroStock]) }}" 
        class="tab-item {{ $tab === 'inventario' ? 'active' : '' }}" 
        style="padding: 0.75rem 1.25rem; font-weight: 700; text-decoration: none; border-bottom: 3px solid {{ $tab === 'inventario' ? 'var(--primary)' : 'transparent' }}; color: {{ $tab === 'inventario' ? 'var(--primary)' : 'var(--text-muted)' }};">
@@ -36,17 +41,27 @@
 
 <!-- FILTROS DE BÚSQUEDA -->
 <div class="card" style="margin-bottom: 1.5rem; padding: 1.25rem;">
-    <form method="GET" action="{{ route('reportes.index') }}" style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+    <form method="GET" action="{{ route('reportes.index') }}" id="form-filtros-reporte" style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
         <input type="hidden" name="tab" value="{{ $tab }}">
+        <input type="hidden" name="fecha_inicio" id="hidden-fecha-inicio" value="{{ $fechaInicio }}">
+        <input type="hidden" name="fecha_fin" id="hidden-fecha-fin" value="{{ $fechaFin }}">
 
-        @if($tab === 'ventas' || $tab === 'compras')
-            <div style="flex: 1; min-width: 180px;">
-                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">Fecha Desde</label>
-                <input type="date" name="fecha_inicio" value="{{ $fechaInicio }}" class="input-modern" required>
-            </div>
-            <div style="flex: 1; min-width: 180px;">
-                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">Fecha Hasta</label>
-                <input type="date" name="fecha_fin" value="{{ $fechaFin }}" class="input-modern" required>
+        @if($tab === 'ventas' || $tab === 'compras' || $tab === 'caja')
+            <!-- DATE RANGE PICKER TRIGGER -->
+            <div style="flex: 1; min-width: 220px;">
+                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">
+                    <i class="fa-solid fa-calendar-days"></i> Período
+                </label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <button type="button" id="btn-abrir-datepicker" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 1rem; border: 2px solid var(--primary); border-radius: 8px; background: rgba(37,99,235,0.05); color: var(--primary); font-weight: 700; font-size: 0.9rem; cursor: pointer; white-space: nowrap;">
+                        <i class="fa-solid fa-calendar-range"></i>
+                        <span id="label-rango-fecha">{{ \Carbon\Carbon::parse($fechaInicio)->format('d/m/Y') }} — {{ \Carbon\Carbon::parse($fechaFin)->format('d/m/Y') }}</span>
+                        <i class="fa-solid fa-chevron-down" style="margin-left: 0.25rem; font-size: 0.72rem;"></i>
+                    </button>
+                    <a href="{{ route('reportes.index', ['tab' => $tab]) }}" title="Limpiar filtro de fecha" style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border-color); color: var(--text-muted); background: white; text-decoration: none; font-size: 0.9rem; flex-shrink: 0;" onmouseover="this.style.borderColor='#ef4444';this.style.color='#ef4444'" onmouseout="this.style.borderColor='var(--border-color)';this.style.color='var(--text-muted)'">
+                        <i class="fa-solid fa-xmark"></i>
+                    </a>
+                </div>
             </div>
         @else
             <div style="flex: 1; min-width: 200px;">
@@ -67,15 +82,251 @@
                     <option value="sin_stock" @selected($filtroStock === 'sin_stock')>🔴 Sin Stock (Agotado)</option>
                 </select>
             </div>
+            <div>
+                <button type="submit" class="btn-modern btn-primary" style="width: auto;">
+                    <i class="fa-solid fa-filter"></i> Aplicar Filtros
+                </button>
+            </div>
         @endif
-
-        <div>
-            <button type="submit" class="btn-modern btn-primary" style="width: auto;">
-                <i class="fa-solid fa-filter"></i> Aplicar Filtros
-            </button>
-        </div>
     </form>
 </div>
+
+<!-- MODAL DATE RANGE PICKER (LIGHT THEME) -->
+<div id="modal-datepicker" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.4); backdrop-filter:blur(3px); z-index:9998; align-items:center; justify-content:center; padding:1rem;">
+    <div style="background:white; border-radius:16px; padding:1.5rem 1.75rem; box-shadow:0 20px 60px rgba(0,0,0,0.15); max-width:840px; width:95%; border:1px solid var(--border-color);">
+        <!-- Título y rango seleccionado -->
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem; border-bottom:1px solid var(--border-color); padding-bottom:1rem;">
+            <div>
+                <div style="font-size:0.8rem; font-weight:700; color:var(--text-muted); letter-spacing:0.05em; margin-bottom:0.35rem;">PERÍODO SELECCIONADO</div>
+                <div id="dp-label-rango" style="display:inline-block; background:var(--primary); color:white; font-weight:700; font-size:0.95rem; padding:0.4rem 1.1rem; border-radius:8px;">-- / -- / ---- — -- / -- / ----</div>
+            </div>
+            <button type="button" id="dp-btn-cerrar-x" style="background:none; border:none; font-size:1.25rem; color:var(--text-muted); cursor:pointer; padding:0.25rem 0.5rem; border-radius:6px;" title="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div style="display:flex; gap:1.5rem; flex-wrap:wrap; justify-content:center;">
+            <!-- CALENDARIO INICIO -->
+            <div>
+                <div style="text-align:center; font-size:0.8rem; font-weight:700; color:var(--text-muted); margin-bottom:0.6rem; letter-spacing:0.05em;">Inicio</div>
+                <div id="cal-inicio" class="dp-calendar" data-which="inicio"></div>
+            </div>
+
+            <!-- CALENDARIO FIN -->
+            <div>
+                <div style="text-align:center; font-size:0.8rem; font-weight:700; color:var(--text-muted); margin-bottom:0.6rem; letter-spacing:0.05em;">Fin</div>
+                <div id="cal-fin" class="dp-calendar" data-which="fin"></div>
+            </div>
+
+            <!-- PERÍODOS PREDEFINIDOS -->
+            <div style="display:flex; flex-direction:column; gap:0.4rem; min-width:155px;">
+                <div style="font-size:0.8rem; font-weight:700; color:var(--text-muted); margin-bottom:0.3rem; letter-spacing:0.05em;">Período predefinido</div>
+                <button type="button" class="dp-preset" data-preset="hoy">Hoy</button>
+                <button type="button" class="dp-preset" data-preset="ayer">Ayer</button>
+                <button type="button" class="dp-preset" data-preset="esta_semana">Esta semana</button>
+                <button type="button" class="dp-preset" data-preset="ultima_semana">Última semana</button>
+                <button type="button" class="dp-preset" data-preset="este_mes">Este mes</button>
+                <button type="button" class="dp-preset" data-preset="ultimo_mes">Último mes</button>
+                <button type="button" class="dp-preset" data-preset="este_anio">Este año</button>
+                <button type="button" class="dp-preset" data-preset="ultimo_anio">Último año</button>
+            </div>
+        </div>
+
+        <!-- Botones OK / Cancelar -->
+        <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.25rem; border-top:1px solid var(--border-color); padding-top:1rem;">
+            <button type="button" id="dp-btn-cancelar" class="btn-modern btn-secondary">
+                <i class="fa-solid fa-xmark"></i> Cancelar
+            </button>
+            <button type="button" id="dp-btn-ok" class="btn-modern btn-primary">
+                <i class="fa-solid fa-check"></i> Ok
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+.dp-calendar { user-select: none; }
+.dp-calendar table { border-collapse: collapse; }
+.dp-calendar th { color: var(--text-muted); font-size: 0.74rem; font-weight: 700; padding: 0.3rem 0.35rem; text-align: center; }
+.dp-calendar td { text-align: center; padding: 0.2rem 0.22rem; }
+.dp-calendar td span {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 31px; height: 31px; border-radius: 50%;
+    font-size: 0.82rem; cursor: pointer; color: var(--text-main);
+    transition: background 0.12s;
+}
+.dp-calendar td span:hover { background: #e8f0fe; color: var(--primary); }
+.dp-calendar td span.dp-selected { background: var(--primary) !important; color: white !important; font-weight: 700; }
+.dp-calendar td span.dp-in-range { background: rgba(37,99,235,0.1); border-radius: 0; color: var(--primary); }
+.dp-calendar td span.dp-other-month { color: #c0cad8; }
+.dp-calendar td span.dp-today { border: 2px solid var(--primary); font-weight: 700; }
+.dp-cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
+.dp-cal-header span { color: var(--text-main); font-weight: 700; font-size: 0.88rem; }
+.dp-cal-nav { background: none; border: 1px solid var(--border-color); color: var(--text-muted); font-size: 0.8rem; cursor: pointer; padding: 0.2rem 0.5rem; border-radius: 6px; }
+.dp-cal-nav:hover { background: #f1f5f9; color: var(--primary); border-color: var(--primary); }
+.dp-preset {
+    padding: 0.42rem 0.85rem; border-radius: 8px; border: 1px solid var(--border-color);
+    background: white; color: var(--text-main); font-size: 0.82rem; font-weight: 600;
+    cursor: pointer; text-align: left; transition: background 0.13s, border-color 0.13s, color 0.13s;
+}
+.dp-preset:hover { background: #f1f5f9; border-color: var(--primary); color: var(--primary); }
+.dp-preset.dp-preset-active { background: var(--primary); border-color: var(--primary); color: white; }
+</style>
+
+@push('modals')
+<script>
+(function() {
+    var dpStartDate = null;
+    var dpEndDate = null;
+    var dpCalInicio = { year: new Date().getFullYear(), month: new Date().getMonth() };
+    var dpCalFin = { year: new Date().getFullYear(), month: new Date().getMonth() };
+
+    function pad(n) { return String(n).padStart(2, '0'); }
+    function fmtYMD(d) { return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()); }
+    function fmtDMY(d) { return pad(d.getDate()) + '/' + pad(d.getMonth()+1) + '/' + d.getFullYear(); }
+    function parseYMD(s) { var p = s.split('-'); return new Date(+p[0], +p[1]-1, +p[2]); }
+    var today = function() { var d = new Date(); d.setHours(0,0,0,0); return d; };
+
+    // Initialize from current values
+    var initStart = document.getElementById('hidden-fecha-inicio') ? document.getElementById('hidden-fecha-inicio').value : '';
+    var initEnd = document.getElementById('hidden-fecha-fin') ? document.getElementById('hidden-fecha-fin').value : '';
+    if (initStart) dpStartDate = parseYMD(initStart);
+    if (initEnd) dpEndDate = parseYMD(initEnd);
+    if (dpStartDate) { dpCalInicio.year = dpStartDate.getFullYear(); dpCalInicio.month = dpStartDate.getMonth(); }
+    if (dpEndDate) { dpCalFin.year = dpEndDate.getFullYear(); dpCalFin.month = dpEndDate.getMonth(); }
+
+    function updateLabel() {
+        var s = dpStartDate ? fmtDMY(dpStartDate) : '--/--/----';
+        var e = dpEndDate ? fmtDMY(dpEndDate) : '--/--/----';
+        var el = document.getElementById('dp-label-rango');
+        if (el) el.textContent = s + ' — ' + e;
+    }
+
+    var MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    var DIAS = ['DO','LU','MA','MI','JU','VI','SA'];
+
+    function renderCal(containerId, calState, selectFn) {
+        var container = document.getElementById(containerId);
+        if (!container) return;
+        var y = calState.year, m = calState.month;
+        var firstDay = new Date(y, m, 1).getDay();
+        var daysInMonth = new Date(y, m+1, 0).getDate();
+        var daysInPrev = new Date(y, m, 0).getDate();
+        var todayD = today();
+
+        var html = '<div class="dp-cal-header">';
+        html += '<button type="button" class="dp-cal-nav" data-dir="-1">&#9664;</button>';
+        html += '<span>' + MESES[m] + ' de ' + y + '</span>';
+        html += '<button type="button" class="dp-cal-nav" data-dir="1">&#9654;</button>';
+        html += '</div>';
+        html += '<table><thead><tr>';
+        DIAS.forEach(function(d) { html += '<th>' + d + '</th>'; });
+        html += '</tr></thead><tbody><tr>';
+
+        var day = 1, cellCount = 0;
+        for (var i = 0; i < firstDay; i++) {
+            html += '<td><span class="dp-other-month">' + (daysInPrev - firstDay + 1 + i) + '</span></td>';
+            cellCount++;
+        }
+        while (day <= daysInMonth) {
+            if (cellCount % 7 === 0 && cellCount > 0) html += '</tr><tr>';
+            var d = new Date(y, m, day); d.setHours(0,0,0,0);
+            var cls = '';
+            if (d.getTime() === todayD.getTime()) cls += ' dp-today';
+            var inRange = dpStartDate && dpEndDate && d > dpStartDate && d < dpEndDate;
+            var isStart = dpStartDate && d.getTime() === dpStartDate.getTime();
+            var isEnd = dpEndDate && d.getTime() === dpEndDate.getTime();
+            if (isStart || isEnd) cls += ' dp-selected';
+            else if (inRange) cls += ' dp-in-range';
+            html += '<td><span class="' + cls.trim() + '" data-date="' + fmtYMD(d) + '">' + day + '</span></td>';
+            day++; cellCount++;
+        }
+        var trailing = 1;
+        while (cellCount % 7 !== 0) { html += '<td><span class="dp-other-month">' + trailing + '</span></td>'; trailing++; cellCount++; }
+        html += '</tr></tbody></table>';
+        container.innerHTML = html;
+
+        container.querySelectorAll('.dp-cal-nav').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var dir = parseInt(this.getAttribute('data-dir'));
+                calState.month += dir;
+                if (calState.month > 11) { calState.month = 0; calState.year++; }
+                if (calState.month < 0) { calState.month = 11; calState.year--; }
+                renderBoth();
+            });
+        });
+        container.querySelectorAll('span[data-date]').forEach(function(span) {
+            span.addEventListener('click', function() { selectFn(parseYMD(this.getAttribute('data-date'))); });
+        });
+    }
+
+    function renderBoth() {
+        renderCal('cal-inicio', dpCalInicio, function(d) {
+            dpStartDate = d;
+            if (dpEndDate && dpEndDate < dpStartDate) dpEndDate = null;
+            renderBoth(); updateLabel(); updatePresetHighlight(null);
+        });
+        renderCal('cal-fin', dpCalFin, function(d) {
+            dpEndDate = d;
+            if (dpStartDate && dpStartDate > dpEndDate) dpStartDate = null;
+            renderBoth(); updateLabel(); updatePresetHighlight(null);
+        });
+        updateLabel();
+    }
+
+    function updatePresetHighlight(preset) {
+        document.querySelectorAll('.dp-preset').forEach(function(b) {
+            b.classList.toggle('dp-preset-active', b.getAttribute('data-preset') === preset);
+        });
+    }
+
+    function closeModal() { document.getElementById('modal-datepicker').style.display = 'none'; }
+
+    var btnAbrir = document.getElementById('btn-abrir-datepicker');
+    if (btnAbrir) btnAbrir.addEventListener('click', function() {
+        document.getElementById('modal-datepicker').style.display = 'flex';
+        renderBoth();
+    });
+
+    var btnCerrarX = document.getElementById('dp-btn-cerrar-x');
+    if (btnCerrarX) btnCerrarX.addEventListener('click', closeModal);
+
+    var btnCancelar = document.getElementById('dp-btn-cancelar');
+    if (btnCancelar) btnCancelar.addEventListener('click', closeModal);
+
+    var btnOk = document.getElementById('dp-btn-ok');
+    if (btnOk) btnOk.addEventListener('click', function() {
+        if (!dpStartDate || !dpEndDate) { alert('Selecciona una fecha de inicio y fin.'); return; }
+        document.getElementById('hidden-fecha-inicio').value = fmtYMD(dpStartDate);
+        document.getElementById('hidden-fecha-fin').value = fmtYMD(dpEndDate);
+        document.getElementById('label-rango-fecha').textContent = fmtDMY(dpStartDate) + ' — ' + fmtDMY(dpEndDate);
+        closeModal();
+        document.getElementById('form-filtros-reporte').submit();
+    });
+
+    document.querySelectorAll('.dp-preset').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var preset = this.getAttribute('data-preset');
+            var t = today(); var s, e;
+            if (preset === 'hoy') { s = new Date(t); e = new Date(t); }
+            else if (preset === 'ayer') { s = new Date(t); s.setDate(s.getDate()-1); e = new Date(s); }
+            else if (preset === 'esta_semana') { s = new Date(t); s.setDate(t.getDate()-t.getDay()); e = new Date(s); e.setDate(s.getDate()+6); }
+            else if (preset === 'ultima_semana') { s = new Date(t); s.setDate(t.getDate()-t.getDay()-7); e = new Date(s); e.setDate(s.getDate()+6); }
+            else if (preset === 'este_mes') { s = new Date(t.getFullYear(),t.getMonth(),1); e = new Date(t.getFullYear(),t.getMonth()+1,0); }
+            else if (preset === 'ultimo_mes') { s = new Date(t.getFullYear(),t.getMonth()-1,1); e = new Date(t.getFullYear(),t.getMonth(),0); }
+            else if (preset === 'este_anio') { s = new Date(t.getFullYear(),0,1); e = new Date(t.getFullYear(),11,31); }
+            else if (preset === 'ultimo_anio') { s = new Date(t.getFullYear()-1,0,1); e = new Date(t.getFullYear()-1,11,31); }
+            dpStartDate = s; dpEndDate = e;
+            dpCalInicio.year = s.getFullYear(); dpCalInicio.month = s.getMonth();
+            dpCalFin.year = e.getFullYear(); dpCalFin.month = e.getMonth();
+            renderBoth(); updatePresetHighlight(preset);
+        });
+    });
+
+    var mdp = document.getElementById('modal-datepicker');
+    if (mdp) mdp.addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+})();
+</script>
+@endpush
+
 
 <!-- PESTAÑA 1: VENTAS -->
 @if($tab === 'ventas')
@@ -294,6 +545,121 @@
     </div>
 @endif
 
+<!-- PESTAÑA REPORTE DE CAJA -->
+@if($tab === 'caja')
+    <!-- Tarjetas de Resumen KPI de Caja -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid var(--primary);">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">VTAS. EN EFECTIVO</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: var(--primary); margin-top: 0.25rem;">${{ number_format($totalCajaEfectivo, 2) }}</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Cobrado en efectivo</div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid #10b981;">
+            <div style="font-size: 0.85rem; color: #10b981; font-weight: 700;">💳 TARJETA / TRANSFERENCIA</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: #10b981; margin-top: 0.25rem;">${{ number_format($totalCajaTarjeta + $totalCajaTransferencia, 2) }}</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Tarjeta: ${{ number_format($totalCajaTarjeta, 2) }} | Transf: ${{ number_format($totalCajaTransferencia, 2) }}</div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid #3b82f6;">
+            <div style="font-size: 0.85rem; color: #3b82f6; font-weight: 700;">📥 ENTRADAS / 📤 SALIDAS</div>
+            <div style="font-size: 1.4rem; font-weight: 800; color: #1e293b; margin-top: 0.25rem;">
+                <span style="color: #10b981;">+${{ number_format($totalCajaEntradas, 2) }}</span> / 
+                <span style="color: #ef4444;">-${{ number_format($totalCajaSalidas, 2) }}</span>
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Movimientos manuales de caja</div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid {{ $totalCajaDiferencia < 0 ? '#ef4444' : ($totalCajaDiferencia > 0 ? '#f59e0b' : '#10b981') }};">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">DESCUADRE ACUMULADO</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: {{ $totalCajaDiferencia < 0 ? '#ef4444' : ($totalCajaDiferencia > 0 ? '#f59e0b' : '#10b981') }}; margin-top: 0.25rem;">
+                ${{ number_format($totalCajaDiferencia, 2) }}
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+                Turnos: {{ $numCajasCerradas }} cerrados | {{ $numCajasAbiertas }} activos
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla Historial de Turnos de Caja -->
+    <div class="card" style="padding: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+            <h3 style="font-size: 1.1rem; font-weight: 700;"><i class="fa-solid fa-vault" style="color: var(--primary);"></i> Historial de Turnos y Cierres de Caja</h3>
+            <span class="badge badge-info" style="font-size: 0.85rem;">{{ $cajasLista->total() }} turnos registrados</span>
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table class="table-modern" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th>ID Turno</th>
+                        <th>Cajero / Usuario</th>
+                        <th>Estado</th>
+                        <th>Apertura</th>
+                        <th>Cierre</th>
+                        <th style="text-align: right;">Fondo Inicial</th>
+                        <th style="text-align: right;">Saldo Esperado</th>
+                        <th style="text-align: right;">Saldo Real</th>
+                        <th style="text-align: right;">Diferencia</th>
+                        <th style="text-align: center;">Ticket Z</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($cajasLista as $sesion)
+                        @php
+                            $dif = (float) $sesion->diferencia;
+                            $difColor = '#10b981';
+                            $difLabel = 'Cuadrada';
+                            if ($dif < 0) {
+                                $difColor = '#ef4444';
+                                $difLabel = 'Faltante';
+                            } elseif ($dif > 0) {
+                                $difColor = '#f59e0b';
+                                $difLabel = 'Sobrante';
+                            }
+                        @endphp
+                        <tr>
+                            <td style="font-weight: 700; font-family: monospace;">#{{ $sesion->id }}</td>
+                            <td>{{ $sesion->user?->name ?: 'N/A' }}</td>
+                            <td>
+                                <span class="badge {{ $sesion->estado === 'abierta' ? 'badge-success' : 'badge-warning' }}">
+                                    {{ strtoupper($sesion->estado) }}
+                                </span>
+                            </td>
+                            <td style="font-size: 0.85rem; font-family: monospace;">
+                                {{ $sesion->fecha_apertura ? $sesion->fecha_apertura->format('Y-m-d H:i') : '-' }}
+                            </td>
+                            <td style="font-size: 0.85rem; font-family: monospace;">
+                                {{ $sesion->fecha_cierre ? $sesion->fecha_cierre->format('Y-m-d H:i') : 'Activa' }}
+                            </td>
+                            <td style="text-align: right;">${{ number_format($sesion->monto_inicial, 2) }}</td>
+                            <td style="text-align: right; font-weight: 600;">${{ number_format($sesion->saldo_esperado, 2) }}</td>
+                            <td style="text-align: right; font-weight: 700; color: var(--primary);">${{ number_format($sesion->saldo_real, 2) }}</td>
+                            <td style="text-align: right; font-weight: 700; color: {{ $difColor }};">
+                                ${{ number_format($dif, 2) }}
+                                <div style="font-size: 0.72rem; font-weight: 600;">{{ $difLabel }}</div>
+                            </td>
+                            <td style="text-align: center;">
+                                <button type="button" class="btn-modern btn-secondary js-btn-ticket-z" data-url="{{ route('caja.ticketCierre', $sesion->id) }}" style="padding: 0.35rem 0.65rem; font-size: 0.8rem; color: #10b981; border-color: #a7f3d0;" title="Ver Ticket Z">
+                                    <i class="fa-solid fa-receipt"></i> Ticket Z
+                                </button>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="10" style="text-align: center; color: var(--text-muted); padding: 2rem;">No hay sesiones de caja registradas en el rango de fechas seleccionado.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        <div style="margin-top: 1rem;">
+            {{ $cajasLista->appends(['tab' => 'caja', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin])->links() }}
+        </div>
+    </div>
+@endif
+
 <!-- PESTAÑA 3: INVENTARIO COMPARATIVO -->
 @if($tab === 'inventario')
     <!-- Tarjetas KPI Inventario -->
@@ -443,7 +809,56 @@
             <button type="button" class="btn-modern btn-secondary" onclick="cerrarDocumentoCompra()">Cerrar Ventana</button>
         </div>
     </div>
+@push('modals')
+<!-- MODAL TICKET Z PREVIEW -->
+<div id="modal-ticket-z" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center; padding: 1rem;">
+    <div style="background: white; border-radius: 14px; max-width: 520px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); border: 1px solid var(--border-color); overflow: hidden;">
+        <div style="padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+            <div style="font-weight: 800; font-size: 1.1rem; color: var(--primary); display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fa-solid fa-receipt" style="color: #10b981;"></i> Vista Previa Ticket Z
+            </div>
+            <button type="button" id="btn-cerrar-ticket-z" style="background: none; border: none; font-size: 1.4rem; color: var(--text-muted); cursor: pointer;">&times;</button>
+        </div>
+        <div style="flex: 1; min-height: 450px; background: #f1f5f9; padding: 0.5rem;">
+            <iframe id="iframe-ticket-z" src="" style="width: 100%; height: 450px; border: none; border-radius: 8px; background: white;"></iframe>
+        </div>
+        <div style="padding: 0.85rem 1.25rem; border-top: 1px solid var(--border-color); background: #f8fafc; display: flex; justify-content: space-between; align-items: center;">
+            <button type="button" id="btn-imprimir-ticket-z" class="btn-modern btn-primary"><i class="fa-solid fa-print"></i> Imprimir Ticket</button>
+            <button type="button" id="btn-cerrar-ticket-z-2" class="btn-modern btn-secondary">Cerrar</button>
+        </div>
+    </div>
 </div>
+<script>
+(function() {
+    var modal = document.getElementById('modal-ticket-z');
+    var iframe = document.getElementById('iframe-ticket-z');
+
+    document.getElementById('btn-cerrar-ticket-z').addEventListener('click', function() {
+        modal.style.display = 'none';
+        iframe.src = '';
+    });
+    document.getElementById('btn-cerrar-ticket-z-2').addEventListener('click', function() {
+        modal.style.display = 'none';
+        iframe.src = '';
+    });
+    document.getElementById('btn-imprimir-ticket-z').addEventListener('click', function() {
+        iframe.contentWindow.print();
+    });
+
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('.js-btn-ticket-z');
+        if (btn) {
+            e.preventDefault();
+            var url = btn.getAttribute('data-url');
+            if (url) {
+                iframe.src = url;
+                modal.style.display = 'flex';
+            }
+        }
+    });
+})();
+</script>
+@endpush
 
 @push('scripts')
 <script>

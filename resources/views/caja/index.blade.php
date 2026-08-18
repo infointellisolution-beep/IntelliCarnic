@@ -189,64 +189,20 @@
     </div>
 @endif
 
-<!-- HISTORIAL DE CIERRES ANTERIORES -->
-<div class="card">
-    <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-        <i class="fa-solid fa-clock-rotate-left" style="color: var(--accent);"></i> Historial de Cierres y Arqueos de Caja
-    </h3>
-
-    <div style="overflow-x: auto;">
-        <table class="table-modern" style="width: 100%; border-collapse: collapse;">
-            <thead>
-                <tr>
-                    <th style="padding: 0.75rem 1rem; text-align: left;">ID / Turno</th>
-                    <th style="padding: 0.75rem 1rem; text-align: left;">Apertura</th>
-                    <th style="padding: 0.75rem 1rem; text-align: left;">Cierre</th>
-                    <th style="padding: 0.75rem 1rem; text-align: left;">Cajero</th>
-                    <th style="padding: 0.75rem 1rem; text-align: right;">Esperado</th>
-                    <th style="padding: 0.75rem 1rem; text-align: right;">Contado Real</th>
-                    <th style="padding: 0.75rem 1rem; text-align: right;">Diferencia</th>
-                    <th style="padding: 0.75rem 1rem; text-align: center;">Acción</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($historialCierres as $cierre)
-                    <tr style="border-bottom: 1px solid var(--border-color);">
-                        <td style="padding: 0.75rem 1rem; font-weight: 700;">#{{ $cierre->id }}</td>
-                        <td style="padding: 0.75rem 1rem; color: var(--text-muted); font-size: 0.85rem;">{{ $cierre->fecha_apertura->format('d/m/Y h:i A') }}</td>
-                        <td style="padding: 0.75rem 1rem; color: var(--text-muted); font-size: 0.85rem;">{{ $cierre->fecha_cierre ? $cierre->fecha_cierre->format('d/m/Y h:i A') : '-' }}</td>
-                        <td style="padding: 0.75rem 1rem;">{{ $cierre->user->name ?? 'Usuario' }}</td>
-                        <td style="padding: 0.75rem 1rem; text-align: right; font-weight: 600;">${{ number_format($cierre->saldo_esperado, 2) }}</td>
-                        <td style="padding: 0.75rem 1rem; text-align: right; font-weight: 700;">${{ number_format($cierre->saldo_real, 2) }}</td>
-                        <td style="padding: 0.75rem 1rem; text-align: right;">
-                            @if(abs($cierre->diferencia) < 0.01)
-                                <span class="badge badge-success" style="font-size: 0.75rem;">$0.00 (Cuadrada)</span>
-                            @elseif($cierre->diferencia > 0)
-                                <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 0.75rem;">+${{ number_format($cierre->diferencia, 2) }} (Sobrante)</span>
-                            @else
-                                <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; font-size: 0.75rem;">-${{ number_format(abs($cierre->diferencia), 2) }} (Faltante)</span>
-                            @endif
-                        </td>
-                        <td style="padding: 0.75rem 1rem; text-align: center;">
-                            <a href="{{ route('caja.ticketCierre', $cierre) }}" target="_blank" class="btn-modern btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 0.3rem;">
-                                <i class="fa-solid fa-print"></i> Ticket
-                            </a>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="8" style="padding: 2rem; text-align: center; color: var(--text-muted);">
-                            No hay cierres pasados registrados aún.
-                        </td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
+<!-- ENLACE AL REPORTE DE CAJA -->
+<div class="card" style="padding: 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+    <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="background: rgba(37,99,235,0.1); color: var(--primary); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0;">
+            <i class="fa-solid fa-vault"></i>
+        </div>
+        <div>
+            <div style="font-size: 1rem; font-weight: 700; color: var(--text-main);">Historial de Cierres y Arqueos</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">El reporte completo de turnos y cierres de caja se encuentra en el Módulo de Reportes.</div>
+        </div>
     </div>
-
-    <div style="margin-top: 1rem;">
-        {{ $historialCierres->links() }}
-    </div>
+    <a href="{{ route('reportes.index', ['tab' => 'caja']) }}" class="btn-modern btn-primary" style="white-space: nowrap; display: inline-flex; align-items: center; gap: 0.5rem;">
+        <i class="fa-solid fa-chart-pie"></i> Ver Reporte de Caja
+    </a>
 </div>
 
 <!-- MODAL APERTURA DE CAJA -->

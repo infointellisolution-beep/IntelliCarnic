@@ -130,6 +130,9 @@
         </div>
     @endif
 
+    {{-- Modals slot: rendered outside .content-area so position:fixed works correctly --}}
+    @stack('modals')
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const toggleBtn = document.getElementById('sidebarToggle');

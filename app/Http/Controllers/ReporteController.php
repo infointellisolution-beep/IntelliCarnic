@@ -133,6 +133,25 @@ class ReporteController extends Controller
             $articulosFiltrados = $articulosProcesados->where('estado_evaluado', $filtroStock);
         }
 
+        // 4. Datos para Reporte de Caja
+        $cajaQuery = \App\Models\CajaSesion::query()
+            ->whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']);
+
+        $totalCajaMontoInicial = (float) $cajaQuery->sum('monto_inicial');
+        $totalCajaEfectivo = (float) $cajaQuery->sum('total_ventas_efectivo');
+        $totalCajaTarjeta = (float) $cajaQuery->sum('total_ventas_tarjeta');
+        $totalCajaTransferencia = (float) $cajaQuery->sum('total_ventas_transferencia');
+        $totalCajaEntradas = (float) $cajaQuery->sum('total_entradas');
+        $totalCajaSalidas = (float) $cajaQuery->sum('total_salidas');
+        $totalCajaDiferencia = (float) $cajaQuery->sum('diferencia');
+        $numCajasCerradas = (clone $cajaQuery)->where('estado', 'cerrada')->count();
+        $numCajasAbiertas = (clone $cajaQuery)->where('estado', 'abierta')->count();
+
+        $cajasLista = \App\Models\CajaSesion::with('user')
+            ->whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(15, ['*'], 'page_caja');
+
         return view('reportes.index', compact(
             'tab',
             'fechaInicio',
@@ -163,7 +182,18 @@ class ReporteController extends Controller
             'countStockBajo',
             'countSinStock',
             'valorTotalInventario',
-            'articulosFiltrados'
+            'articulosFiltrados',
+            // Caja
+            'totalCajaMontoInicial',
+            'totalCajaEfectivo',
+            'totalCajaTarjeta',
+            'totalCajaTransferencia',
+            'totalCajaEntradas',
+            'totalCajaSalidas',
+            'totalCajaDiferencia',
+            'numCajasCerradas',
+            'numCajasAbiertas',
+            'cajasLista'
         ));
     }
 
@@ -241,6 +271,33 @@ class ReporteController extends Controller
                         ]);
                     }
                 });
+            } elseif ($tipo === 'caja') {
+                fputcsv($handle, ['N° Turno', 'Cajero / Usuario', 'Estado', 'Apertura', 'Cierre', 'Fondo Inicial ($)', 'Vtas. Efectivo ($)', 'Vtas. Tarjeta ($)', 'Vtas. Transferencia ($)', 'Entradas ($)', 'Salidas ($)', 'Saldo Esperado ($)', 'Saldo Real ($)', 'Diferencia ($)', 'Observaciones']);
+
+                \App\Models\CajaSesion::with('user')
+                    ->whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])
+                    ->orderBy('created_at', 'desc')
+                    ->chunk(100, function ($cajas) use ($handle) {
+                        foreach ($cajas as $c) {
+                            fputcsv($handle, [
+                                '#' . $c->id,
+                                $c->user ? $c->user->name : 'N/A',
+                                strtoupper($c->estado),
+                                $c->fecha_apertura ? $c->fecha_apertura->format('Y-m-d H:i') : '',
+                                $c->fecha_cierre ? $c->fecha_cierre->format('Y-m-d H:i') : 'ABIERTA',
+                                number_format($c->monto_inicial, 2, '.', ''),
+                                number_format($c->total_ventas_efectivo, 2, '.', ''),
+                                number_format($c->total_ventas_tarjeta, 2, '.', ''),
+                                number_format($c->total_ventas_transferencia, 2, '.', ''),
+                                number_format($c->total_entradas, 2, '.', ''),
+                                number_format($c->total_salidas, 2, '.', ''),
+                                number_format($c->saldo_esperado, 2, '.', ''),
+                                number_format($c->saldo_real, 2, '.', ''),
+                                number_format($c->diferencia, 2, '.', ''),
+                                $c->observaciones ?: ''
+                            ]);
+                        }
+                    });
             }
 
             fclose($handle);
