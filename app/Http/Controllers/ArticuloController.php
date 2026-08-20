@@ -116,33 +116,6 @@ class ArticuloController extends Controller
 
         $articulo = Articulo::create($data);
 
-        // Si el artículo fue creado con stock inicial (escaneado o manual)
-        if ($articulo->stock > 0) {
-            $costoInicial = (float) ($articulo->precio_compra > 0 ? $articulo->precio_compra : $articulo->precio_sin_iva);
-            $compra = \App\Models\Compra::create([
-                'numero_factura' => 'INV-INICIAL-' . $articulo->id,
-                'proveedor_nombre' => 'Inventario Inicial',
-                'fecha_compra' => now(),
-                'subtotal' => round($articulo->stock * $costoInicial, 2),
-                'iva' => 0,
-                'total' => round($articulo->stock * $costoInicial, 2),
-                'observaciones' => 'Registro de inventario inicial al crear el producto en catálogo.',
-                'user_id' => \Illuminate\Support\Facades\Auth::id() ?: 1,
-            ]);
-
-            \App\Models\CompraDetalle::create([
-                'compra_id' => $compra->id,
-                'articulo_id' => $articulo->id,
-                'codigo_escaneado' => $request->input('initial_codigo_escaneado'),
-                'lote' => $request->input('initial_lote') ?: 'INV-INICIAL',
-                'serie' => $request->input('initial_serie') ?: 'SERIE-' . rand(100099, 999999),
-                'fecha_vencimiento' => $request->input('initial_fecha_vencimiento'),
-                'cantidad_peso' => $articulo->stock,
-                'costo_unitario' => $costoInicial,
-                'subtotal' => round($articulo->stock * $costoInicial, 2),
-            ]);
-        }
-
         return redirect()
             ->route('articulos.index')
             ->with('status', 'Artículo creado correctamente.');

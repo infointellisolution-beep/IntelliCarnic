@@ -258,6 +258,52 @@ class ReporteController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(15, ['*'], 'page_abonos');
 
+        // 6. Datos para Reporte de Proveedores
+        $comprasProvQuery = Compra::query()
+            ->whereBetween('fecha_compra', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']);
+
+        $totalInversionProveedoresPeriodo = (float) (clone $comprasProvQuery)->sum('total');
+        $numRecepcionesPeriodo = (clone $comprasProvQuery)->count();
+        $promedioInversionFactura = $numRecepcionesPeriodo > 0 ? $totalInversionProveedoresPeriodo / $numRecepcionesPeriodo : 0;
+
+        $topProveedorPeriodo = Compra::select('proveedor_id', DB::raw('SUM(total) as total_invertido'))
+            ->whereNotNull('proveedor_id')
+            ->whereBetween('fecha_compra', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])
+            ->groupBy('proveedor_id')
+            ->orderByDesc('total_invertido')
+            ->with('proveedor')
+            ->first();
+
+        // Top 10 Proveedores de Mayor Inversión en el período
+        $topProveedoresInversion = Compra::select('proveedor_id', DB::raw('COUNT(*) as total_facturas'), DB::raw('SUM(total) as monto_total'))
+            ->whereNotNull('proveedor_id')
+            ->whereBetween('fecha_compra', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])
+            ->groupBy('proveedor_id')
+            ->orderByDesc('monto_total')
+            ->with('proveedor')
+            ->take(10)
+            ->get();
+
+        // Desglose de Proveedores con Compras en el período
+        $comprasPorProveedor = \App\Models\Proveedor::query()
+            ->whereHas('compras', function ($q) use ($fechaInicio, $fechaFin) {
+                $q->whereBetween('fecha_compra', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']);
+            })
+            ->withCount(['compras' => function ($q) use ($fechaInicio, $fechaFin) {
+                $q->whereBetween('fecha_compra', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']);
+            }])
+            ->withSum(['compras' => function ($q) use ($fechaInicio, $fechaFin) {
+                $q->whereBetween('fecha_compra', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']);
+            }], 'total')
+            ->orderByDesc('compras_sum_total')
+            ->paginate(15, ['*'], 'page_prov');
+
+        // Historial General de Recepciones en el Período
+        $historialRecepciones = Compra::with(['proveedor', 'user', 'detalles.articulo'])
+            ->whereBetween('fecha_compra', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])
+            ->orderBy('fecha_compra', 'desc')
+            ->paginate(15, ['*'], 'page_recepciones');
+
         return view('reportes.index', compact(
             'tab',
             'fechaInicio',
@@ -311,7 +357,15 @@ class ReporteController extends Controller
             'clientesConDeuda',
             'topClientesConsumo',
             'clientesDeudores',
-            'abonosLista'
+            'abonosLista',
+            // Proveedores
+            'totalInversionProveedoresPeriodo',
+            'numRecepcionesPeriodo',
+            'promedioInversionFactura',
+            'topProveedorPeriodo',
+            'topProveedoresInversion',
+            'comprasPorProveedor',
+            'historialRecepciones'
         ));
     }
 

@@ -37,6 +37,11 @@
        style="padding: 0.75rem 1.25rem; font-weight: 700; text-decoration: none; border-bottom: 3px solid {{ $tab === 'clientes' ? 'var(--primary)' : 'transparent' }}; color: {{ $tab === 'clientes' ? 'var(--primary)' : 'var(--text-muted)' }};">
         <i class="fa-solid fa-users-gear"></i> Reporte de Clientes
     </a>
+    <a href="{{ route('reportes.index', ['tab' => 'proveedores', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin]) }}" 
+       class="tab-item {{ $tab === 'proveedores' ? 'active' : '' }}" 
+       style="padding: 0.75rem 1.25rem; font-weight: 700; text-decoration: none; border-bottom: 3px solid {{ $tab === 'proveedores' ? 'var(--primary)' : 'transparent' }}; color: {{ $tab === 'proveedores' ? 'var(--primary)' : 'var(--text-muted)' }};">
+        <i class="fa-solid fa-truck-field"></i> Reporte de Proveedores
+    </a>
     <a href="{{ route('reportes.index', ['tab' => 'inventario', 'familia_id' => $familiaId, 'filtro_stock' => $filtroStock]) }}" 
        class="tab-item {{ $tab === 'inventario' ? 'active' : '' }}" 
        style="padding: 0.75rem 1.25rem; font-weight: 700; text-decoration: none; border-bottom: 3px solid {{ $tab === 'inventario' ? 'var(--primary)' : 'transparent' }}; color: {{ $tab === 'inventario' ? 'var(--primary)' : 'var(--text-muted)' }};">
@@ -51,7 +56,7 @@
         <input type="hidden" name="fecha_inicio" id="hidden-fecha-inicio" value="{{ $fechaInicio }}">
         <input type="hidden" name="fecha_fin" id="hidden-fecha-fin" value="{{ $fechaFin }}">
 
-        @if($tab === 'ventas' || $tab === 'compras' || $tab === 'caja' || $tab === 'clientes')
+        @if($tab === 'ventas' || $tab === 'compras' || $tab === 'caja' || $tab === 'clientes' || $tab === 'proveedores')
             <!-- DATE RANGE PICKER TRIGGER -->
             <div style="flex: 1; min-width: 220px;">
                 <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">
@@ -1057,6 +1062,200 @@
         </div>
         <div style="margin-top: 1rem;">
             {{ $abonosLista->appends(['tab' => 'clientes', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin])->links() }}
+        </div>
+    </div>
+@endif
+
+<!-- PESTAÑA 6: REPORTE DE PROVEEDORES Y COMPRAS -->
+@if($tab === 'proveedores')
+    <!-- Tarjetas KPI Resumen de Proveedores -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid var(--accent);">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">TOTAL INVERSIÓN (PERÍODO)</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: var(--accent); margin-top: 0.25rem;">${{ number_format($totalInversionProveedoresPeriodo, 2) }}</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Compras recibidas en el rango de fechas</div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid var(--primary);">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Nº RECEPCIONES / FACTURAS</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: var(--primary); margin-top: 0.25rem;">{{ $numRecepcionesPeriodo }}</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Documentos ingresados</div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid #10b981;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">PROMEDIO POR FACTURA</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: #10b981; margin-top: 0.25rem;">${{ number_format($promedioInversionFactura, 2) }}</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Costo promedio de compra</div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid #6366f1;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">PROVEEDOR PRINCIPAL</div>
+            <div style="font-size: 1.15rem; font-weight: 800; color: var(--text-main); margin-top: 0.35rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                {{ $topProveedorPeriodo?->proveedor?->nombre ?: 'Sin registros' }}
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;">
+                ${{ number_format($topProveedorPeriodo?->total_invertido ?: 0, 2) }} invertidos
+            </div>
+        </div>
+    </div>
+
+    <!-- SECCIÓN 1: TOP 10 PROVEEDORES DE MAYOR INVERSIÓN -->
+    <div class="card" style="padding: 1.25rem; margin-bottom: 1.5rem;">
+        <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem;">
+            <i class="fa-solid fa-award" style="color: #f59e0b;"></i> Top 10 Proveedores de Mayor Inversión
+        </h3>
+        <div style="overflow-x: auto;">
+            <table class="table-modern" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th style="width: 50px; text-align: center;">#</th>
+                        <th>Proveedor / Razón Social</th>
+                        <th>RUC / Identificación</th>
+                        <th style="text-align: center;">Nº Facturas Recibidas</th>
+                        <th style="text-align: right;">Total Invertido ($)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($topProveedoresInversion as $index => $item)
+                        <tr>
+                            <td style="text-align: center; font-weight: 800; color: var(--primary);">{{ $index + 1 }}</td>
+                            <td style="font-weight: 700;">
+                                <a href="{{ route('proveedores.show', $item->proveedor_id) }}" style="color: var(--primary); text-decoration: none;">
+                                    <i class="fa-solid fa-truck" style="color: var(--text-muted); margin-right: 4px;"></i> {{ $item->proveedor?->nombre ?: 'Proveedor General' }}
+                                </a>
+                            </td>
+                            <td style="font-family: monospace;">{{ $item->proveedor?->identificacion ?: '-' }}</td>
+                            <td style="text-align: center;">
+                                <span class="badge badge-info">{{ $item->total_facturas }} factura(s)</span>
+                            </td>
+                            <td style="text-align: right; font-weight: 800; color: var(--accent); font-size: 1.05rem;">
+                                ${{ number_format($item->monto_total, 2) }}
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+                                No hay compras registradas a proveedores en este rango de fechas.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- SECCIÓN 2: DESGLOSE DE COMPRAS POR PROVEEDOR EN EL PERÍODO -->
+    <div class="card" style="padding: 1.25rem; margin-bottom: 1.5rem;">
+        <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem;">
+            <i class="fa-solid fa-truck-field" style="color: var(--primary);"></i> Desglose de Compras por Proveedor en el Período
+        </h3>
+        <div style="overflow-x: hidden;">
+            <table class="table-modern" style="width: 100%; table-layout: auto;">
+                <thead>
+                    <tr>
+                        <th>Proveedor</th>
+                        <th>Contacto</th>
+                        <th>Teléfono</th>
+                        <th style="text-align: center;">Recepciones</th>
+                        <th style="text-align: right;">Total Invertido</th>
+                        <th style="text-align: center; white-space: nowrap;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($comprasPorProveedor as $prov)
+                        @php
+                            $montoProv = (float) ($prov->compras_sum_total ?? 0);
+                        @endphp
+                        <tr>
+                            <td style="font-weight: 700;">
+                                <a href="{{ route('proveedores.show', $prov->id) }}" style="color: var(--primary); text-decoration: none;">
+                                    {{ $prov->nombre }}
+                                </a>
+                            </td>
+                            <td>{{ $prov->contacto_nombre ?: '-' }}</td>
+                            <td>{{ $prov->telefono ?: '-' }}</td>
+                            <td style="text-align: center;">
+                                <span class="badge badge-info">{{ $prov->compras_count }} factura(s)</span>
+                            </td>
+                            <td style="text-align: right; font-weight: 800; color: var(--accent); font-size: 1.05rem; white-space: nowrap;">
+                                ${{ number_format($montoProv, 2) }}
+                            </td>
+                            <td style="text-align: center; white-space: nowrap;">
+                                <a href="{{ route('proveedores.show', $prov->id) }}" class="btn-modern btn-secondary" style="padding: 0.3rem 0.65rem; font-size: 0.8rem; text-decoration: none; display: inline-block; white-space: nowrap;">
+                                    <i class="fa-solid fa-eye"></i> Ver Expediente
+                                </a>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+                                No se encontraron proveedores con compras en este rango de fechas.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        <div style="margin-top: 1rem;">
+            {{ $comprasPorProveedor->appends(['tab' => 'proveedores', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin])->links() }}
+        </div>
+    </div>
+
+    <!-- SECCIÓN 3: HISTORIAL GENERAL DE RECEPCIONES / COMPRAS EN EL PERÍODO -->
+    <div class="card" style="padding: 1.25rem;">
+        <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem;">
+            <i class="fa-solid fa-boxes-packing" style="color: var(--accent);"></i> Historial General de Recepciones en el Período
+        </h3>
+        <div style="overflow-x: auto;">
+            <table class="table-modern" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th>N° Factura / Comprobante</th>
+                        <th>Fecha de Recepción</th>
+                        <th>Proveedor</th>
+                        <th style="text-align: center;">Ítems/Cajas</th>
+                        <th style="text-align: right;">Subtotal</th>
+                        <th style="text-align: right;">Total Invertido</th>
+                        <th>Registrado Por</th>
+                        <th style="text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($historialRecepciones as $rec)
+                        <tr>
+                            <td style="font-weight: 700; font-family: monospace; color: var(--accent);">
+                                {{ $rec->numero_factura ?: 'SIN FACTURA (#'.$rec->id.')' }}
+                            </td>
+                            <td>{{ $rec->fecha_compra ? $rec->fecha_compra->format('d/m/Y h:i A') : 'N/A' }}</td>
+                            <td style="font-weight: 600;">{{ $rec->proveedor_nombre ?: 'Proveedor General' }}</td>
+                            <td style="text-align: center;">
+                                <span class="badge badge-info">{{ $rec->detalles->count() }} artículo(s)</span>
+                            </td>
+                            <td style="text-align: right;">${{ number_format($rec->subtotal, 2) }}</td>
+                            <td style="text-align: right; font-weight: 800; color: var(--accent); font-size: 1.05rem;">
+                                ${{ number_format($rec->total, 2) }}
+                            </td>
+                            <td style="font-size: 0.85rem; color: var(--text-muted);">
+                                {{ $rec->user?->name ?: 'Sistema' }}
+                            </td>
+                            <td style="text-align: center;">
+                                <button type="button" class="btn-modern btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.82rem;" onclick="abrirDocumentoCompra({{ json_encode($rec) }})">
+                                    <i class="fa-solid fa-boxes-packing" style="color: var(--accent);"></i> Ver Documento
+                                </button>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+                                No se encontraron registros de recepciones de mercancía en este rango de fechas.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        <div style="margin-top: 1rem;">
+            {{ $historialRecepciones->appends(['tab' => 'proveedores', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin])->links() }}
         </div>
     </div>
 @endif
