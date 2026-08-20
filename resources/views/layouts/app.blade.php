@@ -77,6 +77,11 @@
                         </a>
                     </li>
                     <li>
+                        <a href="{{ route('proveedores.index') }}" class="{{ request()->routeIs('proveedores.*') ? 'active' : '' }}">
+                            <i class="fa-solid fa-truck-field"></i> Proveedores
+                        </a>
+                    </li>
+                    <li>
                         <a href="{{ route('clientes.index') }}" class="{{ request()->routeIs('clientes.*') ? 'active' : '' }}">
                             <i class="fa-solid fa-users"></i> Clientes
                         </a>

@@ -413,7 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setFieldValue('item', articulo.item);
             setFieldValue('familia_id', articulo.familia_id);
             setFieldValue('descripcion', articulo.descripcion);
-            setFieldValue('precio_compra', articulo.precio_compra ?? articulo.precio_sin_iva);
+            setFieldValue('precio_compra', (articulo.precio_compra !== undefined && articulo.precio_compra !== null) ? articulo.precio_compra : '');
             setFieldValue('precio_sin_iva', articulo.precio_sin_iva);
             setFieldValue('iva', articulo.iva ?? 21);
             setFieldValue('pvp', articulo.pvp);
@@ -666,7 +666,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 detailDescripcion.textContent = articulo.descripcion || 'Sin descripción';
                 detailFamilia.textContent = articulo.familia_nombre || 'Sin familia';
                 const detailPrecioCompra = document.getElementById('detalle-precio-compra');
-                if (detailPrecioCompra) detailPrecioCompra.textContent = `$${Number(articulo.precio_compra || articulo.precio_sin_iva || 0).toFixed(2)}`;
+                if (detailPrecioCompra) detailPrecioCompra.textContent = `$${Number(articulo.precio_compra !== undefined && articulo.precio_compra !== null ? articulo.precio_compra : 0).toFixed(2)}`;
                 detailPrecio.textContent = `$${Number(articulo.precio_sin_iva || 0).toFixed(2)}`;
                 if (detailIva) detailIva.textContent = `${Number(articulo.iva || 0).toFixed(0)}%`;
                 if (detailPvp) detailPvp.textContent = `$${Number(articulo.pvp || 0).toFixed(2)}`;

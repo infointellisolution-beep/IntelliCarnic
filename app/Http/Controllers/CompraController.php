@@ -51,7 +51,7 @@ class CompraController extends Controller
             ->orderBy('descripcion', 'asc')
             ->get();
 
-        $proveedores = Proveedor::orderBy('nombre', 'asc')->get();
+        $proveedores = Proveedor::where('estado', 'activo')->orderBy('nombre', 'asc')->get();
 
         return view('compras.create', [
             'articulos' => $articulos,

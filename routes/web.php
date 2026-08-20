@@ -44,6 +44,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/clientes/{cliente}/abono', [\App\Http\Controllers\ClienteController::class, 'registrarAbono'])->name('clientes.abono');
     Route::resource('clientes', \App\Http\Controllers\ClienteController::class);
 
+    // Proveedores
+    Route::resource('proveedores', \App\Http\Controllers\ProveedorController::class)->parameters(['proveedores' => 'proveedor']);
+
     // Compras (Acceso directo a registro)
     Route::get('/compras', [CompraController::class, 'create'])->name('compras.index');
     Route::get('/compras/crear', [CompraController::class, 'create'])->name('compras.create');
