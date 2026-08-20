@@ -32,10 +32,15 @@
        style="padding: 0.75rem 1.25rem; font-weight: 700; text-decoration: none; border-bottom: 3px solid {{ $tab === 'caja' ? 'var(--primary)' : 'transparent' }}; color: {{ $tab === 'caja' ? 'var(--primary)' : 'var(--text-muted)' }};">
         <i class="fa-solid fa-vault"></i> Reporte de Caja
     </a>
+    <a href="{{ route('reportes.index', ['tab' => 'clientes', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin]) }}" 
+       class="tab-item {{ $tab === 'clientes' ? 'active' : '' }}" 
+       style="padding: 0.75rem 1.25rem; font-weight: 700; text-decoration: none; border-bottom: 3px solid {{ $tab === 'clientes' ? 'var(--primary)' : 'transparent' }}; color: {{ $tab === 'clientes' ? 'var(--primary)' : 'var(--text-muted)' }};">
+        <i class="fa-solid fa-users-gear"></i> Reporte de Clientes
+    </a>
     <a href="{{ route('reportes.index', ['tab' => 'inventario', 'familia_id' => $familiaId, 'filtro_stock' => $filtroStock]) }}" 
        class="tab-item {{ $tab === 'inventario' ? 'active' : '' }}" 
        style="padding: 0.75rem 1.25rem; font-weight: 700; text-decoration: none; border-bottom: 3px solid {{ $tab === 'inventario' ? 'var(--primary)' : 'transparent' }}; color: {{ $tab === 'inventario' ? 'var(--primary)' : 'var(--text-muted)' }};">
-        <i class="fa-solid fa-boxes-stacked"></i> Inventario Comparativo (Físico vs Mínimo)
+        <i class="fa-solid fa-boxes-stacked"></i> Inventario Comparativo
     </a>
 </div>
 
@@ -46,7 +51,7 @@
         <input type="hidden" name="fecha_inicio" id="hidden-fecha-inicio" value="{{ $fechaInicio }}">
         <input type="hidden" name="fecha_fin" id="hidden-fecha-fin" value="{{ $fechaFin }}">
 
-        @if($tab === 'ventas' || $tab === 'compras' || $tab === 'caja')
+        @if($tab === 'ventas' || $tab === 'compras' || $tab === 'caja' || $tab === 'clientes')
             <!-- DATE RANGE PICKER TRIGGER -->
             <div style="flex: 1; min-width: 220px;">
                 <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">
@@ -834,6 +839,228 @@
     </div>
 @endif
 
+<!-- PESTAÑA 5: REPORTE DE CLIENTES Y CARTERA -->
+@if($tab === 'clientes')
+    <!-- Tarjetas KPI Resumen de Cartera -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid #ef4444;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">TOTAL CARTERA POR COBRAR</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: #dc2626; margin-top: 0.25rem;">${{ number_format($carteraTotal, 2) }}</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Deuda pendiente total vigente</div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid #f59e0b;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">CRÉDITOS OTORGADOS (PERÍODO)</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: #d97706; margin-top: 0.25rem;">${{ number_format($creditosOtorgadosPeriodo, 2) }}</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Ventas a crédito en el rango de fechas</div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid #10b981;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">ABONOS RECAUDADOS (PERÍODO)</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: #10b981; margin-top: 0.25rem;">+${{ number_format($abonosRecaudadosPeriodo, 2) }}</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Ingresos por cobranza de cartera</div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid #3b82f6;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">CLIENTES CON DEUDA</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: #2563eb; margin-top: 0.25rem;">{{ $clientesConDeuda }}</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Clientes activos con saldo deudor</div>
+        </div>
+    </div>
+
+    <!-- SECCIÓN 1: TOP 10 CLIENTES DE MAYOR CONSUMO -->
+    <div class="card" style="padding: 1.25rem; margin-bottom: 1.5rem;">
+        <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem;">
+            <i class="fa-solid fa-trophy" style="color: #f59e0b;"></i> Top 10 Clientes de Mayor Consumo
+        </h3>
+        <div style="overflow-x: auto;">
+            <table class="table-modern" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th style="width: 50px; text-align: center;">#</th>
+                        <th>Cliente</th>
+                        <th>Identificación / RUC</th>
+                        <th style="text-align: center;">Nº de Compras</th>
+                        <th style="text-align: right;">Total Comprado ($)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($topClientesConsumo as $index => $item)
+                        <tr>
+                            <td style="text-align: center; font-weight: 800; color: var(--primary);">{{ $index + 1 }}</td>
+                            <td style="font-weight: 700;">
+                                <a href="{{ route('clientes.show', $item->cliente_id) }}" style="color: var(--primary); text-decoration: none;">
+                                    {{ $item->cliente?->nombre ?: 'Cliente General' }}
+                                </a>
+                            </td>
+                            <td>{{ $item->cliente?->identificacion ?: '-' }}</td>
+                            <td style="text-align: center;">
+                                <span class="badge badge-info">{{ $item->total_compras }} venta(s)</span>
+                            </td>
+                            <td style="text-align: right; font-weight: 800; color: #10b981; font-size: 1.05rem;">
+                                ${{ number_format($item->monto_total, 2) }}
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+                                No hay registros de ventas para clientes en este rango de fechas.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- SECCIÓN 2: ESTADO GENERAL DE CARTERA (CLIENTES CON DEUDA) -->
+    <div class="card" style="padding: 1.25rem; margin-bottom: 1.5rem;">
+        <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem;">
+            <i class="fa-solid fa-file-invoice-dollar" style="color: #ef4444;"></i> Estado General de Cartera y Cuentas por Cobrar
+        </h3>
+        <div style="overflow-x: auto;">
+            <table class="table-modern" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Teléfono / Contacto</th>
+                        <th style="text-align: right;">Límite Crédito</th>
+                        <th style="text-align: right;">Saldo Deudor</th>
+                        <th style="text-align: center;">% Uso Crédito</th>
+                        <th style="text-align: center;">Estado Riesgo</th>
+                        <th style="text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($clientesDeudores as $cli)
+                        @php
+                            $limite = (float) $cli->limite_credito;
+                            $deuda = (float) $cli->saldo_deudor;
+                            $pct = $limite > 0 ? min(100, round(($deuda / $limite) * 100)) : 0;
+                            
+                            $badgeColor = '#10b981';
+                            $badgeBg = 'rgba(16, 185, 129, 0.15)';
+                            $labelRiesgo = 'Normal';
+                            if ($pct >= 100) {
+                                $badgeColor = '#dc2626';
+                                $badgeBg = 'rgba(220, 38, 38, 0.15)';
+                                $labelRiesgo = 'Límite Excedido';
+                            } elseif ($pct >= 85) {
+                                $badgeColor = '#d97706';
+                                $badgeBg = 'rgba(245, 158, 11, 0.15)';
+                                $labelRiesgo = 'Riesgo Alto';
+                            }
+                        @endphp
+                        <tr>
+                            <td style="font-weight: 700;">
+                                <a href="{{ route('clientes.show', $cli->id) }}" style="color: var(--primary); text-decoration: none;">
+                                    {{ $cli->nombre }}
+                                </a>
+                            </td>
+                            <td>{{ $cli->telefono ?: '-' }}</td>
+                            <td style="text-align: right; color: var(--text-muted);">${{ number_format($limite, 2) }}</td>
+                            <td style="text-align: right; font-weight: 800; color: #dc2626; font-size: 1.05rem;">
+                                ${{ number_format($deuda, 2) }}
+                            </td>
+                            <td style="text-align: center;">
+                                <div style="display: inline-block; width: 100px; background: #e2e8f0; border-radius: 9999px; height: 10px; overflow: hidden; vertical-align: middle;">
+                                    <div style="width: {{ $pct }}%; background: {{ $badgeColor }}; height: 100%;"></div>
+                                </div>
+                                <span style="font-size: 0.78rem; font-weight: 700; margin-left: 0.35rem;">{{ $pct }}%</span>
+                            </td>
+                            <td style="text-align: center;">
+                                <span class="badge" style="background: {{ $badgeBg }}; color: {{ $badgeColor }}; font-weight: 700;">
+                                    {{ $labelRiesgo }}
+                                </span>
+                            </td>
+                            <td style="text-align: center;">
+                                <a href="{{ route('clientes.show', $cli->id) }}" class="btn-modern btn-secondary" style="padding: 0.3rem 0.65rem; font-size: 0.8rem; text-decoration: none; display: inline-block;">
+                                    <i class="fa-solid fa-address-card"></i> Ver Estado
+                                </a>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+                                🟢 No hay clientes con saldo deudor pendiente en este momento.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        <div style="margin-top: 1rem;">
+            {{ $clientesDeudores->appends(['tab' => 'clientes', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin])->links() }}
+        </div>
+    </div>
+
+    <!-- SECCIÓN 3: HISTORIAL DE ABONOS RECAUDADOS EN EL PERÍODO -->
+    <div class="card" style="padding: 1.25rem;">
+        <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem;">
+            <i class="fa-solid fa-receipt" style="color: #10b981;"></i> Historial de Abonos Recaudados en el Período
+        </h3>
+        <div style="overflow-x: auto;">
+            <table class="table-modern" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th>N° Abono</th>
+                        <th>Fecha / Hora</th>
+                        <th>Cliente</th>
+                        <th>Método Pago</th>
+                        <th style="text-align: right;">Saldo Anterior</th>
+                        <th style="text-align: right;">Monto Abonado</th>
+                        <th style="text-align: right;">Nuevo Saldo</th>
+                        <th>Cajero</th>
+                        <th style="text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($abonosLista as $ab)
+                        <tr>
+                            <td style="font-weight: 700; font-family: monospace; color: #10b981;">
+                                #AB-{{ str_pad($ab->id, 6, '0', STR_PAD_LEFT) }}
+                            </td>
+                            <td>{{ $ab->created_at->format('d/m/Y h:i A') }}</td>
+                            <td style="font-weight: 700;">
+                                <a href="{{ route('clientes.show', $ab->cliente_id) }}" style="color: var(--primary); text-decoration: none;">
+                                    {{ $ab->cliente?->nombre ?: 'Cliente' }}
+                                </a>
+                            </td>
+                            <td>
+                                <span class="badge badge-info" style="text-transform: uppercase;">{{ $ab->metodo_pago }}</span>
+                            </td>
+                            <td style="text-align: right; color: var(--text-muted);">${{ number_format($ab->saldo_anterior, 2) }}</td>
+                            <td style="text-align: right; font-weight: 800; color: #10b981; font-size: 1.05rem;">
+                                +${{ number_format($ab->monto, 2) }}
+                            </td>
+                            <td style="text-align: right; font-weight: 700; color: {{ $ab->saldo_nuevo > 0 ? '#dc2626' : '#10b981' }};">
+                                ${{ number_format($ab->saldo_nuevo, 2) }}
+                            </td>
+                            <td style="font-size: 0.85rem; color: var(--text-muted);">
+                                {{ $ab->user?->name ?: 'Sistema' }}
+                            </td>
+                            <td style="text-align: center;">
+                                <button type="button" class="btn-modern btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.78rem;" onclick="verTicketAbono({{ $ab->id }})">
+                                    <i class="fa-solid fa-receipt" style="color: #10b981;"></i> Ticket Abono
+                                </button>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+                                No se registraron abonos en el período seleccionado.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        <div style="margin-top: 1rem;">
+            {{ $abonosLista->appends(['tab' => 'clientes', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin])->links() }}
+        </div>
+    </div>
+@endif
+
 <!-- MODAL DOCUMENTO DE VENTA (TICKET TÉRMICO IDÉNTICO AL TPV) -->
 <div id="modal-documento-venta" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); z-index: 999; align-items: center; justify-content: center; padding: 1rem;">
     <div style="background: white; border-radius: 14px; max-width: 480px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); border: 1px solid var(--border-color); overflow: hidden;">
@@ -1288,7 +1515,123 @@
     function cerrarDocumentoCompra() {
         document.getElementById('modal-documento-compra').style.display = 'none';
     }
+
+    async function verTicketAbono(abonoId) {
+        try {
+            const res = await fetch(`/clientes/abono/${abonoId}/ticket`);
+            const data = await res.json();
+            if (data.success && data.abono) {
+                const ab = data.abono;
+                const set = data.settings;
+                const empresaNom = set.empresa_nombre || 'IntelliCarnic';
+                const empresaRuc = set.empresa_ruc || '000000000';
+                const empresaDir = set.empresa_direccion || 'Dirección de la empresa';
+                const abonoNum = 'AB-' + String(ab.id).padStart(6, '0');
+                const fecha = new Date(ab.created_at).toLocaleString();
+                const clienteNom = ab.cliente ? ab.cliente.nombre : 'CLIENTE';
+                const clienteIden = ab.cliente ? (ab.cliente.identificacion || '-') : '-';
+                const cajero = ab.user ? ab.user.name : 'Sistema';
+                const saldoAnt = parseFloat(ab.saldo_anterior || 0);
+                const montoAbono = parseFloat(ab.monto || 0);
+                const saldoNuev = parseFloat(ab.saldo_nuevo || 0);
+
+                let statusBanner = saldoNuev <= 0 ? `
+                    <div style="background: #f0fdf4; border: 1.5px dashed #16a34a; color: #15803d; font-weight: 800; padding: 6px; margin: 10px 0; font-size: 12px; text-align: center;">
+                        *** DEUDA TOTALMENTE LIQUIDADA ***<br>
+                        ¡SU CUENTA HA QUEDADO EN $0.00!
+                    </div>
+                ` : `
+                    <div style="background: #fffbeb; border: 1.5px dashed #fcd34d; color: #d97706; font-weight: 800; padding: 6px; margin: 10px 0; font-size: 11px; text-align: center;">
+                        ABONO PARCIAL A CUENTA A CRÉDITO
+                    </div>
+                `;
+
+                let html = `
+                    <div style="text-align: center; margin-bottom: 12px;">
+                        <h2 style="margin: 0; font-size: 18px; font-weight: 800;">${empresaNom}</h2>
+                        <div>RUC/NIT: ${empresaRuc}</div>
+                        <div>${empresaDir}</div>
+                        <div style="margin-top: 6px; font-weight: bold; font-size: 13px;">COMPROBANTE DE ABONO</div>
+                        <div style="font-weight: bold;">#${abonoNum}</div>
+                        <div>Fecha: ${fecha}</div>
+                        <div>Cajero: ${cajero}</div>
+                    </div>
+                    ${statusBanner}
+                    <div style="margin-bottom: 8px; font-size: 11px;">
+                        <div><strong>CLIENTE:</strong> ${clienteNom}</div>
+                        <div><strong>IDENTIFICACIÓN:</strong> ${clienteIden}</div>
+                    </div>
+                    <hr style="border-top: 1px dashed black; margin: 8px 0;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                        <span>SALDO ANTERIOR:</span>
+                        <span>$${saldoAnt.toFixed(2)}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 3px; font-weight: bold; color: #000;">
+                        <span>MONTO ABONADO:</span>
+                        <span>+$${montoAbono.toFixed(2)}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                        <span>MÉTODO DE PAGO:</span>
+                        <span style="text-transform: uppercase;">${ab.metodo_pago}</span>
+                    </div>
+                    <hr style="border-top: 1px dashed black; margin: 8px 0;">
+                    <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 13px; margin-top: 4px;">
+                        <span>NUEVO SALDO PENDIENTE:</span>
+                        <span style="color: ${saldoNuev > 0 ? '#dc2626' : '#16a34a'};">$${saldoNuev.toFixed(2)}</span>
+                    </div>
+                    ${ab.notas ? `<div style="margin-top: 8px; font-size: 11px; font-style: italic;">Notas: ${ab.notas}</div>` : ''}
+                    <div style="text-align: center; margin-top: 15px; margin-bottom: 5px;">
+                        <svg id="abonoBarcodeSvg" style="max-width: 100%;"></svg>
+                    </div>
+                    <div style="text-align: center; margin-top: 8px; font-size: 11px;">
+                        ¡Gracias por su pago!
+                    </div>
+                `;
+
+                document.getElementById('printableAbonoArea').innerHTML = html;
+                document.getElementById('modalComprobanteAbono').style.display = 'flex';
+                setTimeout(() => {
+                    try {
+                        if (typeof JsBarcode === 'function') {
+                            JsBarcode("#abonoBarcodeSvg", abonoNum, { format: "CODE128", width: 1.6, height: 40, displayValue: true, fontSize: 12, margin: 4 });
+                        }
+                    } catch (e) {}
+                }, 50);
+            }
+        } catch (e) {}
+    }
+
+    function closeModal(id) {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    }
+
+    function imprimirTicketAbono() {
+        window.print();
+    }
 </script>
+@endpush
+
+@push('modals')
+<!-- MODAL COMPROBANTE DE ABONO (TICKET 80mm) -->
+<div id="modalComprobanteAbono" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center; padding: 1rem;">
+    <div style="background: white; border-radius: 12px; width: 380px; max-width: 95%; display: flex; flex-direction: column; max-height: 90vh; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3); overflow: hidden;">
+        <div class="no-print" style="padding: 0.85rem 1.25rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+            <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--text-main);">
+                <i class="fa-solid fa-receipt" style="color: #10b981;"></i> Comprobante de Abono
+            </h3>
+            <button type="button" onclick="closeModal('modalComprobanteAbono')" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #64748b;">&times;</button>
+        </div>
+        <div id="printableAbonoArea" style="padding: 1.5rem; overflow-y: auto; font-family: monospace; font-size: 12px; color: black; background: white;">
+        </div>
+        <div class="no-print" style="padding: 0.85rem 1.25rem; border-top: 1px solid #e2e8f0; background: #f8fafc; display: flex; justify-content: flex-end; gap: 0.75rem;">
+            <button type="button" class="btn-modern btn-secondary" onclick="closeModal('modalComprobanteAbono')">Cerrar</button>
+            <button type="button" class="btn-modern btn-primary" style="background: #10b981; border-color: #10b981;" onclick="imprimirTicketAbono()">
+                <i class="fa-solid fa-print"></i> Imprimir Ticket
+            </button>
+        </div>
+    </div>
+</div>
 @endpush
 
 @endsection

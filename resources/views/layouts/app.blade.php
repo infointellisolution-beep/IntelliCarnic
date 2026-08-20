@@ -21,7 +21,7 @@
 </head>
 <body>
 
-    @if(request()->routeIs('login'))
+    @if(request()->routeIs('login') || request()->is('login') || !auth()->check())
         @yield('content')
     @else
         <div class="app-layout">
@@ -149,6 +149,20 @@
                 });
             }
         });
+
+        // Interceptor para redireccionar limpiamente a la pantalla de Login completa si expira la sesión
+        (function() {
+            const originalFetch = window.fetch;
+            if (originalFetch) {
+                window.fetch = async function(...args) {
+                    const response = await originalFetch.apply(this, args);
+                    if (response.status === 401 || (response.redirected && response.url.includes('/login'))) {
+                        window.location.href = "{{ route('login') }}";
+                    }
+                    return response;
+                };
+            }
+        })();
     </script>
     
     @stack('scripts')

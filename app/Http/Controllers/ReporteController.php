@@ -223,6 +223,41 @@ class ReporteController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(15, ['*'], 'page_caja');
 
+        // 5. Datos para Reporte de Clientes
+        $carteraTotal = (float) \App\Models\Cliente::sum('saldo_deudor');
+        $creditosOtorgadosPeriodo = (float) Venta::where('tipo_venta', 'credito')
+            ->where('estado', '!=', 'devuelta')
+            ->whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])
+            ->sum('total');
+
+        $abonosRecaudadosPeriodo = (float) \App\Models\Abono::whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])
+            ->sum('monto');
+
+        $clientesConDeuda = \App\Models\Cliente::where('saldo_deudor', '>', 0)->count();
+
+        // Top 10 Clientes de Mayor Consumo en el período
+        $topClientesConsumo = Venta::query()
+            ->whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])
+            ->whereNotNull('cliente_id')
+            ->where('estado', '!=', 'devuelta')
+            ->select('cliente_id', DB::raw('COUNT(*) as total_compras'), DB::raw('SUM(total) as monto_total'))
+            ->with('cliente')
+            ->groupBy('cliente_id')
+            ->orderByDesc('monto_total')
+            ->take(10)
+            ->get();
+
+        // Estado General de Cartera (Clientes deudores)
+        $clientesDeudores = \App\Models\Cliente::where('saldo_deudor', '>', 0)
+            ->orderByDesc('saldo_deudor')
+            ->paginate(15, ['*'], 'page_deudores');
+
+        // Historial de Abonos Recibidos en el período
+        $abonosLista = \App\Models\Abono::with(['cliente', 'user'])
+            ->whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(15, ['*'], 'page_abonos');
+
         return view('reportes.index', compact(
             'tab',
             'fechaInicio',
@@ -268,7 +303,15 @@ class ReporteController extends Controller
             'totalCajaDiferencia',
             'numCajasCerradas',
             'numCajasAbiertas',
-            'cajasLista'
+            'cajasLista',
+            // Clientes
+            'carteraTotal',
+            'creditosOtorgadosPeriodo',
+            'abonosRecaudadosPeriodo',
+            'clientesConDeuda',
+            'topClientesConsumo',
+            'clientesDeudores',
+            'abonosLista'
         ));
     }
 
