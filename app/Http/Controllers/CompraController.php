@@ -78,7 +78,8 @@ class CompraController extends Controller
             'detalles.*.costo_unitario' => ['required', 'numeric', 'min:0'],
         ]);
 
-        DB::transaction(function () use ($data) {
+        $compra = null;
+        DB::transaction(function () use ($data, &$compra) {
             $subtotal = 0;
 
             foreach ($data['detalles'] as $item) {
@@ -150,6 +151,14 @@ class CompraController extends Controller
                 $cajaActiva->recargarTotales();
             }
         });
+
+        if ($request->wantsJson() || $request->isJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Compra registrada exitosamente.',
+                'compra' => $compra,
+            ]);
+        }
 
         return redirect()
             ->route('compras.index')

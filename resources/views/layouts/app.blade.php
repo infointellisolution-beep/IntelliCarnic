@@ -18,6 +18,35 @@
     <link rel="stylesheet" href="{{ asset('css/vender.css') }}">
     <!-- Librería para generar códigos de barras -->
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+
+    @auth
+    <!-- Auto-Detección Automática de Dispositivos Móviles y Terminales Handheld (Zebra) -->
+    <script>
+        (function() {
+            function checkMobileScreen() {
+                const isMobileScreen = window.innerWidth <= 768;
+                const isMobileUA = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Zebra|TC51|TC56|TC57|TC52/i.test(navigator.userAgent);
+                const urlParams = new URLSearchParams(window.location.search);
+                
+                if ((isMobileScreen || isMobileUA) && urlParams.get('desktop') !== '1') {
+                    const path = window.location.pathname;
+                    if (!path.startsWith('/handheld') && !path.startsWith('/vender/ticket') && !path.startsWith('/clientes/abono') && !path.startsWith('/caja/ticket-cierre') && !path.startsWith('/login') && !path.startsWith('/dev')) {
+                        if (path.startsWith('/compras')) {
+                            window.location.replace("{{ route('handheld.compras') }}");
+                        } else if (path.startsWith('/vender')) {
+                            window.location.replace("{{ route('handheld.tpv') }}");
+                        } else {
+                            window.location.replace("{{ route('handheld.index') }}");
+                        }
+                    }
+                }
+            }
+
+            checkMobileScreen();
+            window.addEventListener('resize', checkMobileScreen);
+        })();
+    </script>
+    @endauth
 </head>
 <body>
 

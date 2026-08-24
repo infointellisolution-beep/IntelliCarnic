@@ -63,6 +63,13 @@ Route::middleware('auth')->group(function () {
     Route::post('/caja/movimiento', [\App\Http\Controllers\CajaController::class, 'storeMovimiento'])->name('caja.movimiento.store');
     Route::post('/caja/cerrar', [\App\Http\Controllers\CajaController::class, 'cerrar'])->name('caja.cerrar');
     Route::get('/caja/ticket-cierre/{cajaSesion}', [\App\Http\Controllers\CajaController::class, 'ticketCierre'])->name('caja.ticketCierre');
+
+    // Handheld Terminal (Zebra TC51)
+    Route::get('/handheld', [\App\Http\Controllers\HandheldController::class, 'index'])->name('handheld.index');
+    Route::get('/handheld/tpv', [\App\Http\Controllers\HandheldController::class, 'tpv'])->name('handheld.tpv');
+    Route::get('/handheld/compras', [\App\Http\Controllers\HandheldController::class, 'compras'])->name('handheld.compras');
+    Route::get('/handheld/conteo', [\App\Http\Controllers\HandheldController::class, 'conteo'])->name('handheld.conteo');
+    Route::post('/handheld/conteo', [\App\Http\Controllers\HandheldController::class, 'storeConteo'])->name('handheld.conteo.store');
 });
 
 // Ruta de mantenimiento para ejecutar comandos sin SSH
