@@ -1000,12 +1000,18 @@ function calculateVuelto() {
     }
 }
 
-async function confirmCheckout() {
-    const btnConfirm = document.getElementById('btnConfirmCheckout');
-    if (btnConfirm.disabled) return;
+let isProcessingSale = false;
 
+async function confirmCheckout() {
+    if (isProcessingSale) return;
+    const btnConfirm = document.getElementById('btnConfirmCheckout');
+    if (!btnConfirm || btnConfirm.disabled) return;
+
+    isProcessingSale = true;
     btnConfirm.disabled = true;
-    btnConfirm.innerText = 'Procesando...';
+    btnConfirm.style.pointerEvents = 'none';
+    btnConfirm.style.opacity = '0.7';
+    btnConfirm.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Registrando Venta...';
 
     let subtotal = 0;
     let total = 0;
@@ -1091,8 +1097,13 @@ async function confirmCheckout() {
         console.error(error);
         alert('Ocurrió un error en la conexión.');
     } finally {
-        btnConfirm.disabled = false;
-        btnConfirm.innerText = 'Registrar Venta';
+        isProcessingSale = false;
+        if (btnConfirm) {
+            btnConfirm.disabled = false;
+            btnConfirm.style.pointerEvents = '';
+            btnConfirm.style.opacity = '';
+            btnConfirm.innerHTML = 'Registrar Venta';
+        }
     }
 }
 

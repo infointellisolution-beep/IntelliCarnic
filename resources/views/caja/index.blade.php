@@ -192,12 +192,16 @@
                         <tr style="border-bottom: 1px solid var(--border-color);">
                             <td style="padding: 0.75rem 1rem; color: var(--text-muted);">{{ $mov->created_at->format('h:i A') }}</td>
                             <td style="padding: 0.75rem 1rem;">
-                                @if($mov->tipo === 'entrada')
-                                    <span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6;">Entrada</span>
+                                @if(str_contains(strtolower($mov->concepto), 'abono'))
+                                    <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981;"><i class="fa-solid fa-hand-holding-dollar"></i> Abono Crédito</span>
+                                @elseif($mov->tipo === 'entrada')
+                                    <span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6;"><i class="fa-solid fa-circle-plus"></i> Entrada Manual</span>
                                 @elseif(str_contains(strtolower($mov->concepto), 'devoluci'))
                                     <span class="badge" style="background: rgba(220, 38, 38, 0.15); color: #dc2626;"><i class="fa-solid fa-rotate-left"></i> Devolución</span>
+                                @elseif(str_contains(strtolower($mov->concepto), 'compra'))
+                                    <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #d97706;"><i class="fa-solid fa-truck-ramp-box"></i> Compra Proveedor</span>
                                 @else
-                                    <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">Salida</span>
+                                    <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;"><i class="fa-solid fa-circle-minus"></i> Salida / Gasto</span>
                                 @endif
                             </td>
                             <td style="padding: 0.75rem 1rem;">
@@ -259,7 +263,7 @@
             Ingresa el monto físico de dinero en efectivo con el que inicias tu caja para cambio.
         </p>
 
-        <form action="{{ route('caja.aperturar') }}" method="POST">
+        <form id="formAperturaCaja" action="{{ route('caja.aperturar') }}" method="POST">
             @csrf
             <div style="margin-bottom: 1rem;">
                 <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 0.35rem;">Fondo Inicial en Efectivo ($)</label>
@@ -273,7 +277,7 @@
 
             <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
                 <button type="button" class="btn-modern btn-secondary" onclick="cerrarModales()">Cancelar</button>
-                <button type="submit" class="btn-modern btn-primary">Aperturar Turno</button>
+                <button type="submit" id="btnSubmitApertura" class="btn-modern btn-primary">Aperturar Turno</button>
             </div>
         </form>
     </div>
@@ -289,7 +293,7 @@
             Registra una entrada o egreso de dinero en efectivo de la caja actual.
         </p>
 
-        <form action="{{ route('caja.movimiento.store') }}" method="POST">
+        <form id="formMovimientoCaja" action="{{ route('caja.movimiento.store') }}" method="POST">
             @csrf
             <input type="hidden" id="movimientoTipo" name="tipo" value="entrada">
 
@@ -327,7 +331,7 @@
             Cuenta el dinero en efectivo presente en el cajón de la caja e ingrésalo a continuación.
         </p>
 
-        <form action="{{ route('caja.cerrar') }}" method="POST">
+        <form id="formCierreCaja" action="{{ route('caja.cerrar') }}" method="POST">
             @csrf
 
             <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.25rem;">
@@ -353,7 +357,7 @@
 
             <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
                 <button type="button" class="btn-modern btn-secondary" onclick="cerrarModales()">Cancelar</button>
-                <button type="submit" class="btn-modern btn-primary" style="background: #ef4444; border-color: #ef4444;">Confirmar Cierre de Caja</button>
+                <button type="submit" id="btnSubmitCierre" class="btn-modern btn-primary" style="background: #ef4444; border-color: #ef4444;">Confirmar Cierre de Caja</button>
             </div>
         </form>
     </div>
@@ -424,6 +428,29 @@
             box.innerHTML = 'Diferencia: -$' + Math.abs(diff).toFixed(2) + ' (Faltante de dinero)';
         }
     }
+
+    // Prevenir doble envío en formularios de caja
+    function prevenirDobleEnvioForm(form, btn, textoCargando) {
+        if (!form || !btn) return;
+        let submitted = false;
+        form.addEventListener('submit', function(e) {
+            if (submitted) {
+                e.preventDefault();
+                return false;
+            }
+            submitted = true;
+            btn.disabled = true;
+            btn.style.pointerEvents = 'none';
+            btn.style.opacity = '0.7';
+            btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> ${textoCargando}`;
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        prevenirDobleEnvioForm(document.getElementById('formAperturaCaja'), document.getElementById('btnSubmitApertura'), 'Aperturando Turno...');
+        prevenirDobleEnvioForm(document.getElementById('formMovimientoCaja'), document.getElementById('movimientoSubmitBtn'), 'Guardando Movimiento...');
+        prevenirDobleEnvioForm(document.getElementById('formCierreCaja'), document.getElementById('btnSubmitCierre'), 'Arqueando y Cerrando Caja...');
+    });
 </script>
 
 @push('modals')

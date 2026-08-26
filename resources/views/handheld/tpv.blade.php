@@ -54,14 +54,14 @@
     </div>
 
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
-        <button type="button" class="hh-btn hh-btn-success" onclick="procesarCobroHandheld('efectivo')">
+        <button type="button" id="btn-hh-efectivo" class="hh-btn hh-btn-success" onclick="procesarCobroHandheld('efectivo')">
             <i class="fa-solid fa-money-bill-wave"></i> Efectivo
         </button>
-        <button type="button" class="hh-btn hh-btn-accent" onclick="procesarCobroHandheld('tarjeta')">
+        <button type="button" id="btn-hh-tarjeta" class="hh-btn hh-btn-accent" onclick="procesarCobroHandheld('tarjeta')">
             <i class="fa-solid fa-credit-card"></i> Tarjeta
         </button>
     </div>
-    <button type="button" class="hh-btn hh-btn-secondary" style="margin-top: 0.5rem;" onclick="procesarCobroHandheld('credito')">
+    <button type="button" id="btn-hh-credito" class="hh-btn hh-btn-secondary" style="margin-top: 0.5rem;" onclick="procesarCobroHandheld('credito')">
         <i class="fa-solid fa-hand-holding-dollar"></i> Venta a Crédito
     </button>
 </div>
@@ -251,7 +251,11 @@
         renderCart();
     }
 
+    let isSubmittingHandheldCobro = false;
+
     function procesarCobroHandheld(metodo) {
+        if (isSubmittingHandheldCobro) return;
+
         if (cart.length === 0) {
             alert('El carrito está vacío.');
             return;
@@ -263,20 +267,41 @@
             return;
         }
 
+        const btnEfectivo = document.getElementById('btn-hh-efectivo');
+        const btnTarjeta = document.getElementById('btn-hh-tarjeta');
+        const btnCredito = document.getElementById('btn-hh-credito');
+
+        isSubmittingHandheldCobro = true;
+        [btnEfectivo, btnTarjeta, btnCredito].forEach(b => {
+            if (b) {
+                b.disabled = true;
+                b.style.pointerEvents = 'none';
+                b.style.opacity = '0.6';
+            }
+        });
+
+        let activeBtn = metodo === 'efectivo' ? btnEfectivo : (metodo === 'tarjeta' ? btnTarjeta : btnCredito);
+        let origHtml = activeBtn ? activeBtn.innerHTML : '';
+        if (activeBtn) {
+            activeBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Cobrando...';
+        }
+
         let total = cart.reduce((acc, item) => acc + item.subtotal, 0);
 
         let payload = {
             cliente_id: clienteId,
             tipo_venta: metodo === 'credito' ? 'credito' : 'normal',
             metodo_pago: metodo === 'credito' ? 'efectivo' : metodo,
-            monto_efectivo: total,
-            monto_tarjeta: 0,
-            monto_transferencia: 0,
+            total: total.toFixed(2),
+            subtotal: total.toFixed(2),
+            impuestos: 0,
+            monto_recibido: total.toFixed(2),
+            vuelto: '0.00',
             descuento: 0,
             items: cart.map(i => ({
                 articulo_id: i.articulo_id,
                 cantidad: i.cantidad,
-                precio_unitario: i.precio_unitario,
+                precio: i.precio_unitario,
                 descuento: 0,
                 subtotal: i.subtotal
             }))
@@ -293,7 +318,7 @@
         })
         .then(res => res.json())
         .then(data => {
-            if (data.status === 'success' || data.venta_id) {
+            if (data.success || data.venta) {
                 alert('¡Venta realizada con éxito!');
                 cart = [];
                 renderCart();
@@ -303,6 +328,19 @@
         })
         .catch(err => {
             alert('Error de comunicación con el servidor LAN.');
+        })
+        .finally(() => {
+            isSubmittingHandheldCobro = false;
+            [btnEfectivo, btnTarjeta, btnCredito].forEach(b => {
+                if (b) {
+                    b.disabled = false;
+                    b.style.pointerEvents = '';
+                    b.style.opacity = '';
+                }
+            });
+            if (activeBtn) {
+                activeBtn.innerHTML = origHtml;
+            }
         });
     }
 </script>

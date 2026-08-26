@@ -40,34 +40,45 @@ class CajaController extends Controller
      */
     public function aperturar(Request $request): RedirectResponse
     {
-        $cajaExistente = CajaSesion::query()
-            ->where('estado', 'abierta')
-            ->first();
-
-        if ($cajaExistente) {
-            return redirect()
-                ->route('caja.index')
-                ->withErrors(['caja' => 'Ya existe una caja abierta activa en el sistema.']);
-        }
-
         $data = $request->validate([
             'monto_inicial' => ['required', 'numeric', 'min:0'],
             'observaciones' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $caja = CajaSesion::create([
-            'user_id' => Auth::id(),
-            'monto_inicial' => $data['monto_inicial'],
-            'total_ventas_efectivo' => 0,
-            'total_ventas_tarjeta' => 0,
-            'total_ventas_transferencia' => 0,
-            'total_entradas' => 0,
-            'total_salidas' => 0,
-            'saldo_esperado' => $data['monto_inicial'],
-            'fecha_apertura' => now(),
-            'estado' => 'abierta',
-            'observaciones' => $data['observaciones'] ?? null,
-        ]);
+        $caja = null;
+        $error = null;
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($data, &$caja, &$error) {
+            $cajaExistente = CajaSesion::query()
+                ->where('estado', 'abierta')
+                ->lockForUpdate()
+                ->first();
+
+            if ($cajaExistente) {
+                $error = 'Ya existe una caja abierta activa en el sistema.';
+                return;
+            }
+
+            $caja = CajaSesion::create([
+                'user_id' => Auth::id(),
+                'monto_inicial' => $data['monto_inicial'],
+                'total_ventas_efectivo' => 0,
+                'total_ventas_tarjeta' => 0,
+                'total_ventas_transferencia' => 0,
+                'total_entradas' => 0,
+                'total_salidas' => 0,
+                'saldo_esperado' => $data['monto_inicial'],
+                'fecha_apertura' => now(),
+                'estado' => 'abierta',
+                'observaciones' => $data['observaciones'] ?? null,
+            ]);
+        });
+
+        if ($error) {
+            return redirect()
+                ->route('caja.index')
+                ->withErrors(['caja' => $error]);
+        }
 
         return redirect()
             ->route('caja.index')
@@ -79,16 +90,6 @@ class CajaController extends Controller
      */
     public function storeMovimiento(Request $request): RedirectResponse
     {
-        $cajaActiva = CajaSesion::query()
-            ->where('estado', 'abierta')
-            ->first();
-
-        if (! $cajaActiva) {
-            return redirect()
-                ->route('caja.index')
-                ->withErrors(['caja' => 'Debe aperturar una caja antes de registrar movimientos de dinero.']);
-        }
-
         $data = $request->validate([
             'tipo' => ['required', 'in:entrada,salida'],
             'monto' => ['required', 'numeric', 'min:0.01'],
@@ -96,18 +97,37 @@ class CajaController extends Controller
             'observaciones' => ['nullable', 'string', 'max:500'],
         ]);
 
-        CajaMovimiento::create([
-            'caja_sesion_id' => $cajaActiva->id,
-            'user_id' => Auth::id(),
-            'tipo' => $data['tipo'],
-            'monto' => $data['monto'],
-            'concepto' => $data['concepto'],
-            'observaciones' => $data['observaciones'] ?? null,
-        ]);
-
-        $cajaActiva->recargarTotales();
-
+        $error = null;
         $tipoTexto = $data['tipo'] === 'entrada' ? 'Entrada de dinero' : 'Salida de dinero';
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($data, &$error) {
+            $cajaActiva = CajaSesion::query()
+                ->where('estado', 'abierta')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $cajaActiva) {
+                $error = 'Debe aperturar una caja antes de registrar movimientos de dinero.';
+                return;
+            }
+
+            CajaMovimiento::create([
+                'caja_sesion_id' => $cajaActiva->id,
+                'user_id' => Auth::id(),
+                'tipo' => $data['tipo'],
+                'monto' => $data['monto'],
+                'concepto' => $data['concepto'],
+                'observaciones' => $data['observaciones'] ?? null,
+            ]);
+
+            $cajaActiva->recargarTotales();
+        });
+
+        if ($error) {
+            return redirect()
+                ->route('caja.index')
+                ->withErrors(['caja' => $error]);
+        }
 
         return redirect()
             ->route('caja.index')
@@ -119,48 +139,61 @@ class CajaController extends Controller
      */
     public function cerrar(Request $request): RedirectResponse
     {
-        $cajaActiva = CajaSesion::query()
-            ->where('estado', 'abierta')
-            ->first();
-
-        if (! $cajaActiva) {
-            return redirect()
-                ->route('caja.index')
-                ->withErrors(['caja' => 'No hay ninguna caja abierta activa para cerrar.']);
-        }
-
         $data = $request->validate([
             'saldo_real' => ['required', 'numeric', 'min:0'],
             'observaciones' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $cajaActiva->recargarTotales();
+        $cajaId = null;
+        $statusMsg = null;
+        $error = null;
 
-        $saldoEsperado = (float) $cajaActiva->saldo_esperado;
-        $saldoReal = (float) $data['saldo_real'];
-        $diferencia = $saldoReal - $saldoEsperado;
+        \Illuminate\Support\Facades\DB::transaction(function () use ($data, &$cajaId, &$statusMsg, &$error) {
+            $cajaActiva = CajaSesion::query()
+                ->where('estado', 'abierta')
+                ->lockForUpdate()
+                ->first();
 
-        $cajaActiva->update([
-            'saldo_real' => $saldoReal,
-            'diferencia' => $diferencia,
-            'fecha_cierre' => now(),
-            'estado' => 'cerrada',
-            'observaciones' => trim(($cajaActiva->observaciones ? $cajaActiva->observaciones . ' | ' : '') . ($data['observaciones'] ?? '')),
-        ]);
+            if (! $cajaActiva) {
+                $error = 'No hay ninguna caja abierta activa para cerrar.';
+                return;
+            }
 
-        $statusMsg = '¡Caja cerrada correctamente! Saldo esperado: $' . number_format($saldoEsperado, 2) . ' | Conteo físico: $' . number_format($saldoReal, 2);
-        if (abs($diferencia) < 0.01) {
-            $statusMsg .= ' (Caja Cuadrada Perfecta)';
-        } elseif ($diferencia > 0) {
-            $statusMsg .= ' (Sobrante: +$' . number_format($diferencia, 2) . ')';
-        } else {
-            $statusMsg .= ' (Faltante: -$' . number_format(abs($diferencia), 2) . ')';
+            $cajaActiva->recargarTotales();
+
+            $saldoEsperado = (float) $cajaActiva->saldo_esperado;
+            $saldoReal = (float) $data['saldo_real'];
+            $diferencia = $saldoReal - $saldoEsperado;
+
+            $cajaActiva->update([
+                'saldo_real' => $saldoReal,
+                'diferencia' => $diferencia,
+                'fecha_cierre' => now(),
+                'estado' => 'cerrada',
+                'observaciones' => trim(($cajaActiva->observaciones ? $cajaActiva->observaciones . ' | ' : '') . ($data['observaciones'] ?? '')),
+            ]);
+
+            $cajaId = $cajaActiva->id;
+            $statusMsg = '¡Caja cerrada correctamente! Saldo esperado: $' . number_format($saldoEsperado, 2) . ' | Conteo físico: $' . number_format($saldoReal, 2);
+            if (abs($diferencia) < 0.01) {
+                $statusMsg .= ' (Caja Cuadrada Perfecta)';
+            } elseif ($diferencia > 0) {
+                $statusMsg .= ' (Sobrante: +$' . number_format($diferencia, 2) . ')';
+            } else {
+                $statusMsg .= ' (Faltante: -$' . number_format(abs($diferencia), 2) . ')';
+            }
+        });
+
+        if ($error) {
+            return redirect()
+                ->route('caja.index')
+                ->withErrors(['caja' => $error]);
         }
 
         return redirect()
             ->route('caja.index')
             ->with('status', $statusMsg)
-            ->with('cierre_id', $cajaActiva->id);
+            ->with('cierre_id', $cajaId);
     }
 
     /**

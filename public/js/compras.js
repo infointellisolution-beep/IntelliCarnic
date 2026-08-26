@@ -333,6 +333,29 @@ document.addEventListener('DOMContentLoaded', () => {
         if (labelTotal) labelTotal.innerText = `$${grandTotal.toFixed(2)}`;
     }
 
+    let isSubmittingCompra = false;
+    const formCompra = document.getElementById('form-compra');
+    if (formCompra) {
+        formCompra.addEventListener('submit', (e) => {
+            if (isSubmittingCompra) {
+                e.preventDefault();
+                return false;
+            }
+            if (compraItems.length === 0) {
+                e.preventDefault();
+                alert('Debe agregar al menos un artículo a la lista de compra.');
+                return false;
+            }
+            isSubmittingCompra = true;
+            if (btnGuardar) {
+                btnGuardar.disabled = true;
+                btnGuardar.style.pointerEvents = 'none';
+                btnGuardar.style.opacity = '0.7';
+                btnGuardar.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Confirmando y Guardando Compra...';
+            }
+        });
+    }
+
     function roundMoney(num) {
         return Math.round(num * 100) / 100;
     }

@@ -92,7 +92,10 @@ class CajaSesion extends Model
         $credito = (float) $this->ventas()->where('tipo_venta', 'credito')->where('estado', '!=', 'devuelta')->sum('total');
 
         $abonos = (float) Abono::where('caja_sesion_id', $this->id)->sum('monto');
-        $entradas = (float) $this->movimientos()->where('tipo', 'entrada')->sum('monto');
+        $entradasManuales = (float) $this->movimientos()
+            ->where('tipo', 'entrada')
+            ->where('concepto', 'not like', 'Abono%')
+            ->sum('monto');
         $salidas = (float) $this->movimientos()->where('tipo', 'salida')->sum('monto');
         $descuentos = (float) $this->ventas()->sum('descuento');
         $devoluciones = (float) Devolucion::where('caja_sesion_id', $this->id)->sum('total_reembolsado');
@@ -102,11 +105,11 @@ class CajaSesion extends Model
         $this->total_ventas_transferencia = $transferencia;
         $this->total_ventas_credito = $credito;
         $this->total_abonos_credito = $abonos;
-        $this->total_entradas = $entradas;
+        $this->total_entradas = $entradasManuales;
         $this->total_salidas = $salidas;
         $this->total_descuentos = $descuentos;
         $this->total_devoluciones = $devoluciones;
-        $this->saldo_esperado = $this->monto_inicial + $efectivo + $abonos + $entradas - $salidas;
+        $this->saldo_esperado = $this->monto_inicial + $efectivo + $abonos + $entradasManuales - $salidas;
         $this->save();
     }
 }

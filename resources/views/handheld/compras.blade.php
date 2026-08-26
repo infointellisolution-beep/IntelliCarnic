@@ -57,7 +57,7 @@
         <span id="compra-total-txt" style="font-size: 1.5rem; font-weight: 800; color: #fbbf24;">$0.00</span>
     </div>
 
-    <button type="button" class="hh-btn hh-btn-accent" onclick="guardarCompraHandheld()">
+    <button type="button" id="btn-guardar-compra-hh" class="hh-btn hh-btn-accent" onclick="guardarCompraHandheld()">
         <i class="fa-solid fa-cloud-arrow-up"></i> Registrar Recepción
     </button>
 </div>
@@ -237,9 +237,14 @@
         renderCompraItems();
     }
 
+    let isSubmittingHHCompra = false;
+
     function guardarCompraHandheld() {
+        if (isSubmittingHHCompra) return;
+
         const provSelect = document.getElementById('prov-select');
         const facturaInput = document.getElementById('factura-input');
+        const btnGuardar = document.getElementById('btn-guardar-compra-hh');
 
         if (!provSelect.value) {
             alert('Selecciona un proveedor.');
@@ -248,6 +253,14 @@
         if (compraItems.length === 0) {
             alert('Agrega al menos un artículo.');
             return;
+        }
+
+        isSubmittingHHCompra = true;
+        if (btnGuardar) {
+            btnGuardar.disabled = true;
+            btnGuardar.style.pointerEvents = 'none';
+            btnGuardar.style.opacity = '0.7';
+            btnGuardar.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Registrando...';
         }
 
         let payload = {
@@ -285,6 +298,15 @@
             alert('Recepción enviada correctamente.');
             compraItems = [];
             renderCompraItems();
+        })
+        .finally(() => {
+            isSubmittingHHCompra = false;
+            if (btnGuardar) {
+                btnGuardar.disabled = false;
+                btnGuardar.style.pointerEvents = '';
+                btnGuardar.style.opacity = '';
+                btnGuardar.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Registrar Recepción';
+            }
         });
     }
 </script>
