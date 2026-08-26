@@ -669,7 +669,7 @@ function addToCart(articulo, quantity = 1, rawBarcode = '') {
     const effective = getEffectivePrice(articulo);
     
     if (existingIndex !== -1) {
-        cart[existingIndex].cantidad += quantity;
+        cart[existingIndex].cantidad = Math.round((cart[existingIndex].cantidad + quantity) * 1000) / 1000;
         if (rawBarcode) cart[existingIndex].codigo_escaneado = rawBarcode;
     } else {
         cart.push({
@@ -678,7 +678,7 @@ function addToCart(articulo, quantity = 1, rawBarcode = '') {
             descripcion: articulo.descripcion,
             precio: parseFloat(effective.pvp),
             iva_rate: effective.iva,
-            cantidad: quantity,
+            cantidad: Math.round(quantity * 1000) / 1000,
             descuento_tipo: 'porcentaje',
             descuento_valor: 0,
             descuento: 0,

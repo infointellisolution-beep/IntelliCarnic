@@ -191,21 +191,21 @@
         }
 
         let articulo = result.articulo;
-        let peso = result.peso;
+        let peso = Math.round(result.peso * 1000) / 1000;
 
         let pvp = parseFloat(articulo.pvp || articulo.precio_sin_iva || 0);
         let existing = cart.find(i => i.articulo_id === articulo.id);
 
         if (existing) {
-            existing.cantidad += peso;
-            existing.subtotal = existing.cantidad * pvp;
+            existing.cantidad = Math.round((existing.cantidad + peso) * 1000) / 1000;
+            existing.subtotal = Math.round(existing.cantidad * pvp * 100) / 100;
         } else {
             cart.push({
                 articulo_id: articulo.id,
                 descripcion: articulo.descripcion,
                 precio_unitario: pvp,
                 cantidad: peso,
-                subtotal: peso * pvp
+                subtotal: Math.round(peso * pvp * 100) / 100
             });
         }
 

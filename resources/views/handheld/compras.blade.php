@@ -167,20 +167,20 @@
         }
 
         let articulo = result.articulo;
-        let peso = result.peso;
+        let peso = Math.round(result.peso * 1000) / 1000;
         let costo = parseFloat(articulo.precio_compra || articulo.precio_sin_iva || 0);
 
         let existing = compraItems.find(i => i.articulo_id === articulo.id);
         if (existing) {
-            existing.cantidad_peso += peso;
-            existing.subtotal = existing.cantidad_peso * existing.costo_unitario;
+            existing.cantidad_peso = Math.round((existing.cantidad_peso + peso) * 1000) / 1000;
+            existing.subtotal = Math.round(existing.cantidad_peso * existing.costo_unitario * 100) / 100;
         } else {
             compraItems.push({
                 articulo_id: articulo.id,
                 descripcion: articulo.descripcion,
                 cantidad_peso: peso,
                 costo_unitario: costo,
-                subtotal: peso * costo,
+                subtotal: Math.round(peso * costo * 100) / 100,
                 codigo_escaneado: result.cleanCode,
                 lote: result.lote || null
             });
@@ -202,14 +202,19 @@
 
         compraItems.forEach((item, index) => {
             total += item.subtotal;
+            const formattedQty = Number(item.cantidad_peso.toFixed(3));
+            const formattedCost = Number(item.costo_unitario.toFixed(2));
+
             html += `
                 <div style="background: #0f172a; border-radius: 8px; padding: 0.5rem 0.65rem; margin-bottom: 0.4rem; display: flex; align-items: center; justify-content: space-between;">
                     <div style="flex: 1; padding-right: 0.5rem;">
                         <strong style="font-size: 0.85rem; color: white; display: block;">${item.descripcion}</strong>
-                        <span style="font-size: 0.75rem; color: var(--text-muted);">
-                            Cant/Peso: <input type="number" step="0.001" value="${item.cantidad_peso}" onchange="updateItemQty(${index}, this.value)" style="width: 70px; background: #1e293b; color: white; border: 1px solid var(--border-color); border-radius: 4px; padding: 0.1rem 0.3rem; font-size: 0.75rem;"> | 
-                            Costo: $${item.costo_unitario.toFixed(2)}
-                        </span>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.25rem;">
+                            <span>Cant:</span>
+                            <input type="number" step="0.001" min="0.001" value="${formattedQty}" onchange="updateItemQty(${index}, this.value)" onclick="this.select()" style="width: 72px; background: #1e293b; color: white; border: 1px solid var(--border-color); border-radius: 4px; padding: 0.15rem 0.35rem; font-size: 0.8rem; font-weight: 700; text-align: right;">
+                            <span>| Costo: $</span>
+                            <input type="number" step="0.01" min="0" value="${formattedCost}" onchange="updateItemCost(${index}, this.value)" onclick="this.select()" style="width: 78px; background: #1e293b; color: #fbbf24; border: 1px solid #fbbf24; border-radius: 4px; padding: 0.15rem 0.35rem; font-size: 0.8rem; font-weight: 700; text-align: right;">
+                        </div>
                     </div>
                     <div style="text-align: right; display: flex; align-items: center; gap: 0.5rem;">
                         <strong style="font-size: 0.95rem; color: #fbbf24;">$${item.subtotal.toFixed(2)}</strong>
@@ -227,8 +232,16 @@
     function updateItemQty(index, val) {
         let parsed = parseFloat(val);
         if (isNaN(parsed) || parsed <= 0) parsed = 1;
-        compraItems[index].cantidad_peso = parsed;
-        compraItems[index].subtotal = parsed * compraItems[index].costo_unitario;
+        compraItems[index].cantidad_peso = Math.round(parsed * 1000) / 1000;
+        compraItems[index].subtotal = Math.round(compraItems[index].cantidad_peso * compraItems[index].costo_unitario * 100) / 100;
+        renderCompraItems();
+    }
+
+    function updateItemCost(index, val) {
+        let parsed = parseFloat(val);
+        if (isNaN(parsed) || parsed < 0) parsed = 0;
+        compraItems[index].costo_unitario = Math.round(parsed * 100) / 100;
+        compraItems[index].subtotal = Math.round(compraItems[index].cantidad_peso * compraItems[index].costo_unitario * 100) / 100;
         renderCompraItems();
     }
 
@@ -273,8 +286,8 @@
                 articulo_id: i.articulo_id,
                 codigo_escaneado: i.codigo_escaneado || null,
                 lote: i.lote || null,
-                cantidad_peso: i.cantidad_peso,
-                costo_unitario: i.costo_unitario
+                cantidad_peso: Math.round(i.cantidad_peso * 1000) / 1000,
+                costo_unitario: Math.round(i.costo_unitario * 100) / 100
             }))
         };
 
