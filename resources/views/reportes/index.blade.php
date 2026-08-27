@@ -52,6 +52,11 @@
        style="padding: 0.75rem 1.25rem; font-weight: 700; text-decoration: none; border-bottom: 3px solid {{ $tab === 'inventario' ? 'var(--primary)' : 'transparent' }}; color: {{ $tab === 'inventario' ? 'var(--primary)' : 'var(--text-muted)' }};">
         <i class="fa-solid fa-boxes-stacked"></i> Inventario Comparativo
     </a>
+    <a href="{{ route('reportes.index', ['tab' => 'ajustes', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin, 'per_page' => $perPage]) }}" 
+       class="tab-item {{ $tab === 'ajustes' ? 'active' : '' }}" 
+       style="padding: 0.75rem 1.25rem; font-weight: 700; text-decoration: none; border-bottom: 3px solid {{ $tab === 'ajustes' ? 'var(--primary)' : 'transparent' }}; color: {{ $tab === 'ajustes' ? 'var(--primary)' : 'var(--text-muted)' }};">
+        <i class="fa-solid fa-sliders"></i> Reporte de Ajustes
+    </a>
 </div>
 
 <!-- FILTROS DE BÚSQUEDA -->
@@ -119,6 +124,85 @@
                     <option value="compra" @selected($filtroMovimiento === 'compra')>🟢 Solo Compras (Entradas)</option>
                     <option value="venta" @selected($filtroMovimiento === 'venta')>🔴 Solo Ventas (Salidas)</option>
                     <option value="devolucion" @selected($filtroMovimiento === 'devolucion')>🟠 Solo Devoluciones (Reingresos)</option>
+                </select>
+            </div>
+
+            <div>
+                <button type="submit" class="btn-modern btn-primary" style="width: auto;">
+                    <i class="fa-solid fa-filter"></i> Filtrar
+                </button>
+            </div>
+        @elseif($tab === 'ajustes')
+            <!-- DATE RANGE PICKER TRIGGER -->
+            <div style="min-width: 220px;">
+                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">
+                    <i class="fa-solid fa-calendar-days"></i> Período
+                </label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <button type="button" id="btn-abrir-datepicker" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 1rem; border: 2px solid var(--primary); border-radius: 8px; background: rgba(37,99,235,0.05); color: var(--primary); font-weight: 700; font-size: 0.9rem; cursor: pointer; white-space: nowrap;">
+                        <i class="fa-solid fa-calendar-range"></i>
+                        <span id="label-rango-fecha">{{ \Carbon\Carbon::parse($fechaInicio)->format('d/m/Y') }} — {{ \Carbon\Carbon::parse($fechaFin)->format('d/m/Y') }}</span>
+                        <i class="fa-solid fa-chevron-down" style="margin-left: 0.25rem; font-size: 0.72rem;"></i>
+                    </button>
+                    <a href="{{ route('reportes.index', ['tab' => 'ajustes']) }}" title="Limpiar filtro de fecha" style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border-color); color: var(--text-muted); background: white; text-decoration: none; font-size: 0.9rem; flex-shrink: 0;" onmouseover="this.style.borderColor='#ef4444';this.style.color='#ef4444'" onmouseout="this.style.borderColor='var(--border-color)';this.style.color='var(--text-muted)'">
+                        <i class="fa-solid fa-xmark"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- BUSCADOR INTELIGENTE DE PRODUCTO PARA AJUSTES -->
+            <div style="flex: 2; min-width: 280px; position: relative; z-index: 1000;" id="container-ajustes-search">
+                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">
+                    <i class="fa-solid fa-magnifying-glass" style="color: var(--primary);"></i> Buscar Producto (Nombre, SKU, Item o Prov)
+                </label>
+                <div style="position: relative; display: flex; align-items: center;">
+                    <input type="text" 
+                           id="ajustes-search-input" 
+                           class="input-modern" 
+                           placeholder="Escribe nombre, SKU, item o código de proveedor..." 
+                           value="{{ $articuloAjuste ? $articuloAjuste->descripcion . ' (SKU: ' . $articuloAjuste->codigo . ($articuloAjuste->codigo_cliente ? ' | Prov: ' . $articuloAjuste->codigo_cliente : '') . ')' : '' }}" 
+                           autocomplete="off" 
+                           style="width: 100%; padding-right: 2.2rem; font-weight: 600;">
+                    
+                    <input type="hidden" name="articulo_id" id="hidden-ajustes-articulo-id" value="{{ $articuloId }}">
+
+                    <button type="button" 
+                            id="btn-clear-ajustes-search" 
+                            onclick="limpiarBusquedaAjustes()" 
+                            style="position: absolute; right: 10px; background: none; border: none; font-size: 1.1rem; color: #94a3b8; cursor: pointer; display: {{ $articuloId ? 'block' : 'none' }}; line-height: 1;" 
+                            title="Limpiar búsqueda y ver todos los artículos">
+                        <i class="fa-solid fa-circle-xmark"></i>
+                    </button>
+                </div>
+
+                <!-- Dropdown interactivo de resultados -->
+                <div id="ajustes-search-results" 
+                     style="display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: white; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 15px 35px -5px rgba(0,0,0,0.3); max-height: 320px; overflow-y: auto; z-index: 99999;">
+                </div>
+            </div>
+
+            <!-- FILTRO TIPO AJUSTE -->
+            <div style="flex: 1; min-width: 170px;">
+                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">
+                    <i class="fa-solid fa-filter"></i> Tipo de Ajuste
+                </label>
+                <select name="tipo_ajuste" class="input-modern" onchange="document.getElementById('form-filtros-reporte').submit()">
+                    <option value="todos" @selected(($filtroTipoAjuste ?? 'todos') === 'todos')>Todos los tipos</option>
+                    <option value="reemplazo" @selected(($filtroTipoAjuste ?? '') === 'reemplazo')>🔄 Reemplazo Total</option>
+                    <option value="suma" @selected(($filtroTipoAjuste ?? '') === 'suma')>🟢 Suma / Entrada (+)</option>
+                    <option value="resta" @selected(($filtroTipoAjuste ?? '') === 'resta')>🔴 Resta / Merma (-)</option>
+                </select>
+            </div>
+
+            <!-- FILTRO ORIGEN -->
+            <div style="flex: 1; min-width: 160px;">
+                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">
+                    <i class="fa-solid fa-mobile-screen-button"></i> Origen
+                </label>
+                <select name="origen" class="input-modern" onchange="document.getElementById('form-filtros-reporte').submit()">
+                    <option value="todos" @selected(($filtroOrigen ?? 'todos') === 'todos')>Todos los orígenes</option>
+                    <option value="handheld" @selected(($filtroOrigen ?? '') === 'handheld')>📱 Handheld</option>
+                    <option value="web" @selected(($filtroOrigen ?? '') === 'web')>💻 Panel Web</option>
                 </select>
             </div>
 
@@ -1997,8 +2081,239 @@
                 </select>
                 <span>(Total: {{ $historialRecepciones->total() }})</span>
             </div>
+@endif
+
+@if($tab === 'ajustes')
+    <!-- RESUMEN KPI DE AJUSTES -->
+    <div class="metrics-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+        <div class="metric-card" style="border-left: 4px solid var(--primary); background: white; padding: 1.25rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid var(--border-color);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Total Ajustes Realizados</div>
+                    <div style="font-size: 1.75rem; font-weight: 900; color: var(--text-main); margin-top: 0.25rem;">
+                        {{ number_format($totalAjustesConteo) }}
+                    </div>
+                </div>
+                <div style="background: rgba(37, 99, 235, 0.1); color: var(--primary); width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                    <i class="fa-solid fa-sliders"></i>
+                </div>
+            </div>
+            <div style="margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-muted); display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <span class="badge" style="background: #eff6ff; color: #1d4ed8; font-weight: 700;">📱 {{ $ajustesHandheldCount }} Handheld</span>
+                <span class="badge" style="background: #f8fafc; color: #475569; font-weight: 700;">💻 {{ $ajustesWebCount }} Web</span>
+            </div>
+        </div>
+
+        <div class="metric-card" style="border-left: 4px solid #16a34a; background: white; padding: 1.25rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid var(--border-color);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Entradas / Sumas de Stock</div>
+                    <div style="font-size: 1.75rem; font-weight: 900; color: #16a34a; margin-top: 0.25rem;">
+                        +{{ number_format($totalAjustesPositivo, 3) }} <span style="font-size: 1rem; font-weight: 600; color: var(--text-muted);">{{ $unidadPeso }}</span>
+                    </div>
+                </div>
+                <div style="background: rgba(22, 163, 74, 0.1); color: #16a34a; width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                    <i class="fa-solid fa-arrow-trend-up"></i>
+                </div>
+            </div>
+            <div style="margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-muted);">
+                Incrementos por sobrantes o conteos físicos
+            </div>
+        </div>
+
+        <div class="metric-card" style="border-left: 4px solid #dc2626; background: white; padding: 1.25rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid var(--border-color);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Mermas / Restas de Stock</div>
+                    <div style="font-size: 1.75rem; font-weight: 900; color: #dc2626; margin-top: 0.25rem;">
+                        -{{ number_format($totalAjustesNegativo, 3) }} <span style="font-size: 1rem; font-weight: 600; color: var(--text-muted);">{{ $unidadPeso }}</span>
+                    </div>
+                </div>
+                <div style="background: rgba(220, 38, 38, 0.1); color: #dc2626; width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                    <i class="fa-solid fa-arrow-trend-down"></i>
+                </div>
+            </div>
+            <div style="margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-muted);">
+                Disminuciones por pérdidas, mermas o daño
+            </div>
+        </div>
+
+        <div class="metric-card" style="border-left: 4px solid {{ $totalAjustesNeto >= 0 ? '#16a34a' : '#ea580c' }}; background: white; padding: 1.25rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid var(--border-color);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Impacto Neto en Inventario</div>
+                    <div style="font-size: 1.75rem; font-weight: 900; color: {{ $totalAjustesNeto >= 0 ? '#16a34a' : '#ea580c' }}; margin-top: 0.25rem;">
+                        {{ $totalAjustesNeto >= 0 ? '+' : '' }}{{ number_format($totalAjustesNeto, 3) }} <span style="font-size: 1rem; font-weight: 600; color: var(--text-muted);">{{ $unidadPeso }}</span>
+                    </div>
+                </div>
+                <div style="background: {{ $totalAjustesNeto >= 0 ? 'rgba(22, 163, 74, 0.1)' : 'rgba(234, 88, 12, 0.1)' }}; color: {{ $totalAjustesNeto >= 0 ? '#16a34a' : '#ea580c' }}; width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                    <i class="fa-solid fa-scale-balanced"></i>
+                </div>
+            </div>
+            <div style="margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-muted);">
+                Balance global de inventario en el período
+            </div>
+        </div>
+    </div>
+
+    <!-- TABLA AUDITORÍA DE AJUSTES -->
+    <div class="card" style="padding: 1.5rem; background: white; border-radius: 14px; border: 1px solid var(--border-color);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
             <div>
-                {{ $historialRecepciones->appends(['tab' => 'proveedores', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin])->links() }}
+                <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fa-solid fa-clipboard-list" style="color: var(--primary);"></i> Historial Detallado de Ajustes y Conteos
+                </h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.25rem 0 0 0;">
+                    Registro de auditoría de modificaciones de stock tanto en modo dinámico (por lotes) como simple (general).
+                </p>
+            </div>
+            <div>
+                <span class="badge" style="background: {{ ($modoInventario ?? 'dinamico') === 'dinamico' ? '#dbeafe' : '#f1f5f9' }}; color: {{ ($modoInventario ?? 'dinamico') === 'dinamico' ? '#1e40af' : '#475569' }}; font-weight: 700; padding: 0.4rem 0.75rem; font-size: 0.8rem;">
+                    <i class="fa-solid {{ ($modoInventario ?? 'dinamico') === 'dinamico' ? 'fa-cubes' : 'fa-cube' }}"></i> Modo del Sistema: {{ ($modoInventario ?? 'dinamico') === 'dinamico' ? 'Dinámico (Por Lotes)' : 'Simple (General)' }}
+                </span>
+            </div>
+        </div>
+
+        <div class="table-responsive" style="overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 8px; margin-bottom: 0.5rem;">
+            <table class="table-modern" style="width: 100%; min-width: 1350px; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #f8fafc; border-bottom: 2px solid var(--border-color); text-align: left; font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted);">
+                        <th style="padding: 0.75rem 1rem;">Fecha / Hora</th>
+                        <th style="padding: 0.75rem 1rem;">Origen</th>
+                        <th style="padding: 0.75rem 1rem;">Usuario</th>
+                        <th style="padding: 0.75rem 1rem;">Artículo</th>
+                        <th style="padding: 0.75rem 1rem;">Lote / Serie</th>
+                        <th style="padding: 0.75rem 1rem;">Tipo de Acción</th>
+                        <th style="padding: 0.75rem 1rem; text-align: right;">Stock Anterior</th>
+                        <th style="padding: 0.75rem 1rem; text-align: right;">Cant. Ajuste</th>
+                        <th style="padding: 0.75rem 1rem; text-align: right;">Stock Resultante</th>
+                        <th style="padding: 0.75rem 1rem; text-align: right;">Diferencia</th>
+                        <th style="padding: 0.75rem 1rem;">Motivo / Observación</th>
+                    </tr>
+                </thead>
+                <tbody style="font-size: 0.85rem;">
+                    @forelse($ajustesLista as $aj)
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td style="padding: 0.85rem 1rem; font-weight: 600; white-space: nowrap;">
+                                {{ $aj->created_at->format('d/m/Y H:i') }}
+                            </td>
+                            <td style="padding: 0.85rem 1rem;">
+                                @if($aj->origen === 'handheld')
+                                    <span class="badge" style="background: #e0e7ff; color: #3730a3; font-weight: 700;">
+                                        <i class="fa-solid fa-mobile-screen-button"></i> Handheld
+                                    </span>
+                                @else
+                                    <span class="badge" style="background: #f1f5f9; color: #334155; font-weight: 700;">
+                                        <i class="fa-solid fa-laptop"></i> Panel Web
+                                    </span>
+                                @endif
+                            </td>
+                            <td style="padding: 0.85rem 1rem; color: var(--text-muted); font-weight: 600;">
+                                {{ $aj->user?->name ?? 'Sistema' }}
+                            </td>
+                            <td style="padding: 0.85rem 1rem;">
+                                <div style="font-weight: 800; color: var(--text-main);">
+                                    {{ $aj->articulo?->descripcion ?? 'Artículo Eliminado' }}
+                                </div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">
+                                    SKU: {{ $aj->articulo?->codigo ?? 'N/A' }} 
+                                    @if($aj->articulo?->familia)
+                                        | <span style="color: var(--primary);">{{ $aj->articulo->familia->nombre }}</span>
+                                    @endif
+                                </div>
+                            </td>
+                            <td style="padding: 0.85rem 1rem;">
+                                @if($aj->lote || $aj->compra_detalle_id)
+                                    <div style="display: inline-block; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 0.25rem 0.5rem;">
+                                        <div style="font-weight: 800; color: #1e40af; font-size: 0.8rem;">
+                                            <i class="fa-solid fa-boxes-stacked"></i> Lote: {{ $aj->lote ?: $aj->compra_detalle_id }}
+                                        </div>
+                                        @if($aj->serie)
+                                            <div style="font-size: 0.7rem; color: #3b82f6;">Serie: {{ $aj->serie }}</div>
+                                        @endif
+                                    </div>
+                                @else
+                                    <span class="badge" style="background: #f8fafc; color: #64748b; font-weight: 600; border: 1px solid #e2e8f0;">
+                                        Stock General
+                                    </span>
+                                @endif
+                            </td>
+                            <td style="padding: 0.85rem 1rem;">
+                                @if($aj->tipo_ajuste === 'reemplazo')
+                                    <span class="badge" style="background: #e0f2fe; color: #0369a1; font-weight: 700;">
+                                        <i class="fa-solid fa-arrows-rotate"></i> Reemplazo Total
+                                    </span>
+                                @elseif($aj->tipo_ajuste === 'suma')
+                                    <span class="badge" style="background: #dcfce7; color: #15803d; font-weight: 700;">
+                                        <i class="fa-solid fa-plus"></i> Suma (+)
+                                    </span>
+                                @else
+                                    <span class="badge" style="background: #fee2e2; color: #b91c1c; font-weight: 700;">
+                                        <i class="fa-solid fa-minus"></i> Resta (-)
+                                    </span>
+                                @endif
+                            </td>
+                            <td style="padding: 0.85rem 1rem; text-align: right; color: var(--text-muted); font-weight: 600;">
+                                {{ number_format((float)$aj->stock_anterior, 3) }} {{ $unidadPeso }}
+                            </td>
+                            <td style="padding: 0.85rem 1rem; text-align: right; font-weight: 700;">
+                                {{ number_format((float)$aj->cantidad_ajustada, 3) }} {{ $unidadPeso }}
+                            </td>
+                            <td style="padding: 0.85rem 1rem; text-align: right; font-weight: 800; color: var(--text-main);">
+                                {{ number_format((float)$aj->stock_nuevo, 3) }} {{ $unidadPeso }}
+                            </td>
+                            <td style="padding: 0.85rem 1rem; text-align: right;">
+                                @php $diff = (float) $aj->diferencia_stock; @endphp
+                                @if($diff > 0)
+                                    <span style="font-weight: 800; color: #16a34a;">
+                                        +{{ number_format($diff, 3) }} {{ $unidadPeso }}
+                                    </span>
+                                @elseif($diff < 0)
+                                    <span style="font-weight: 800; color: #dc2626;">
+                                        {{ number_format($diff, 3) }} {{ $unidadPeso }}
+                                    </span>
+                                @else
+                                    <span style="font-weight: 700; color: var(--text-muted);">
+                                        0.000 {{ $unidadPeso }}
+                                    </span>
+                                @endif
+                            </td>
+                            <td style="padding: 0.85rem 1rem; color: var(--text-muted); font-size: 0.8rem; max-width: 200px;">
+                                {{ $aj->motivo ?: '—' }}
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="11" style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
+                                <div style="font-size: 2rem; margin-bottom: 0.5rem; color: #cbd5e1;">
+                                    <i class="fa-solid fa-sliders"></i>
+                                </div>
+                                <div style="font-weight: 700; font-size: 1rem;">No hay ajustes de inventario registrados</div>
+                                <div style="font-size: 0.85rem; margin-top: 0.25rem;">
+                                    Los conteos y ajustes realizados desde la Handheld o el Panel Web aparecerán auditados aquí.
+                                </div>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+            <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">
+                <span>Mostrar:</span>
+                <select onchange="cambiarPaginacion(this.value)" class="input-modern" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.85rem; font-weight: 700; background: white;">
+                    <option value="10" @selected($perPage == 10)>10 por página</option>
+                    <option value="15" @selected($perPage == 15)>15 por página</option>
+                    <option value="25" @selected($perPage == 25)>25 por página</option>
+                    <option value="50" @selected($perPage == 50)>50 por página</option>
+                    <option value="100" @selected($perPage == 100)>100 por página</option>
+                    <option value="99999" @selected($perPage >= 99999)>Todos los registros</option>
+                </select>
+                <span>(Total: {{ $ajustesLista->total() }})</span>
+            </div>
+            <div>
+                {{ $ajustesLista->appends(['tab' => 'ajustes', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin, 'articulo_id' => $articuloId, 'tipo_ajuste' => $filtroTipoAjuste, 'origen' => $filtroOrigen])->links() }}
             </div>
         </div>
     </div>
@@ -2695,6 +3010,129 @@
             const container = document.getElementById('container-kardex-search');
             if (container && !container.contains(e.target) && kardexResultsContainer) {
                 kardexResultsContainer.style.display = 'none';
+            }
+        });
+    }
+
+    // CATÁLOGO DE PRODUCTOS PARA EL BUSCADOR DE AJUSTES
+    const ajustesSearchInput = document.getElementById('ajustes-search-input');
+    const ajustesResultsContainer = document.getElementById('ajustes-search-results');
+    const hiddenAjustesArticuloId = document.getElementById('hidden-ajustes-articulo-id');
+    const btnClearAjustes = document.getElementById('btn-clear-ajustes-search');
+
+    function renderAjustesSearchResults(query = '') {
+        if (!ajustesResultsContainer) return;
+        const q = String(query).trim().toLowerCase();
+
+        let filtered = articulosKardexCatalog;
+        if (q !== '') {
+            filtered = articulosKardexCatalog.filter(a => {
+                const desc = String(a.descripcion || '').toLowerCase();
+                const sku = String(a.codigo || '').toLowerCase();
+                const prov = String(a.codigo_cliente || '').toLowerCase();
+                const item = String(a.item || '').toLowerCase();
+                const fam = String(a.familia || '').toLowerCase();
+                return desc.includes(q) || sku.includes(q) || prov.includes(q) || item.includes(q) || fam.includes(q);
+            });
+        }
+
+        let html = '';
+
+        // Opción predeterminada: Todos los productos
+        const isAllSelected = !hiddenAjustesArticuloId || !hiddenAjustesArticuloId.value;
+        html += `
+            <div class="kardex-item-opt" onclick="seleccionarArticuloAjustes('', '')" 
+                 style="padding: 0.65rem 1rem; border-bottom: 1px solid #f1f5f9; cursor: pointer; display: flex; align-items: center; justify-content: space-between; background: ${isAllSelected ? 'rgba(37,99,235,0.06)' : 'white'};"
+                 onmouseover="this.style.background='rgba(37,99,235,0.08)'" onmouseout="this.style.background='${isAllSelected ? 'rgba(37,99,235,0.06)' : 'white'}'">
+                <div style="font-weight: 700; color: var(--primary); font-size: 0.9rem;">
+                    <i class="fa-solid fa-boxes-stacked"></i> -- Todos los Productos (Sin filtrar) --
+                </div>
+                <span class="badge badge-info" style="font-size: 0.72rem;">Catálogo General</span>
+            </div>
+        `;
+
+        if (filtered.length === 0) {
+            html += `
+                <div style="padding: 1.25rem; text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+                    <i class="fa-solid fa-magnifying-glass" style="margin-bottom: 0.35rem; display: block; opacity: 0.4;"></i>
+                    No se encontraron productos con "<strong>${q}</strong>"
+                </div>
+            `;
+        } else {
+            filtered.forEach(art => {
+                const isSelected = hiddenAjustesArticuloId && String(hiddenAjustesArticuloId.value) === String(art.id);
+                const provBadge = art.codigo_cliente ? `<span style="background: rgba(249,115,22,0.12); color: #ea580c; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-family: monospace; font-weight: 700;"><i class="fa-solid fa-truck" style="font-size: 0.7rem;"></i> Prov: ${art.codigo_cliente}</span>` : '';
+                const itemBadge = art.item ? `<span style="background: #e0f2fe; color: #0284c7; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-family: monospace; font-weight: 700;">Item: ${art.item}</span>` : '';
+                const skuBadge = `<span style="background: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-family: monospace; font-weight: 700;"><i class="fa-solid fa-barcode" style="font-size: 0.7rem;"></i> SKU: ${art.codigo}</span>`;
+
+                const labelEscaped = `${art.descripcion} (SKU: ${art.codigo}${art.codigo_cliente ? ' | Prov: ' + art.codigo_cliente : ''})`.replace(/'/g, "\\'");
+
+                html += `
+                    <div class="kardex-item-opt" onclick="seleccionarArticuloAjustes(${art.id}, '${labelEscaped}')"
+                         style="padding: 0.65rem 1rem; border-bottom: 1px solid #f1f5f9; cursor: pointer; display: flex; align-items: center; justify-content: space-between; background: ${isSelected ? 'rgba(37,99,235,0.06)' : 'white'};"
+                         onmouseover="this.style.background='rgba(37,99,235,0.08)'" onmouseout="this.style.background='${isSelected ? 'rgba(37,99,235,0.06)' : 'white'}'">
+                        <div style="flex: 1; min-width: 0; padding-right: 0.75rem;">
+                            <div style="font-weight: 700; color: var(--text-main); font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                ${art.descripcion}
+                            </div>
+                            <div style="display: flex; gap: 0.4rem; align-items: center; margin-top: 0.25rem; flex-wrap: wrap;">
+                                ${skuBadge}
+                                ${itemBadge}
+                                ${provBadge}
+                                ${art.familia ? `<span style="font-size: 0.75rem; color: var(--text-muted);"><i class="fa-solid fa-tag" style="font-size: 0.7rem;"></i> ${art.familia}</span>` : ''}
+                            </div>
+                        </div>
+                        <div style="text-align: right; white-space: nowrap;">
+                            <span style="font-weight: 800; font-size: 0.95rem; color: ${art.stock <= 0 ? '#ef4444' : '#10b981'};">
+                                ${Number(art.stock).toFixed(3)} ${art.unidad}
+                            </span>
+                            <div style="font-size: 0.72rem; color: var(--text-muted);">Stock actual</div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        ajustesResultsContainer.innerHTML = html;
+        ajustesResultsContainer.style.display = 'block';
+    }
+
+    function seleccionarArticuloAjustes(id, label) {
+        if (hiddenAjustesArticuloId) hiddenAjustesArticuloId.value = id || '';
+        if (ajustesSearchInput) ajustesSearchInput.value = label || '';
+        if (btnClearAjustes) btnClearAjustes.style.display = id ? 'block' : 'none';
+        if (ajustesResultsContainer) ajustesResultsContainer.style.display = 'none';
+
+        const form = document.getElementById('form-filtros-reporte');
+        if (form) form.submit();
+    }
+
+    function limpiarBusquedaAjustes() {
+        if (hiddenAjustesArticuloId) hiddenAjustesArticuloId.value = '';
+        if (ajustesSearchInput) ajustesSearchInput.value = '';
+        if (btnClearAjustes) btnClearAjustes.style.display = 'none';
+        if (ajustesResultsContainer) ajustesResultsContainer.style.display = 'none';
+
+        const form = document.getElementById('form-filtros-reporte');
+        if (form) form.submit();
+    }
+
+    if (ajustesSearchInput) {
+        ajustesSearchInput.addEventListener('input', function() {
+            renderAjustesSearchResults(this.value);
+            if (btnClearAjustes) {
+                btnClearAjustes.style.display = this.value.trim() ? 'block' : 'none';
+            }
+        });
+
+        ajustesSearchInput.addEventListener('focus', function() {
+            renderAjustesSearchResults(this.value);
+        });
+
+        document.addEventListener('click', function(e) {
+            const container = document.getElementById('container-ajustes-search');
+            if (container && !container.contains(e.target) && ajustesResultsContainer) {
+                ajustesResultsContainer.style.display = 'none';
             }
         });
     }

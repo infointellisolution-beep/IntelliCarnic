@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AjusteInventario;
 use App\Models\Articulo;
 use App\Models\Compra;
 use App\Models\CompraDetalle;
@@ -563,6 +564,41 @@ class ReporteController extends Controller
             ];
         })->values();
 
+        // 8. Datos para Reporte de Ajustes de Inventario
+        $filtroTipoAjuste = $request->get('tipo_ajuste', 'todos');
+        $filtroOrigen = $request->get('origen', 'todos');
+        $modoInventario = $settings['modo_inventario'] ?? 'dinamico';
+
+        $ajustesQueryBase = AjusteInventario::query()
+            ->whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']);
+
+        if ($articuloId) {
+            $ajustesQueryBase->where('articulo_id', $articuloId);
+        }
+        if ($filtroTipoAjuste && $filtroTipoAjuste !== 'todos') {
+            $ajustesQueryBase->where('tipo_ajuste', $filtroTipoAjuste);
+        }
+        if ($filtroOrigen && $filtroOrigen !== 'todos') {
+            $ajustesQueryBase->where('origen', $filtroOrigen);
+        }
+
+        // KPIs de Ajustes
+        $totalAjustesConteo = (int) (clone $ajustesQueryBase)->count();
+        $totalAjustesPositivo = (float) (clone $ajustesQueryBase)->where('diferencia_stock', '>', 0)->sum('diferencia_stock');
+        $totalAjustesNegativo = (float) abs((clone $ajustesQueryBase)->where('diferencia_stock', '<', 0)->sum('diferencia_stock'));
+        $totalAjustesNeto = (float) (clone $ajustesQueryBase)->sum('diferencia_stock');
+        $ajustesHandheldCount = (int) (clone $ajustesQueryBase)->where('origen', 'handheld')->count();
+        $ajustesWebCount = (int) (clone $ajustesQueryBase)->where('origen', 'web')->count();
+
+        // Lista paginada de ajustes
+        $ajustesLista = (clone $ajustesQueryBase)
+            ->with(['articulo.familia', 'compraDetalle', 'user'])
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage, ['*'], 'page_ajustes');
+        $ajustesLista->withQueryString();
+
+        $articuloAjuste = $articuloId ? Articulo::find($articuloId) : null;
+
         return view('reportes.index', compact(
             'tab',
             'fechaInicio',
@@ -570,6 +606,7 @@ class ReporteController extends Controller
             'familiaId',
             'filtroStock',
             'unidadPeso',
+            'modoInventario',
             'familias',
             'articulosCatalogo',
             'articulosKardexJson',
@@ -638,7 +675,18 @@ class ReporteController extends Controller
             'totalKardexDevoluciones',
             'stockFinalKardex',
             'kardexLista',
-            'rotacionProductos'
+            'rotacionProductos',
+            // Ajustes
+            'filtroTipoAjuste',
+            'filtroOrigen',
+            'totalAjustesConteo',
+            'totalAjustesPositivo',
+            'totalAjustesNegativo',
+            'totalAjustesNeto',
+            'ajustesHandheldCount',
+            'ajustesWebCount',
+            'ajustesLista',
+            'articuloAjuste'
         ));
     }
 
@@ -824,6 +872,62 @@ class ReporteController extends Controller
                             ]);
                         }
                     }
+                }
+            } elseif ($tipo === 'ajustes') {
+                fputcsv($handle, [
+                    'Fecha y Hora',
+                    'Origen',
+                    'Usuario',
+                    'Código Artículo',
+                    'Descripción Artículo',
+                    'Familia',
+                    'Modo Inventario',
+                    'Lote',
+                    'Serie',
+                    'Tipo de Ajuste',
+                    'Stock Anterior',
+                    'Cantidad Ajustada',
+                    'Stock Resultante',
+                    'Diferencia Neta',
+                    'Motivo / Observación'
+                ]);
+
+                $filtroTipoAjuste = $request->get('tipo_ajuste', 'todos');
+                $filtroOrigen = $request->get('origen', 'todos');
+
+                $ajustesQuery = AjusteInventario::with(['articulo.familia', 'user'])
+                    ->whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']);
+
+                if ($articuloId) {
+                    $ajustesQuery->where('articulo_id', $articuloId);
+                }
+                if ($filtroTipoAjuste && $filtroTipoAjuste !== 'todos') {
+                    $ajustesQuery->where('tipo_ajuste', $filtroTipoAjuste);
+                }
+                if ($filtroOrigen && $filtroOrigen !== 'todos') {
+                    $ajustesQuery->where('origen', $filtroOrigen);
+                }
+
+                $ajustes = $ajustesQuery->orderBy('created_at', 'desc')->get();
+
+                foreach ($ajustes as $aj) {
+                    fputcsv($handle, [
+                        $aj->created_at->format('Y-m-d H:i:s'),
+                        strtoupper($aj->origen),
+                        $aj->user?->name ?? 'Sistema / Handheld',
+                        $aj->articulo?->codigo ?? '',
+                        $aj->articulo?->descripcion ?? '',
+                        $aj->articulo?->familia?->nombre ?? '',
+                        $aj->modo_inventario === 'dinamico' ? 'Dinámico (Por Lotes)' : 'Simple (General)',
+                        $aj->lote ?: 'N/A (General)',
+                        $aj->serie ?: 'N/A',
+                        strtoupper($aj->tipo_ajuste),
+                        number_format((float) $aj->stock_anterior, 3, '.', ''),
+                        number_format((float) $aj->cantidad_ajustada, 3, '.', ''),
+                        number_format((float) $aj->stock_nuevo, 3, '.', ''),
+                        ($aj->diferencia_stock >= 0 ? '+' : '') . number_format((float) $aj->diferencia_stock, 3, '.', ''),
+                        $aj->motivo ?? ''
+                    ]);
                 }
             }
 

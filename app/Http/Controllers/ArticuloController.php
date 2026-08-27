@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AjusteInventario;
 use App\Models\Articulo;
 use App\Models\Familia;
 use App\Models\Setting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -176,6 +178,7 @@ class ArticuloController extends Controller
 
         $articulo = Articulo::query()->findOrFail($data['stock_articulo_id']);
         $cantidad = (float) $data['cantidad'];
+        $stockAnterior = (float) $articulo->stock;
 
         if ($data['movimiento'] === 'restar' && $cantidad > $articulo->stock) {
             return redirect()
@@ -190,6 +193,26 @@ class ArticuloController extends Controller
 
         $articulo->estado = $articulo->stock <= 0 ? 'sin_stock' : 'activo';
         $articulo->save();
+
+        $stockNuevo = (float) $articulo->stock;
+        $diferencia = round($stockNuevo - $stockAnterior, 3);
+        $modoInventario = Setting::getValue('modo_inventario', 'dinamico');
+
+        AjusteInventario::create([
+            'articulo_id' => $articulo->id,
+            'compra_detalle_id' => null,
+            'lote' => null,
+            'serie' => null,
+            'user_id' => Auth::id(),
+            'tipo_ajuste' => $data['movimiento'] === 'sumar' ? 'suma' : 'resta',
+            'stock_anterior' => $stockAnterior,
+            'cantidad_ajustada' => $cantidad,
+            'stock_nuevo' => $stockNuevo,
+            'diferencia_stock' => $diferencia,
+            'origen' => 'web',
+            'modo_inventario' => $modoInventario,
+            'motivo' => $data['motivo'] ?? null,
+        ]);
 
         return redirect()
             ->route('articulos.index')
