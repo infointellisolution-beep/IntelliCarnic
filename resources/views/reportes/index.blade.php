@@ -496,23 +496,33 @@
 <!-- PESTAÑA 1: VENTAS -->
 @if($tab === 'ventas')
     <!-- Tarjetas KPI Ventas -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
         <div class="card" style="padding: 1.25rem;">
-            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">VENTAS NETAS</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Ventas Netas</div>
             <div style="font-size: 1.8rem; font-weight: 800; color: var(--primary); margin-top: 0.25rem;">${{ number_format($totalVentasNeto, 2) }}</div>
             <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
-                Bruto: ${{ number_format($totalVentasMonto, 2) }} @if($totalDevolucionesMonto > 0) | <span style="color: #dc2626;">Devoluciones: -${{ number_format($totalDevolucionesMonto, 2) }}</span> @endif
+                Bruto: ${{ number_format($totalVentasMonto, 2) }} @if($totalDevolucionesMonto > 0) | <span style="color: #dc2626;">Dev: -${{ number_format($totalDevolucionesMonto, 2) }}</span> @endif
             </div>
         </div>
 
         <div class="card" style="padding: 1.25rem;">
-            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">VOLUMEN VENDIDO</div>
-            <div style="font-size: 1.8rem; font-weight: 800; color: #10b981; margin-top: 0.25rem;">{{ number_format($totalPesoVendido, 2) }} <span style="font-size: 1rem;">{{ $unidadPeso }}</span></div>
-            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Peso neto comercializado en el rango</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Granel Vendido</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: #10b981; margin-top: 0.25rem;">
+                {{ number_format($totalPesoVendido, 2) }} <span style="font-size: 1rem; font-weight: 700; color: var(--text-muted);">{{ strtoupper($unidadPeso) }}</span>
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Peso carnes y pollo vendido</div>
         </div>
 
         <div class="card" style="padding: 1.25rem;">
-            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Nº TRANSACCIONES</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Unidades Vendidas</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: #ea580c; margin-top: 0.25rem;">
+                {{ number_format($totalUnidadesVendidas, 0) }} <span style="font-size: 1rem; font-weight: 700; color: var(--text-muted);">UND</span>
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Salsas, condimentos y piezas</div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Nº Transacciones</div>
             <div style="font-size: 1.8rem; font-weight: 800; color: #6366f1; margin-top: 0.25rem;">{{ $numVentas }}</div>
             <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
                 @if($countDevoluciones > 0)
@@ -524,7 +534,7 @@
         </div>
 
         <div class="card" style="padding: 1.25rem;">
-            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">PROMEDIO POR TICKET</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Promedio por Ticket</div>
             <div style="font-size: 1.8rem; font-weight: 800; color: #f59e0b; margin-top: 0.25rem;">${{ number_format($promedioVenta, 2) }}</div>
             <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Ticket promedio alcanzado</div>
         </div>
@@ -1427,19 +1437,25 @@
                                 <a href="{{ route('reportes.index', ['tab' => 'kardex', 'articulo_id' => $art->id, 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin, 'per_page' => $perPage]) }}" style="font-weight: 700; color: var(--primary); text-decoration: none;">
                                     {{ $art->descripcion }}
                                 </a>
-                                <div style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">
-                                    SKU: {{ $art->codigo }}
+                                <div style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace; display: flex; align-items: center; gap: 0.4rem; margin-top: 0.15rem;">
+                                    <span>SKU: {{ $art->codigo }}</span>
+                                    @if($art->isUnidad())
+                                        <span class="badge" style="font-size: 0.68rem; padding: 1px 4px; background: #fff7ed; color: #ea580c; border: 1px solid #fed7aa;">UND</span>
+                                    @else
+                                        <span class="badge" style="font-size: 0.68rem; padding: 1px 4px; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe;">{{ strtoupper($unidadPeso) }}</span>
+                                    @endif
                                 </div>
                             </td>
                             <td>{{ $art->familia?->nombre ?? 'Sin Familia' }}</td>
+                            @php $decRot = $art->isUnidad() ? 0 : 3; @endphp
                             <td style="text-align: right; font-weight: 700;">
-                                {{ number_format($art->stock_actual_num, 3) }}
+                                {{ number_format($art->stock_actual_num, $decRot) }}
                             </td>
                             <td style="text-align: right; color: #10b981; font-weight: 600;">
-                                {{ $art->total_comprado_periodo > 0 ? '+'.number_format($art->total_comprado_periodo, 3) : '-' }}
+                                {{ $art->total_comprado_periodo > 0 ? '+'.number_format($art->total_comprado_periodo, $decRot) : '-' }}
                             </td>
                             <td style="text-align: right; color: #ef4444; font-weight: 700; font-size: 0.95rem;">
-                                {{ $art->venta_neta_periodo > 0 ? number_format($art->venta_neta_periodo, 3) : '-' }}
+                                {{ $art->venta_neta_periodo > 0 ? number_format($art->venta_neta_periodo, $decRot) : '-' }}
                             </td>
                             <td style="text-align: center;">
                                 <div style="display: flex; align-items: center; gap: 0.5rem; justify-content: center;">
@@ -2253,28 +2269,33 @@
                                     </span>
                                 @endif
                             </td>
+                            @php
+                                $uSym = $aj->articulo?->unidad_simbolo ?? $unidadPeso;
+                                $isUnd = $aj->articulo?->isUnidad();
+                                $dec = $isUnd ? 0 : 3;
+                            @endphp
                             <td style="padding: 0.85rem 1rem; text-align: right; color: var(--text-muted); font-weight: 600;">
-                                {{ number_format((float)$aj->stock_anterior, 3) }} {{ $unidadPeso }}
+                                {{ number_format((float)$aj->stock_anterior, $dec) }} {{ $uSym }}
                             </td>
                             <td style="padding: 0.85rem 1rem; text-align: right; font-weight: 700;">
-                                {{ number_format((float)$aj->cantidad_ajustada, 3) }} {{ $unidadPeso }}
+                                {{ number_format((float)$aj->cantidad_ajustada, $dec) }} {{ $uSym }}
                             </td>
                             <td style="padding: 0.85rem 1rem; text-align: right; font-weight: 800; color: var(--text-main);">
-                                {{ number_format((float)$aj->stock_nuevo, 3) }} {{ $unidadPeso }}
+                                {{ number_format((float)$aj->stock_nuevo, $dec) }} {{ $uSym }}
                             </td>
                             <td style="padding: 0.85rem 1rem; text-align: right;">
                                 @php $diff = (float) $aj->diferencia_stock; @endphp
                                 @if($diff > 0)
                                     <span style="font-weight: 800; color: #16a34a;">
-                                        +{{ number_format($diff, 3) }} {{ $unidadPeso }}
+                                        +{{ number_format($diff, $dec) }} {{ $uSym }}
                                     </span>
                                 @elseif($diff < 0)
                                     <span style="font-weight: 800; color: #dc2626;">
-                                        {{ number_format($diff, 3) }} {{ $unidadPeso }}
+                                        {{ number_format($diff, $dec) }} {{ $uSym }}
                                     </span>
                                 @else
                                     <span style="font-weight: 700; color: var(--text-muted);">
-                                        0.000 {{ $unidadPeso }}
+                                        {{ number_format(0, $dec) }} {{ $uSym }}
                                     </span>
                                 @endif
                             </td>

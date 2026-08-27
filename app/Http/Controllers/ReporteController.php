@@ -54,6 +54,14 @@ class ReporteController extends Controller
 
         $totalPesoVendido = (float) VentaDetalle::whereHas('venta', function ($q) use ($fechaInicio, $fechaFin) {
             $q->whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']);
+        })->whereHas('articulo', function ($q) {
+            $q->where('tipo_articulo', '!=', 'unidad');
+        })->sum('cantidad');
+
+        $totalUnidadesVendidas = (float) VentaDetalle::whereHas('venta', function ($q) use ($fechaInicio, $fechaFin) {
+            $q->whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']);
+        })->whereHas('articulo', function ($q) {
+            $q->where('tipo_articulo', 'unidad');
         })->sum('cantidad');
 
         $ventasPorMetodo = Venta::query()
@@ -558,8 +566,9 @@ class ReporteController extends Controller
                 'codigo' => (string) ($a->codigo ?? ''),
                 'codigo_cliente' => (string) ($a->codigo_cliente ?? ''),
                 'item' => (string) ($a->item ?? ''),
+                'tipo_articulo' => $a->tipo_articulo ?? 'pesable',
                 'stock' => (float) $a->stock,
-                'unidad' => $unidadPeso,
+                'unidad' => ($a->tipo_articulo === 'unidad') ? 'UND' : $unidadPeso,
                 'familia' => $a->familia?->nombre ?? ''
             ];
         })->values();
@@ -621,6 +630,7 @@ class ReporteController extends Controller
             'numVentas',
             'promedioVenta',
             'totalPesoVendido',
+            'totalUnidadesVendidas',
             'ventasPorMetodo',
             'topProductosVendidos',
             'ventasLista',

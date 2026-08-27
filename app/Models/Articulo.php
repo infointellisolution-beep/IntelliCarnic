@@ -17,6 +17,7 @@ class Articulo extends Model
         'item',
         'familia_id',
         'descripcion',
+        'tipo_articulo',
         'precio_compra',
         'aplica_iva',
         'precio_sin_iva',
@@ -41,6 +42,33 @@ class Articulo extends Model
             'aplica_iva' => 'boolean',
             'precios_adicionales' => 'array',
         ];
+    }
+
+    public function isPesable(): bool
+    {
+        return ($this->tipo_articulo ?? 'pesable') !== 'unidad';
+    }
+
+    public function isUnidad(): bool
+    {
+        return ($this->tipo_articulo ?? 'pesable') === 'unidad';
+    }
+
+    public function getUnidadSimboloAttribute(): string
+    {
+        if ($this->isUnidad()) {
+            return 'UND';
+        }
+        $settings = Setting::values();
+        return strtoupper($settings['unidad_peso'] ?? 'LB');
+    }
+
+    public function getFormattedStockAttribute(): string
+    {
+        if ($this->isUnidad()) {
+            return number_format((float) $this->stock, 0) . ' UND';
+        }
+        return number_format((float) $this->stock, 3) . ' ' . $this->unidad_simbolo;
     }
 
     public function familia()

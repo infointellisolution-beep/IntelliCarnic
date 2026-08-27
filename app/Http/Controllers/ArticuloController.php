@@ -230,6 +230,7 @@ class ArticuloController extends Controller
             ],
             'codigo_cliente' => ['nullable', 'string', 'max:50'],
             'item' => ['nullable', 'string', 'max:50'],
+            'tipo_articulo' => ['required', Rule::in(['pesable', 'unidad'])],
             'familia_id' => ['required', 'exists:familias,id'],
             'aplica_iva' => ['nullable', 'boolean'],
             'descripcion' => ['required', 'string', 'max:255'],

@@ -34,6 +34,8 @@
             'id' => $articulo->id,
             'codigo' => $articulo->codigo,
             'codigo_cliente' => $articulo->codigo_cliente,
+            'item' => $articulo->item,
+            'tipo_articulo' => $articulo->tipo_articulo ?? 'pesable',
             'descripcion' => $articulo->descripcion,
             'familia_id' => $articulo->familia_id,
             'familia_nombre' => $articulo->familia?->nombre,
@@ -132,7 +134,7 @@
     </div>
 </div>
 
-<section class="stats-grid">
+<section class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem;">
     <article class="stat-card">
         <div class="stat-card-header">
             <div>
@@ -146,12 +148,28 @@
     <article class="stat-card">
         <div class="stat-card-header">
             <div>
-                <div class="stat-label">Stock total</div>
-                <div class="stat-value">{{ number_format($articulos->sum('stock'), 3) }}</div>
+                <div class="stat-label">Stock a Granel</div>
+                <div class="stat-value" style="font-size: 1.6rem; color: #10b981;">
+                    {{ number_format($articulos->where('tipo_articulo', '!=', 'unidad')->sum('stock'), 3) }} 
+                    <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">{{ strtoupper($settings['unidad_peso'] ?? 'lb') }}</span>
+                </div>
             </div>
-            <div class="stat-card-icon green"><i class="fa-solid fa-warehouse"></i></div>
+            <div class="stat-card-icon green"><i class="fa-solid fa-scale-balanced"></i></div>
         </div>
-        <div class="stat-note">Peso total disponible</div>
+        <div class="stat-note">Peso carnes y pollo disponible</div>
+    </article>
+    <article class="stat-card">
+        <div class="stat-card-header">
+            <div>
+                <div class="stat-label">Stock en Unidades</div>
+                <div class="stat-value" style="font-size: 1.6rem; color: #ea580c;">
+                    {{ number_format($articulos->where('tipo_articulo', 'unidad')->sum('stock'), 0) }} 
+                    <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">UND</span>
+                </div>
+            </div>
+            <div class="stat-card-icon orange" style="background: rgba(249, 115, 22, 0.12); color: #ea580c;"><i class="fa-solid fa-box"></i></div>
+        </div>
+        <div class="stat-note">Salsas, condimentos y piezas</div>
     </article>
     <article class="stat-card">
         <div class="stat-card-header">
@@ -159,7 +177,7 @@
                 <div class="stat-label">Valor inventario</div>
                 <div class="stat-value">${{ number_format($articulos->sum(fn($a) => $a->effective_pvp * $a->stock), 2) }}</div>
             </div>
-            <div class="stat-card-icon orange"><i class="fa-solid fa-coins"></i></div>
+            <div class="stat-card-icon yellow" style="background: rgba(234, 179, 8, 0.12); color: #ca8a04;"><i class="fa-solid fa-coins"></i></div>
         </div>
         <div class="stat-note">A precio de venta</div>
     </article>
@@ -212,6 +230,7 @@
                         'codigo' => $articulo->codigo,
                         'codigo_cliente' => $articulo->codigo_cliente,
                         'item' => $articulo->item,
+                        'tipo_articulo' => $articulo->tipo_articulo ?? 'pesable',
                         'aplica_iva' => $articulo->aplica_iva,
                         'descripcion' => $articulo->descripcion,
                         'familia_id' => $articulo->familia_id,
@@ -231,8 +250,19 @@
                 <tr class="catalog-row">
                     <td style="font-weight: 700; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ $articulo->codigo }}">{{ Str::limit($articulo->codigo, 20, '...') }}</td>
                     <td>
-                        <div style="font-weight: 600;">{{ $articulo->descripcion }}</div>
-                        <div style="font-size: 0.82rem; color: var(--text-muted);">
+                        <div style="font-weight: 700; display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                            <span>{{ $articulo->descripcion }}</span>
+                            @if($articulo->isUnidad())
+                                <span class="badge" style="background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; font-weight: 700; font-size: 0.72rem; padding: 2px 6px;">
+                                    <i class="fa-solid fa-box"></i> Unidad (UND)
+                                </span>
+                            @else
+                                <span class="badge" style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-weight: 700; font-size: 0.72rem; padding: 2px 6px;">
+                                    <i class="fa-solid fa-scale-balanced"></i> Granel ({{ strtoupper($settings['unidad_peso'] ?? 'lb') }})
+                                </span>
+                            @endif
+                        </div>
+                        <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.15rem;">
                             Código cliente: <strong>{{ $articulo->codigo_cliente ?? 'Sin código' }}</strong>
                             @if($articulo->item)
                                 | ITEM: <span class="badge badge-info" style="font-family: monospace; font-size: 0.78rem;">{{ $articulo->item }}</span>
@@ -255,7 +285,11 @@
                             }
                         @endphp
                         <span class="badge {{ $badgeClass }}">
-                            {{ number_format($articulo->stock, 3) }} {{ $settings['unidad_peso'] ?? 'kg' }}
+                            @if($articulo->isUnidad())
+                                {{ number_format((float)$articulo->stock, 0) }} UND
+                            @else
+                                {{ number_format((float)$articulo->stock, 3) }} {{ $settings['unidad_peso'] ?? 'kg' }}
+                            @endif
                         </span>
                     </td>
                     <td>

@@ -386,6 +386,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         setCheckboxValue('aplica_iva', true);
+        const pesableRadio = document.getElementById('tipo-articulo-pesable');
+        if (pesableRadio) pesableRadio.checked = true;
+        if (typeof onTipoArticuloChange === 'function') onTipoArticuloChange();
+
         if (typeof clearPreciosAdicionales === 'function') {
             clearPreciosAdicionales();
         }
@@ -407,6 +411,11 @@ document.addEventListener('DOMContentLoaded', () => {
             modalId.value = articulo.id || '';
             modalMethod.value = 'PUT';
             modalMethod.disabled = false;
+
+            const tipo = articulo.tipo_articulo || 'pesable';
+            const radioEl = modalForm.querySelector(`[name="tipo_articulo"][value="${tipo}"]`);
+            if (radioEl) radioEl.checked = true;
+            if (typeof onTipoArticuloChange === 'function') onTipoArticuloChange();
 
             setFieldValue('codigo', articulo.codigo);
             setFieldValue('codigo_cliente', articulo.codigo_cliente);
@@ -670,7 +679,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 detailPrecio.textContent = `$${Number(articulo.precio_sin_iva || 0).toFixed(2)}`;
                 if (detailIva) detailIva.textContent = `${Number(articulo.iva || 0).toFixed(0)}%`;
                 if (detailPvp) detailPvp.textContent = `$${Number(articulo.pvp || 0).toFixed(2)}`;
-                detailStock.textContent = `${Number(articulo.stock ?? 0).toFixed(3)} ${window.unidadPeso || 'kg'}`;
+                const isUnidad = (articulo.tipo_articulo === 'unidad');
+                if (isUnidad) {
+                    detailStock.textContent = `${Number(articulo.stock ?? 0).toFixed(0)} UND`;
+                } else {
+                    detailStock.textContent = `${Number(articulo.stock ?? 0).toFixed(3)} ${(window.unidadPeso || 'kg').toUpperCase()}`;
+                }
 
                 // --- Código Dinámico Báscula ---
                 if (basculaContainer && basculaValue && articulo.codigo_cliente && articulo.codigo_cliente.length <= 6 && /^\d+$/.test(articulo.codigo_cliente)) {

@@ -174,6 +174,10 @@
             return false;
         });
 
+        if (articulo && articulo.tipo_articulo === 'unidad') {
+            parsedWeight = 1.000;
+        }
+
         return {
             articulo: articulo || null,
             peso: parsedWeight > 0 ? parsedWeight : 1.000,
@@ -191,18 +195,20 @@
         }
 
         let articulo = result.articulo;
-        let peso = Math.round(result.peso * 1000) / 1000;
+        let isUnidad = (articulo.tipo_articulo === 'unidad');
+        let peso = isUnidad ? 1.000 : (Math.round(result.peso * 1000) / 1000);
 
         let pvp = parseFloat(articulo.pvp || articulo.precio_sin_iva || 0);
         let existing = cart.find(i => i.articulo_id === articulo.id);
 
         if (existing) {
-            existing.cantidad = Math.round((existing.cantidad + peso) * 1000) / 1000;
+            existing.cantidad = isUnidad ? (existing.cantidad + 1) : (Math.round((existing.cantidad + peso) * 1000) / 1000);
             existing.subtotal = Math.round(existing.cantidad * pvp * 100) / 100;
         } else {
             cart.push({
                 articulo_id: articulo.id,
                 descripcion: articulo.descripcion,
+                tipo_articulo: articulo.tipo_articulo || 'pesable',
                 precio_unitario: pvp,
                 cantidad: peso,
                 subtotal: Math.round(peso * pvp * 100) / 100
@@ -227,11 +233,13 @@
         cart.forEach((item, index) => {
             total += item.subtotal;
             count += item.cantidad;
+            const isUnidad = (item.tipo_articulo === 'unidad');
+            const qtyFormatted = isUnidad ? `${Number(item.cantidad).toFixed(0)} UND` : `${Number(item.cantidad).toFixed(3)} ${window.unidadPeso || 'lb'}`;
             html += `
                 <div style="background: #0f172a; border-radius: 8px; padding: 0.5rem 0.65rem; margin-bottom: 0.4rem; display: flex; align-items: center; justify-content: space-between;">
                     <div style="flex: 1; padding-right: 0.5rem;">
                         <strong style="font-size: 0.85rem; color: white; display: block;">${item.descripcion}</strong>
-                        <span style="font-size: 0.75rem; color: var(--text-muted);">$${item.precio_unitario.toFixed(2)} x ${item.cantidad.toFixed(3)}</span>
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">$${item.precio_unitario.toFixed(2)} x ${qtyFormatted}</span>
                     </div>
                     <div style="text-align: right; display: flex; align-items: center; gap: 0.5rem;">
                         <strong style="font-size: 0.95rem; color: #34d399;">$${item.subtotal.toFixed(2)}</strong>

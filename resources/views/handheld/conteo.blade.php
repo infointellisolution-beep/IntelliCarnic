@@ -88,7 +88,7 @@
         </select>
 
         <!-- CANTIDAD FÍSICA PARA AJUSTAR -->
-        <label style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">
+        <label id="label-conteo-cantidad" style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">
             CANTIDAD / PESO FÍSICO A AJUSTAR ({{ $settings['unidad_peso'] ?? 'kg' }})
         </label>
         <input type="number" step="0.001" min="0.001" name="cantidad" id="conteo-cantidad" class="hh-input" style="font-size: 1.25rem; font-weight: 800; text-align: center; color: #34d399;" placeholder="0.000" required>
@@ -236,19 +236,42 @@
         cantidadInput.select();
     }
 
+    function getUnidadArt(articulo) {
+        return (articulo && articulo.tipo_articulo === 'unidad') ? 'UND' : unidadPeso;
+    }
+
+    function formatQtyArt(articulo, qty) {
+        if (articulo && articulo.tipo_articulo === 'unidad') {
+            return Number(qty).toFixed(0);
+        }
+        return Number(qty).toFixed(3);
+    }
+
+    function actualizarInputAjuste(articulo, qty) {
+        var isUnidad = (articulo && articulo.tipo_articulo === 'unidad');
+        var u = isUnidad ? 'UND' : unidadPeso.toUpperCase();
+        var labelEl = document.getElementById('label-conteo-cantidad');
+        if (labelEl) {
+            labelEl.textContent = isUnidad ? 'CANTIDAD FÍSICA A AJUSTAR (UND)' : ('PESO FÍSICO A AJUSTAR (' + u + ')');
+        }
+        cantidadInput.step = isUnidad ? '1' : '0.001';
+        cantidadInput.value = formatQtyArt(articulo, qty);
+    }
+
     function seleccionarProductoSimple(articulo, result) {
+        var u = getUnidadArt(articulo);
         nombreTxt.textContent = articulo.descripcion;
-        metaTxt.innerHTML = 'Cód: ' + articulo.codigo;
+        metaTxt.innerHTML = 'Cód: ' + articulo.codigo + (articulo.tipo_articulo === 'unidad' ? ' | <span style="color: #fb923c;"><i class="fa-solid fa-box"></i> Unidad</span>' : ' | <span style="color: #60a5fa;"><i class="fa-solid fa-scale-balanced"></i> Granel</span>');
         
         // Label de texto no editable
         if (pesoDisplayCard) {
             pesoDisplayCard.style.display = 'block';
-            pesoLabelTitle.textContent = 'STOCK ACTUAL REGISTRADO (SISTEMA)';
-            pesoDisplayVal.textContent = Number(articulo.stock).toFixed(3) + ' ' + unidadPeso;
-            pesoDisplaySub.textContent = 'Total general registrado en sistema (No editable)';
+            pesoLabelTitle.textContent = (articulo.tipo_articulo === 'unidad') ? 'EXISTENCIA ACTUAL REGISTRADA (SISTEMA)' : 'STOCK ACTUAL REGISTRADO (SISTEMA)';
+            pesoDisplayVal.textContent = formatQtyArt(articulo, articulo.stock) + ' ' + u;
+            pesoDisplaySub.textContent = 'Total general registrado en sistema (Solo lectura)';
         }
 
-        cantidadInput.value = Number(articulo.stock).toFixed(3);
+        actualizarInputAjuste(articulo, articulo.stock);
         loteInfoDiv.style.display = 'none';
         otrosLotesSection.style.display = 'none';
     }
@@ -256,6 +279,7 @@
     function seleccionarProductoDinamico(articulo, result) {
         var lotesDelArticulo = lotesActivosCatalogo.filter(function(l) { return l.articulo_id === articulo.id; });
         var loteEncontrado = null;
+        var u = getUnidadArt(articulo);
 
         if (result.cleanCode && lotesDelArticulo.length > 0) {
             loteEncontrado = lotesDelArticulo.find(function(l) {
@@ -272,7 +296,7 @@
         if (loteEncontrado) {
             loteIdInput.value = loteEncontrado.id;
             nombreTxt.textContent = articulo.descripcion;
-            metaTxt.innerHTML = 'Stock General: <strong style="color: #94a3b8;">' + Number(articulo.stock).toFixed(3) + ' ' + unidadPeso + '</strong> | Cód: ' + articulo.codigo;
+            metaTxt.innerHTML = 'Stock General: <strong style="color: #94a3b8;">' + formatQtyArt(articulo, articulo.stock) + ' ' + u + '</strong> | Cód: ' + articulo.codigo;
 
             loteInfoDiv.style.display = 'block';
             var detalleHtml = '<div>Lote: <strong>' + (loteEncontrado.lote || '-') + '</strong> | Serie: ' + (loteEncontrado.serie || '-') + '</div>';
@@ -284,29 +308,29 @@
             }
             loteDetalleDiv.innerHTML = detalleHtml;
 
-            // Label de texto no editable para la cantidad de libras del lote
+            // Label de texto no editable para la cantidad del lote
             if (pesoDisplayCard) {
                 pesoDisplayCard.style.display = 'block';
-                pesoLabelTitle.textContent = 'PESO / CANTIDAD REGISTRADA DEL LOTE';
-                pesoDisplayVal.textContent = Number(loteEncontrado.cantidad_peso).toFixed(3) + ' ' + unidadPeso;
-                pesoDisplaySub.textContent = 'Lote: ' + (loteEncontrado.lote || '-') + ' | Serie: ' + (loteEncontrado.serie || '-') + ' (No editable)';
+                pesoLabelTitle.textContent = (articulo.tipo_articulo === 'unidad') ? 'CANTIDAD REGISTRADA DEL LOTE' : 'PESO REGISTRADO DEL LOTE';
+                pesoDisplayVal.textContent = formatQtyArt(articulo, loteEncontrado.cantidad_peso) + ' ' + u;
+                pesoDisplaySub.textContent = 'Lote: ' + (loteEncontrado.lote || '-') + ' | Serie: ' + (loteEncontrado.serie || '-') + ' (Solo lectura)';
             }
 
-            cantidadInput.value = Number(loteEncontrado.cantidad_peso).toFixed(3);
+            actualizarInputAjuste(articulo, loteEncontrado.cantidad_peso);
         } else {
             nombreTxt.textContent = articulo.descripcion;
-            metaTxt.innerHTML = 'Cód: ' + articulo.codigo;
+            metaTxt.innerHTML = 'Cód: ' + articulo.codigo + (articulo.tipo_articulo === 'unidad' ? ' | <span style="color: #fb923c;"><i class="fa-solid fa-box"></i> Unidad</span>' : ' | <span style="color: #60a5fa;"><i class="fa-solid fa-scale-balanced"></i> Granel</span>');
             loteInfoDiv.style.display = 'none';
 
             // Label de texto no editable para stock total
             if (pesoDisplayCard) {
                 pesoDisplayCard.style.display = 'block';
-                pesoLabelTitle.textContent = 'STOCK TOTAL REGISTRADO (SISTEMA)';
-                pesoDisplayVal.textContent = Number(articulo.stock).toFixed(3) + ' ' + unidadPeso;
-                pesoDisplaySub.textContent = 'Stock acumulado sin lote específico detectado (No editable)';
+                pesoLabelTitle.textContent = (articulo.tipo_articulo === 'unidad') ? 'EXISTENCIA TOTAL REGISTRADA (SISTEMA)' : 'STOCK TOTAL REGISTRADO (SISTEMA)';
+                pesoDisplayVal.textContent = formatQtyArt(articulo, articulo.stock) + ' ' + u;
+                pesoDisplaySub.textContent = 'Stock acumulado sin lote específico detectado (Solo lectura)';
             }
 
-            cantidadInput.value = Number(articulo.stock).toFixed(3);
+            actualizarInputAjuste(articulo, articulo.stock);
         }
 
         mostrarOtrosLotes(articulo, lotesDelArticulo, loteEncontrado);
@@ -322,6 +346,7 @@
             return;
         }
 
+        var u = getUnidadArt(articulo);
         otrosLotesCount.textContent = lotesAMostrar.length;
         otrosLotesSection.style.display = 'block';
         listaOtrosLotes.style.display = 'none';
@@ -337,7 +362,7 @@
             html += '<div style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.1rem;">' + vencLabel + (recibidoLabel ? ' | ' + recibidoLabel : '') + '</div>';
             html += '</div>';
             html += '<div style="text-align: right; margin-left: 0.5rem;">';
-            html += '<div style="font-size: 0.9rem; font-weight: 800; color: #f59e0b;">' + Number(lote.cantidad_peso).toFixed(3) + ' ' + unidadPeso + '</div>';
+            html += '<div style="font-size: 0.9rem; font-weight: 800; color: #f59e0b;">' + formatQtyArt(articulo, lote.cantidad_peso) + ' ' + u + '</div>';
             html += '<button type="button" onclick="seleccionarLoteDirecto(' + articulo.id + ', ' + lote.id + ')" style="background: #1e3a5f; border: 1px solid #3b82f6; color: #60a5fa; font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 4px; cursor: pointer; margin-top: 0.15rem;"><i class="fa-solid fa-hand-pointer"></i> Seleccionar</button>';
             html += '</div></div>';
         });
@@ -355,11 +380,12 @@
         var lote = lotesActivosCatalogo.find(function(l) { return l.id === loteId; });
         if (!articulo || !lote) return;
 
+        var u = getUnidadArt(articulo);
         articuloIdInput.value = articulo.id;
         loteIdInput.value = lote.id;
 
         nombreTxt.textContent = articulo.descripcion;
-        metaTxt.innerHTML = 'Stock General: <strong style="color: #94a3b8;">' + Number(articulo.stock).toFixed(3) + ' ' + unidadPeso + '</strong> | Cód: ' + articulo.codigo;
+        metaTxt.innerHTML = 'Stock General: <strong style="color: #94a3b8;">' + formatQtyArt(articulo, articulo.stock) + ' ' + u + '</strong> | Cód: ' + articulo.codigo;
 
         loteInfoDiv.style.display = 'block';
         var detalleHtml = '<div>Lote: <strong>' + (lote.lote || '-') + '</strong> | Serie: ' + (lote.serie || '-') + '</div>';
@@ -374,12 +400,12 @@
         // Actualizar label de texto no editable
         if (pesoDisplayCard) {
             pesoDisplayCard.style.display = 'block';
-            pesoLabelTitle.textContent = 'PESO / CANTIDAD REGISTRADA DEL LOTE';
-            pesoDisplayVal.textContent = Number(lote.cantidad_peso).toFixed(3) + ' ' + unidadPeso;
-            pesoDisplaySub.textContent = 'Lote: ' + (lote.lote || '-') + ' | Serie: ' + (lote.serie || '-') + ' (No editable)';
+            pesoLabelTitle.textContent = (articulo.tipo_articulo === 'unidad') ? 'CANTIDAD REGISTRADA DEL LOTE' : 'PESO REGISTRADO DEL LOTE';
+            pesoDisplayVal.textContent = formatQtyArt(articulo, lote.cantidad_peso) + ' ' + u;
+            pesoDisplaySub.textContent = 'Lote: ' + (lote.lote || '-') + ' | Serie: ' + (lote.serie || '-') + ' (Solo lectura)';
         }
 
-        cantidadInput.value = Number(lote.cantidad_peso).toFixed(3);
+        actualizarInputAjuste(articulo, lote.cantidad_peso);
         submitBtn.disabled = false;
 
         var lotesDelArticulo = lotesActivosCatalogo.filter(function(l) { return l.articulo_id === articulo.id; });
@@ -387,6 +413,10 @@
 
         cantidadInput.focus();
         cantidadInput.select();
+
+        listaOtrosLotes.style.display = 'none';
+        document.getElementById('icon-toggle-lotes').style.transform = 'rotate(0deg)';
+    }
 
         listaOtrosLotes.style.display = 'none';
         document.getElementById('icon-toggle-lotes').style.transform = 'rotate(0deg)';

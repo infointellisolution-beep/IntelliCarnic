@@ -9,8 +9,40 @@
 @endphp
 
 <div class="form-grid">
+    <!-- SELECTOR DE TIPO DE ARTÍCULO: PESABLE A GRANEL VS SIMPLE POR UNIDAD -->
+    <div style="grid-column: 1 / -1; margin-bottom: 0.5rem; padding: 0.85rem; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 10px;">
+        <label style="font-size: 0.82rem; font-weight: 800; color: var(--text-main); text-transform: uppercase; margin-bottom: 0.5rem; display: block;">
+            <i class="fa-solid fa-shapes" style="color: var(--primary);"></i> Naturaleza / Tipo de Artículo
+        </label>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem;">
+            <label id="label-tipo-pesable" style="display: flex; align-items: flex-start; gap: 0.6rem; padding: 0.75rem; border: {{ old('tipo_articulo', $modalArticulo->tipo_articulo ?? 'pesable') === 'pesable' ? '2px solid #2563eb' : '1.5px solid #cbd5e1' }}; background: {{ old('tipo_articulo', $modalArticulo->tipo_articulo ?? 'pesable') === 'pesable' ? '#eff6ff' : '#fff' }}; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                <input type="radio" name="tipo_articulo" value="pesable" id="tipo-articulo-pesable" @checked(old('tipo_articulo', $modalArticulo->tipo_articulo ?? 'pesable') === 'pesable') onchange="onTipoArticuloChange()" style="margin-top: 0.2rem;">
+                <div>
+                    <div style="font-weight: 800; color: {{ old('tipo_articulo', $modalArticulo->tipo_articulo ?? 'pesable') === 'pesable' ? '#1e40af' : '#334155' }}; font-size: 0.92rem;">
+                        <i class="fa-solid fa-scale-balanced"></i> Pesable a Granel ({{ strtoupper($unidadPeso) }})
+                    </div>
+                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.15rem;">
+                        Carnes, pollo, vísceras y cortes que se pesan con báscula o código GS1 con decimales.
+                    </div>
+                </div>
+            </label>
+
+            <label id="label-tipo-unidad" style="display: flex; align-items: flex-start; gap: 0.6rem; padding: 0.75rem; border: {{ old('tipo_articulo', $modalArticulo->tipo_articulo ?? '') === 'unidad' ? '2px solid #ea580c' : '1.5px solid #cbd5e1' }}; background: {{ old('tipo_articulo', $modalArticulo->tipo_articulo ?? '') === 'unidad' ? '#fff7ed' : '#fff' }}; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                <input type="radio" name="tipo_articulo" value="unidad" id="tipo-articulo-unidad" @checked(old('tipo_articulo', $modalArticulo->tipo_articulo ?? '') === 'unidad') onchange="onTipoArticuloChange()" style="margin-top: 0.2rem;">
+                <div>
+                    <div style="font-weight: 800; color: {{ old('tipo_articulo', $modalArticulo->tipo_articulo ?? '') === 'unidad' ? '#c2410c' : '#334155' }}; font-size: 0.92rem;">
+                        <i class="fa-solid fa-box"></i> Simple / Por Unidad (UND)
+                    </div>
+                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.15rem;">
+                        Salsas, condimentos, especias, carbón, bebidas y artículos que se venden por pieza.
+                    </div>
+                </div>
+            </label>
+        </div>
+    </div>
+
     <div class="input-group">
-        <label>Código Proveedor</label>
+        <label>Código Proveedor / Barras</label>
         <input type="text" class="input-modern" name="codigo" value="{{ old('codigo', $modalArticulo->codigo ?? '') }}" required>
     </div>
     <div class="input-group">
@@ -176,17 +208,72 @@ function clearPreciosAdicionales() {
     if (container) container.innerHTML = '';
 }
 
+function onTipoArticuloChange() {
+    const pesableRadio = document.getElementById('tipo-articulo-pesable');
+    const isPesable = pesableRadio ? pesableRadio.checked : true;
+    const labelPesable = document.getElementById('label-tipo-pesable');
+    const labelUnidad = document.getElementById('label-tipo-unidad');
+    const stockLabel = document.getElementById('label-stock-field');
+    const stockMinLabel = document.getElementById('label-stock-min-field');
+    const stockInput = document.getElementById('field-stock');
+    const stockMinInput = document.getElementById('field-stock-minimo');
+    const scalePreviewContainer = document.getElementById('scale-code-preview');
+    const unitSymbol = (window.unidadPeso || '{{ $unidadPeso }}').toUpperCase();
+
+    if (isPesable) {
+        if (labelPesable) {
+            labelPesable.style.borderColor = '#2563eb';
+            labelPesable.style.background = '#eff6ff';
+            const titleEl = labelPesable.querySelector('div div');
+            if (titleEl) titleEl.style.color = '#1e40af';
+        }
+        if (labelUnidad) {
+            labelUnidad.style.borderColor = '#cbd5e1';
+            labelUnidad.style.background = '#fff';
+            const titleEl = labelUnidad.querySelector('div div');
+            if (titleEl) titleEl.style.color = '#334155';
+        }
+        if (stockLabel) stockLabel.innerText = 'Peso / stock actual (' + unitSymbol + ')';
+        if (stockMinLabel) stockMinLabel.innerText = 'Stock mínimo (' + unitSymbol + ')';
+        if (stockInput) stockInput.step = '0.001';
+        if (stockMinInput) stockMinInput.step = '0.001';
+        updateScaleCodePreview();
+    } else {
+        if (labelPesable) {
+            labelPesable.style.borderColor = '#cbd5e1';
+            labelPesable.style.background = '#fff';
+            const titleEl = labelPesable.querySelector('div div');
+            if (titleEl) titleEl.style.color = '#334155';
+        }
+        if (labelUnidad) {
+            labelUnidad.style.borderColor = '#ea580c';
+            labelUnidad.style.background = '#fff7ed';
+            const titleEl = labelUnidad.querySelector('div div');
+            if (titleEl) titleEl.style.color = '#c2410c';
+        }
+        if (stockLabel) stockLabel.innerText = 'Cantidad / stock actual (UND)';
+        if (stockMinLabel) stockMinLabel.innerText = 'Stock mínimo (UND)';
+        if (stockInput) stockInput.step = '1';
+        if (stockMinInput) stockMinInput.step = '1';
+        if (scalePreviewContainer) {
+            scalePreviewContainer.innerHTML = '<i class="fa-solid fa-box"></i> Artículo simple por unidad (se vende por pieza)';
+            scalePreviewContainer.style.color = '#ea580c';
+        }
+    }
+}
+
 // Ejecutar al iniciar
 document.addEventListener('DOMContentLoaded', () => {
     updateScaleCodePreview();
+    onTipoArticuloChange();
 });
 </script>
     <div class="input-group">
-        <label>Peso / stock actual ({{ strtoupper($unidadPeso) }})</label>
+        <label id="label-stock-field">Peso / stock actual ({{ strtoupper($unidadPeso) }})</label>
         <input type="number" step="0.001" min="0" class="input-modern" name="stock" id="field-stock" value="{{ old('stock', $modalArticulo->stock ?? 0) }}" required oninput="updateScaleCodePreview()">
     </div>
     <div class="input-group">
-        <label>Stock mínimo</label>
+        <label id="label-stock-min-field">Stock mínimo ({{ strtoupper($unidadPeso) }})</label>
         <input type="number" step="0.001" min="0" class="input-modern" name="stock_minimo" id="field-stock-minimo" value="{{ old('stock_minimo', $modalArticulo->stock_minimo ?? 0) }}" required>
     </div>
     <div class="input-group">

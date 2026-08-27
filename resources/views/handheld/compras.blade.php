@@ -150,6 +150,10 @@
             return false;
         });
 
+        if (articulo && articulo.tipo_articulo === 'unidad') {
+            parsedWeight = 1.000;
+        }
+
         return {
             articulo: articulo || null,
             peso: parsedWeight > 0 ? parsedWeight : 1.000,
@@ -167,17 +171,19 @@
         }
 
         let articulo = result.articulo;
-        let peso = Math.round(result.peso * 1000) / 1000;
+        let isUnidad = (articulo.tipo_articulo === 'unidad');
+        let peso = isUnidad ? 1.000 : (Math.round(result.peso * 1000) / 1000);
         let costo = parseFloat(articulo.precio_compra || articulo.precio_sin_iva || 0);
 
         let existing = compraItems.find(i => i.articulo_id === articulo.id);
         if (existing) {
-            existing.cantidad_peso = Math.round((existing.cantidad_peso + peso) * 1000) / 1000;
+            existing.cantidad_peso = isUnidad ? (existing.cantidad_peso + 1) : (Math.round((existing.cantidad_peso + peso) * 1000) / 1000);
             existing.subtotal = Math.round(existing.cantidad_peso * existing.costo_unitario * 100) / 100;
         } else {
             compraItems.push({
                 articulo_id: articulo.id,
                 descripcion: articulo.descripcion,
+                tipo_articulo: articulo.tipo_articulo || 'pesable',
                 cantidad_peso: peso,
                 costo_unitario: costo,
                 subtotal: Math.round(peso * costo * 100) / 100,
@@ -202,16 +208,22 @@
 
         compraItems.forEach((item, index) => {
             total += item.subtotal;
-            const formattedQty = Number(item.cantidad_peso.toFixed(3));
+            const isUnidad = (item.tipo_articulo === 'unidad');
+            const stepVal = isUnidad ? '1' : '0.001';
+            const unitLabel = isUnidad ? 'UND' : (window.unidadPeso || 'lb').toUpperCase();
+            const formattedQty = isUnidad ? Number(item.cantidad_peso).toFixed(0) : Number(item.cantidad_peso.toFixed(3));
             const formattedCost = Number(item.costo_unitario.toFixed(2));
 
             html += `
                 <div style="background: #0f172a; border-radius: 8px; padding: 0.5rem 0.65rem; margin-bottom: 0.4rem; display: flex; align-items: center; justify-content: space-between;">
                     <div style="flex: 1; padding-right: 0.5rem;">
-                        <strong style="font-size: 0.85rem; color: white; display: block;">${item.descripcion}</strong>
+                        <div style="display: flex; align-items: center; gap: 0.35rem;">
+                            <strong style="font-size: 0.85rem; color: white;">${item.descripcion}</strong>
+                            <span class="badge" style="font-size: 0.68rem; padding: 1px 5px; background: ${isUnidad ? '#ea580c' : '#2563eb'}; color: white;">${unitLabel}</span>
+                        </div>
                         <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.25rem;">
-                            <span>Cant:</span>
-                            <input type="number" step="0.001" min="0.001" value="${formattedQty}" onchange="updateItemQty(${index}, this.value)" onclick="this.select()" style="width: 72px; background: #1e293b; color: white; border: 1px solid var(--border-color); border-radius: 4px; padding: 0.15rem 0.35rem; font-size: 0.8rem; font-weight: 700; text-align: right;">
+                            <span>Cant (${unitLabel}):</span>
+                            <input type="number" step="${stepVal}" min="${stepVal}" value="${formattedQty}" onchange="updateItemQty(${index}, this.value)" onclick="this.select()" style="width: 72px; background: #1e293b; color: white; border: 1px solid var(--border-color); border-radius: 4px; padding: 0.15rem 0.35rem; font-size: 0.8rem; font-weight: 700; text-align: right;">
                             <span>| Costo: $</span>
                             <input type="number" step="0.01" min="0" value="${formattedCost}" onchange="updateItemCost(${index}, this.value)" onclick="this.select()" style="width: 78px; background: #1e293b; color: #fbbf24; border: 1px solid #fbbf24; border-radius: 4px; padding: 0.15rem 0.35rem; font-size: 0.8rem; font-weight: 700; text-align: right;">
                         </div>

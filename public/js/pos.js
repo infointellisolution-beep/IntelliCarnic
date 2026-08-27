@@ -447,6 +447,15 @@ function handleSmartBarcodeScan(rawBarcode) {
         parsedWeight = parseInt(weightStr, 10) / 1000; // Usualmente 3 decimales en EAN-13
     }
 
+    // 0. Si coincide exactamente con el código de un artículo por unidad, agregar directamente 1 unidad
+    let directUnitMatch = windowArticulos.find(a => {
+        return (String(a.codigo) === cleanCode || String(a.codigo_cliente) === cleanCode) && a.tipo_articulo === 'unidad';
+    });
+    if (directUnitMatch) {
+        addToCart(directUnitMatch, 1, cleanCode);
+        return true;
+    }
+
     // Si detectó un formato compuesto válido
     if (parsedSku !== null && parsedWeight !== null) {
         const skuInt = parseInt(parsedSku, 10);
@@ -461,7 +470,11 @@ function handleSmartBarcodeScan(rawBarcode) {
 
         // Si el artículo existe, abrir la báscula pre-llenada con el peso
         if (foundArt) {
-            openScaleModal(foundArt, parsedWeight, cleanCode);
+            if (foundArt.tipo_articulo === 'unidad') {
+                addToCart(foundArt, 1, cleanCode);
+            } else {
+                openScaleModal(foundArt, parsedWeight, cleanCode);
+            }
             return true;
         }
     }
@@ -822,6 +835,10 @@ function renderCart() {
             const totalFila = Math.max(0, subtotalBruto - (item.descuento || 0));
             const isSelected = index === currentSelectedIndex;
             const bgClass = isSelected ? 'background: #eff6ff; border-bottom: 1px solid #bfdbfe;' : 'border-bottom: 1px solid var(--border-color);';
+            const isUnidad = (item.articulo && item.articulo.tipo_articulo === 'unidad');
+            const unitBadge = isUnidad 
+                ? `<span class="badge" style="font-size: 0.68rem; padding: 1px 5px; background: #fff7ed; color: #ea580c; border: 1px solid #fed7aa; margin-left: 0.35rem; font-weight: 700;">UND</span>`
+                : `<span class="badge" style="font-size: 0.68rem; padding: 1px 5px; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; margin-left: 0.35rem; font-weight: 700;">${(windowSettings.unidad_peso || 'lb').toUpperCase()}</span>`;
             
             let descText = '0.00';
             if (item.descuento > 0) {
@@ -831,9 +848,11 @@ function renderCart() {
             html += `
                 <tr style="${bgClass} cursor: pointer; transition: background 0.2s;" onclick="selectRow(${index})">
                     <td style="padding: 0.75rem;">${item.codigo || '-'}</td>
-                    <td style="padding: 0.75rem; font-weight: 600;">${item.descripcion}</td>
+                    <td style="padding: 0.75rem; font-weight: 600;">
+                        ${item.descripcion} ${unitBadge}
+                    </td>
                     <td style="padding: 0.25rem 0.75rem; text-align: center;">
-                        <input type="number" step="any" min="0" value="${item.cantidad}" class="input-modern" style="width: 80px; text-align: center; padding: 0.25rem; font-weight: 600; background: ${isSelected ? '#bfdbfe' : '#f8fafc'};" onclick="event.stopPropagation()" onchange="updateCartQuantity(${index}, this.value)">
+                        <input type="number" step="${isUnidad ? '1' : 'any'}" min="0" value="${item.cantidad}" class="input-modern" style="width: 80px; text-align: center; padding: 0.25rem; font-weight: 600; background: ${isSelected ? '#bfdbfe' : '#f8fafc'};" onclick="event.stopPropagation()" onchange="updateCartQuantity(${index}, this.value)">
                     </td>
                     <td style="padding: 0.75rem; text-align: right;">
                         <input type="number" step="any" min="0" value="${item.precio.toFixed(2)}" class="input-modern" style="width: 80px; text-align: right; padding: 0.25rem; font-weight: 600; background: ${isSelected ? '#bfdbfe' : '#f8fafc'};" onclick="event.stopPropagation()" onchange="updateCartPrice(${index}, this.value)">
@@ -860,6 +879,10 @@ function renderCart() {
             const totalFila = Math.max(0, subtotalBruto - (item.descuento || 0));
             const isSelected = index === currentSelectedIndex;
             const bgClass = isSelected ? 'background: #eff6ff; border-bottom: 1px solid #bfdbfe;' : 'border-bottom: 1px solid var(--border-color);';
+            const isUnidad = (item.articulo && item.articulo.tipo_articulo === 'unidad');
+            const unitBadge = isUnidad 
+                ? `<span class="badge" style="font-size: 0.68rem; padding: 1px 5px; background: #fff7ed; color: #ea580c; border: 1px solid #fed7aa; margin-left: 0.35rem; font-weight: 700;">UND</span>`
+                : `<span class="badge" style="font-size: 0.68rem; padding: 1px 5px; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; margin-left: 0.35rem; font-weight: 700;">${(windowSettings.unidad_peso || 'lb').toUpperCase()}</span>`;
             
             let descBadge = '';
             if (item.descuento > 0) {
@@ -872,10 +895,10 @@ function renderCart() {
             html += `
                 <tr style="${bgClass} cursor: pointer; transition: background 0.2s;" onclick="selectRow(${index})">
                     <td style="padding: 0.25rem 0.75rem; text-align: center;">
-                        <input type="number" step="any" min="0" value="${item.cantidad}" class="input-modern" style="width: 80px; text-align: center; padding: 0.25rem; font-weight: 600; background: ${isSelected ? '#bfdbfe' : '#f8fafc'};" onclick="event.stopPropagation()" onchange="updateCartQuantity(${index}, this.value)">
+                        <input type="number" step="${isUnidad ? '1' : 'any'}" min="0" value="${item.cantidad}" class="input-modern" style="width: 80px; text-align: center; padding: 0.25rem; font-weight: 600; background: ${isSelected ? '#bfdbfe' : '#f8fafc'};" onclick="event.stopPropagation()" onchange="updateCartQuantity(${index}, this.value)">
                     </td>
                     <td style="padding: 0.75rem;">
-                        <div style="font-weight: 600;">${item.descripcion}</div>
+                        <div style="font-weight: 600;">${item.descripcion} ${unitBadge}</div>
                         ${descBadge}
                     </td>
                     <td style="padding: 0.25rem 0.75rem; text-align: right;">
