@@ -52,7 +52,7 @@
 
             <div class="input-group">
                 <label>Nº Factura / Comprobante</label>
-                <input type="text" name="numero_factura" class="input-modern" placeholder="Ej. FAC-99482" value="{{ old('numero_factura') }}">
+                <input type="text" name="numero_factura" class="input-modern" placeholder="Ej. FAC-99482" value="{{ old('numero_factura', $nextInvoiceNumber) }}">
             </div>
 
             <div class="input-group">

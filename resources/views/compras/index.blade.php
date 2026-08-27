@@ -194,18 +194,21 @@
                     `;
 
                     c.detalles.forEach(d => {
+                        const isUnd = d.articulo && d.articulo.tipo_articulo === 'unidad';
+                        const uTxt = isUnd ? ' UND' : ' {{ strtoupper($settings['unidad_peso'] ?? 'lb') }}';
+                        const qtyFormatted = isUnd ? parseFloat(d.cantidad_peso).toFixed(0) : parseFloat(d.cantidad_peso).toFixed(3);
                         html += `
                             <tr>
                                 <td>
                                     <div style="font-weight: 600;">${d.articulo ? d.articulo.descripcion : 'Artículo Eliminado'}</div>
-                                    <div style="font-size: 0.8rem; color: var(--text-muted);">SKU: ${d.articulo ? d.articulo.codigo : '-'}</div>
+                                    <div style="font-size: 0.8rem; color: var(--text-muted);">Código: ${d.articulo ? d.articulo.codigo : '-'}</div>
                                 </td>
                                 <td style="font-size: 0.85rem; font-family: monospace;">
                                     ${d.lote ? '<div>Lote: '+d.lote+'</div>' : ''}
                                     ${d.serie ? '<div style="color: var(--text-muted);">Serie: '+d.serie+'</div>' : ''}
                                     ${!d.lote && !d.serie ? '-' : ''}
                                 </td>
-                                <td style="font-weight: 600;">${parseFloat(d.cantidad_peso).toFixed(2)}</td>
+                                <td style="font-weight: 600;">${qtyFormatted}${uTxt}</td>
                                 <td>$${parseFloat(d.costo_unitario).toFixed(2)}</td>
                                 <td style="font-weight: 700;">$${parseFloat(d.subtotal).toFixed(2)}</td>
                             </tr>

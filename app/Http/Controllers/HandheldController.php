@@ -45,7 +45,10 @@ class HandheldController extends Controller
         $proveedores = Proveedor::where('estado', 'activo')->orderBy('nombre')->get();
         $articulos = Articulo::where('estado', 'activo')->orderBy('descripcion')->get();
 
-        return view('handheld.compras', compact('proveedores', 'articulos'));
+        $nextId = (Compra::max('id') ?? 0) + 1;
+        $nextInvoiceNumber = 'FAC-' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
+
+        return view('handheld.compras', compact('proveedores', 'articulos', 'nextInvoiceNumber'));
     }
 
     /**

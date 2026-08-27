@@ -53,10 +53,14 @@ class CompraController extends Controller
 
         $proveedores = Proveedor::where('estado', 'activo')->orderBy('nombre', 'asc')->get();
 
+        $nextId = (Compra::max('id') ?? 0) + 1;
+        $nextInvoiceNumber = 'FAC-' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
+
         return view('compras.create', [
             'articulos' => $articulos,
             'proveedores' => $proveedores,
             'settings' => Setting::values(),
+            'nextInvoiceNumber' => $nextInvoiceNumber,
         ]);
     }
 

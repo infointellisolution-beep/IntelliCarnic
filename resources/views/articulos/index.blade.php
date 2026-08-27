@@ -414,7 +414,7 @@
                     <div class="detail-metric-value" id="detalle-codigo-proveedor" style="color: #2563eb; font-size: 1.05rem; font-family: monospace; letter-spacing: 0.5px;">(01)00000000000000(3202)000000</div>
                 </div>
 
-                <div class="detail-metric" style="margin-top: 1rem;">
+                <div class="detail-metric" id="detalle-codigo-cliente-container" style="margin-top: 1rem;">
                     <div class="detail-metric-label">Código cliente</div>
                     <div class="detail-metric-value" id="detalle-codigo-cliente">CL-1001</div>
                 </div>

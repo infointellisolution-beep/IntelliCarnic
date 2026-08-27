@@ -41,16 +41,16 @@
         </div>
     </div>
 
-    <div class="input-group">
-        <label>Código Proveedor / Barras</label>
-        <input type="text" class="input-modern" name="codigo" value="{{ old('codigo', $modalArticulo->codigo ?? '') }}" required>
+    <div class="input-group" id="group-codigo-field">
+        <label id="label-codigo-field">Código Proveedor / Barras</label>
+        <input type="text" class="input-modern" name="codigo" id="field-codigo" value="{{ old('codigo', $modalArticulo->codigo ?? '') }}" required placeholder="Código de barras o SKU">
     </div>
-    <div class="input-group">
-        <label>Código cliente</label>
+    <div class="input-group" id="group-codigo-cliente">
+        <label>Código cliente (Báscula)</label>
         <input type="text" class="input-modern" name="codigo_cliente" id="field-codigo-cliente" value="{{ old('codigo_cliente', $modalArticulo->codigo_cliente ?? '') }}" placeholder="Código interno o del cliente" oninput="updateScaleCodePreview()">
         <div id="scale-code-preview" style="font-size: 0.85rem; color: #64748b; margin-top: 0.25rem;"></div>
     </div>
-    <div class="input-group">
+    <div class="input-group" id="group-item">
         <label>Nº ITEM (5 dígitos)</label>
         <input type="text" class="input-modern" name="item" id="field-item" value="{{ old('item', $modalArticulo->item ?? '') }}" placeholder="Ej. 00449">
     </div>
@@ -218,6 +218,10 @@ function onTipoArticuloChange() {
     const stockInput = document.getElementById('field-stock');
     const stockMinInput = document.getElementById('field-stock-minimo');
     const scalePreviewContainer = document.getElementById('scale-code-preview');
+    const labelCodigo = document.getElementById('label-codigo-field');
+    const groupCodigoCliente = document.getElementById('group-codigo-cliente');
+    const groupItem = document.getElementById('group-item');
+    const fieldCodigo = document.getElementById('field-codigo');
     const unitSymbol = (window.unidadPeso || '{{ $unidadPeso }}').toUpperCase();
 
     if (isPesable) {
@@ -233,6 +237,11 @@ function onTipoArticuloChange() {
             const titleEl = labelUnidad.querySelector('div div');
             if (titleEl) titleEl.style.color = '#334155';
         }
+        if (labelCodigo) labelCodigo.innerText = 'Código Proveedor / Barras (GS1-128)';
+        if (fieldCodigo) fieldCodigo.placeholder = 'Código de caja o proveedor';
+        if (groupCodigoCliente) groupCodigoCliente.style.display = '';
+        if (groupItem) groupItem.style.display = '';
+
         if (stockLabel) stockLabel.innerText = 'Peso / stock actual (' + unitSymbol + ')';
         if (stockMinLabel) stockMinLabel.innerText = 'Stock mínimo (' + unitSymbol + ')';
         if (stockInput) stockInput.step = '0.001';
@@ -251,13 +260,17 @@ function onTipoArticuloChange() {
             const titleEl = labelUnidad.querySelector('div div');
             if (titleEl) titleEl.style.color = '#c2410c';
         }
+        if (labelCodigo) labelCodigo.innerText = 'Código de Barras';
+        if (fieldCodigo) fieldCodigo.placeholder = 'Escanea o ingresa el código de barras';
+        if (groupCodigoCliente) groupCodigoCliente.style.display = 'none';
+        if (groupItem) groupItem.style.display = 'none';
+
         if (stockLabel) stockLabel.innerText = 'Cantidad / stock actual (UND)';
         if (stockMinLabel) stockMinLabel.innerText = 'Stock mínimo (UND)';
         if (stockInput) stockInput.step = '1';
         if (stockMinInput) stockMinInput.step = '1';
         if (scalePreviewContainer) {
-            scalePreviewContainer.innerHTML = '<i class="fa-solid fa-box"></i> Artículo simple por unidad (se vende por pieza)';
-            scalePreviewContainer.style.color = '#ea580c';
+            scalePreviewContainer.innerHTML = '';
         }
     }
 }

@@ -680,34 +680,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (detailIva) detailIva.textContent = `${Number(articulo.iva || 0).toFixed(0)}%`;
                 if (detailPvp) detailPvp.textContent = `$${Number(articulo.pvp || 0).toFixed(2)}`;
                 const isUnidad = (articulo.tipo_articulo === 'unidad');
+                const detailCodigoClienteContainer = document.getElementById('detalle-codigo-cliente-container');
+
                 if (isUnidad) {
                     detailStock.textContent = `${Number(articulo.stock ?? 0).toFixed(0)} UND`;
+                    if (detailCodigoClienteContainer) detailCodigoClienteContainer.style.display = 'none';
+                    if (basculaContainer) basculaContainer.style.display = 'none';
+                    if (proveedorContainer) proveedorContainer.style.display = 'none';
                 } else {
                     detailStock.textContent = `${Number(articulo.stock ?? 0).toFixed(3)} ${(window.unidadPeso || 'kg').toUpperCase()}`;
-                }
+                    if (detailCodigoClienteContainer) detailCodigoClienteContainer.style.display = 'block';
 
-                // --- Código Dinámico Báscula ---
-                if (basculaContainer && basculaValue && articulo.codigo_cliente && articulo.codigo_cliente.length <= 6 && /^\d+$/.test(articulo.codigo_cliente)) {
-                    let padCc = articulo.codigo_cliente.padStart(6, '0');
-                    let weight = parseFloat(articulo.stock) || 0;
-                    let weightInt = Math.round(weight * 100);
-                    let weightStr = weightInt.toString().padStart(5, '0');
-                    basculaValue.textContent = padCc + weightStr;
-                    basculaContainer.style.display = 'block';
-                } else if (basculaContainer) {
-                    basculaContainer.style.display = 'none';
-                }
+                    // --- Código Dinámico Báscula ---
+                    if (basculaContainer && basculaValue && articulo.codigo_cliente && articulo.codigo_cliente.length <= 6 && /^\d+$/.test(articulo.codigo_cliente)) {
+                        let padCc = articulo.codigo_cliente.padStart(6, '0');
+                        let weight = parseFloat(articulo.stock) || 0;
+                        let weightInt = Math.round(weight * 100);
+                        let weightStr = weightInt.toString().padStart(5, '0');
+                        basculaValue.textContent = padCc + weightStr;
+                        basculaContainer.style.display = 'block';
+                    } else if (basculaContainer) {
+                        basculaContainer.style.display = 'none';
+                    }
 
-                // --- Código Dinámico Proveedor (GS1-128) ---
-                if (proveedorContainer && proveedorValue && articulo.codigo && articulo.codigo.length === 14 && /^\d+$/.test(articulo.codigo)) {
-                    let weight = parseFloat(articulo.stock) || 0;
-                    let weightInt = Math.round(weight * 100);
-                    let weightStr = weightInt.toString().padStart(6, '0');
-                    
-                    proveedorValue.innerHTML = `<span style="opacity: 0.5;">(01)</span>${articulo.codigo}<span style="opacity: 0.5;">(3202)</span><strong>${weightStr}</strong>`;
-                    proveedorContainer.style.display = 'block';
-                } else if (proveedorContainer) {
-                    proveedorContainer.style.display = 'none';
+                    // --- Código Dinámico Proveedor (GS1-128) ---
+                    if (proveedorContainer && proveedorValue && articulo.codigo && articulo.codigo.length === 14 && /^\d+$/.test(articulo.codigo)) {
+                        let weight = parseFloat(articulo.stock) || 0;
+                        let weightInt = Math.round(weight * 100);
+                        let weightStr = weightInt.toString().padStart(6, '0');
+                        
+                        proveedorValue.innerHTML = `<span style="opacity: 0.5;">(01)</span>${articulo.codigo}<span style="opacity: 0.5;">(3202)</span><strong>${weightStr}</strong>`;
+                        proveedorContainer.style.display = 'block';
+                    } else if (proveedorContainer) {
+                        proveedorContainer.style.display = 'none';
+                    }
                 }
 
                 if (articulo.imagen_url && detailImagenContainer && detailImagen) {
@@ -722,7 +728,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const lotesContainerBox = document.getElementById('detalle-lotes-container');
                 const lotesContainer = document.getElementById('detalle-lotes-body');
                 
-                if (window.modoInventario === 'simple') {
+                if (isUnidad || window.modoInventario === 'simple') {
                     if (lotesContainerBox) lotesContainerBox.style.display = 'none';
                 } else {
                     if (lotesContainerBox) lotesContainerBox.style.display = 'block';

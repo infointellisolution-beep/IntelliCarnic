@@ -103,6 +103,36 @@ document.addEventListener('DOMContentLoaded', () => {
         let parsedSerie = null;
         let parsedExpDate = null;
 
+        // 0. Coincidencia Directa por Código de Barras / SKU / ITEM
+        let directMatch = articulos.find(a => {
+            return String(a.codigo) === cleanCode || 
+                   String(a.codigo_cliente) === cleanCode ||
+                   String(a.item) === cleanCode;
+        });
+
+        if (directMatch) {
+            let isUnidad = (directMatch.tipo_articulo === 'unidad');
+            let costo = (parseFloat(directMatch.precio_compra) > 0) ? parseFloat(directMatch.precio_compra) : (parseFloat(directMatch.precio_sin_iva) || 0.00);
+            
+            addItemToTable({
+                articulo_id: directMatch.id,
+                codigo: directMatch.codigo,
+                descripcion: directMatch.descripcion,
+                tipo_articulo: directMatch.tipo_articulo || 'pesable',
+                codigo_escaneado: cleanCode,
+                lote: '',
+                serie: '',
+                fecha_vencimiento: '',
+                cantidad_peso: 1.0,
+                costo_unitario: costo
+            });
+
+            const unitTxt = isUnidad ? '1 UND' : `1.000 ${systemUnit.toUpperCase()}`;
+            showFeedback(`✓ ¡Escaneado! ${directMatch.descripcion} (${unitTxt})`, '#10b981');
+            scanInput.value = '';
+            return;
+        }
+
         // 1. Detección GS1-128
         let gtinMatch = cleanCode.match(/01(\d{14})/);
         let weightMatch = cleanCode.match(/(320[0-5]|310[0-5])(\d{6})/);
@@ -183,6 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     articulo_id: found.id,
                     codigo: found.codigo,
                     descripcion: found.descripcion,
+                    tipo_articulo: found.tipo_articulo || 'pesable',
                     codigo_escaneado: cleanCode,
                     lote: parsedLote || '',
                     serie: parsedSerie || '',
@@ -236,12 +267,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const subtotal = roundMoney(item.cantidad_peso * item.costo_unitario);
             grandTotal += subtotal;
 
+            const isUnidad = (item.tipo_articulo === 'unidad');
+            const stepVal = isUnidad ? '1' : '0.001';
+            const badgeUnit = isUnidad 
+                ? `<span class="badge" style="font-size: 0.68rem; padding: 1px 5px; background: #fff7ed; color: #ea580c; border: 1px solid #fed7aa; margin-left: 0.35rem; font-weight: 700;">UND</span>`
+                : `<span class="badge" style="font-size: 0.68rem; padding: 1px 5px; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; margin-left: 0.35rem; font-weight: 700;">${systemUnit.toUpperCase()}</span>`;
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td style="font-weight: 700; color: var(--text-muted);">${index + 1}</td>
                 <td>
-                    <div style="font-weight: 600;">${item.descripcion}</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted);">SKU: ${item.codigo}</div>
+                    <div style="font-weight: 600;">${item.descripcion} ${badgeUnit}</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted);">Código: ${item.codigo}</div>
                     <input type="hidden" name="detalles[${index}][articulo_id]" value="${item.articulo_id}">
                     <input type="hidden" name="detalles[${index}][codigo_escaneado]" value="${item.codigo_escaneado}">
                 </td>
@@ -253,7 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <input type="date" name="detalles[${index}][fecha_vencimiento]" class="input-modern js-input-venc" data-index="${index}" style="padding: 0.25rem 0.4rem; font-size: 0.8rem;" value="${item.fecha_vencimiento}">
                 </td>
                 <td>
-                    <input type="number" step="0.001" min="0.001" name="detalles[${index}][cantidad_peso]" class="input-modern js-input-peso" data-index="${index}" style="font-weight: 700;" value="${item.cantidad_peso}">
+                    <input type="number" step="${stepVal}" min="${stepVal}" name="detalles[${index}][cantidad_peso]" class="input-modern js-input-peso" data-index="${index}" style="font-weight: 700;" value="${isUnidad ? Number(item.cantidad_peso).toFixed(0) : item.cantidad_peso}">
                 </td>
                 <td>
                     <input type="number" step="0.01" min="0" name="detalles[${index}][costo_unitario]" class="input-modern js-input-costo" data-index="${index}" style="font-weight: 700;" value="${item.costo_unitario}">

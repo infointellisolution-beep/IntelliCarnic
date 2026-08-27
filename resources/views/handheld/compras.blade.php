@@ -25,9 +25,9 @@
     </select>
 
     <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">
-        Nº FACTURA / PROVEEDOR
+        Nº FACTURA / COMPROBANTE
     </label>
-    <input type="text" id="factura-input" class="hh-input" style="margin-bottom: 0;" placeholder="Ej. F001-9982">
+    <input type="text" id="factura-input" class="hh-input" style="margin-bottom: 0;" placeholder="Ej. F001-9982" value="{{ $nextInvoiceNumber }}">
 </div>
 
 <!-- ESCÁNER DE ARTÍCULOS A RECIBIR -->
