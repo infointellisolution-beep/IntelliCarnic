@@ -9,7 +9,7 @@
         <p class="page-subtitle">Analiza las ventas, compras de mercancía y la comparativa del stock físico contra el mínimo configurado.</p>
     </div>
     <div>
-        <a href="{{ route('reportes.exportar', ['tipo' => $tab, 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin, 'familia_id' => $familiaId, 'filtro_stock' => $filtroStock]) }}" class="btn-modern btn-accent">
+        <a href="{{ route('reportes.exportar', ['tipo' => $tab, 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin, 'familia_id' => $familiaId, 'filtro_stock' => $filtroStock, 'articulo_id' => $articuloId]) }}" class="btn-modern btn-accent">
             <i class="fa-solid fa-file-csv"></i> Exportar a CSV / Excel
         </a>
     </div>
@@ -17,32 +17,37 @@
 
 <!-- NAVEGACIÓN POR PESTAÑAS -->
 <div class="tabs-header" style="display: flex; gap: 0.5rem; border-bottom: 2px solid var(--border-color); margin-bottom: 1.5rem; flex-wrap: wrap;">
-    <a href="{{ route('reportes.index', ['tab' => 'ventas', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin]) }}" 
+    <a href="{{ route('reportes.index', ['tab' => 'ventas', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin, 'per_page' => $perPage]) }}" 
        class="tab-item {{ $tab === 'ventas' ? 'active' : '' }}" 
        style="padding: 0.75rem 1.25rem; font-weight: 700; text-decoration: none; border-bottom: 3px solid {{ $tab === 'ventas' ? 'var(--primary)' : 'transparent' }}; color: {{ $tab === 'ventas' ? 'var(--primary)' : 'var(--text-muted)' }};">
         <i class="fa-solid fa-cash-register"></i> Reporte de Ventas
     </a>
-    <a href="{{ route('reportes.index', ['tab' => 'compras', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin]) }}" 
+    <a href="{{ route('reportes.index', ['tab' => 'compras', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin, 'per_page' => $perPage]) }}" 
        class="tab-item {{ $tab === 'compras' ? 'active' : '' }}" 
        style="padding: 0.75rem 1.25rem; font-weight: 700; text-decoration: none; border-bottom: 3px solid {{ $tab === 'compras' ? 'var(--primary)' : 'transparent' }}; color: {{ $tab === 'compras' ? 'var(--primary)' : 'var(--text-muted)' }};">
         <i class="fa-solid fa-truck-ramp-box"></i> Reporte de Compras
     </a>
-    <a href="{{ route('reportes.index', ['tab' => 'caja', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin]) }}" 
+    <a href="{{ route('reportes.index', ['tab' => 'caja', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin, 'per_page' => $perPage]) }}" 
        class="tab-item {{ $tab === 'caja' ? 'active' : '' }}" 
        style="padding: 0.75rem 1.25rem; font-weight: 700; text-decoration: none; border-bottom: 3px solid {{ $tab === 'caja' ? 'var(--primary)' : 'transparent' }}; color: {{ $tab === 'caja' ? 'var(--primary)' : 'var(--text-muted)' }};">
         <i class="fa-solid fa-vault"></i> Reporte de Caja
     </a>
-    <a href="{{ route('reportes.index', ['tab' => 'clientes', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin]) }}" 
+    <a href="{{ route('reportes.index', ['tab' => 'kardex', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin, 'articulo_id' => $articuloId, 'per_page' => $perPage]) }}" 
+       class="tab-item {{ $tab === 'kardex' ? 'active' : '' }}" 
+       style="padding: 0.75rem 1.25rem; font-weight: 700; text-decoration: none; border-bottom: 3px solid {{ $tab === 'kardex' ? 'var(--primary)' : 'transparent' }}; color: {{ $tab === 'kardex' ? 'var(--primary)' : 'var(--text-muted)' }};">
+        <i class="fa-solid fa-timeline"></i> Kardex de Inventario
+    </a>
+    <a href="{{ route('reportes.index', ['tab' => 'clientes', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin, 'per_page' => $perPage]) }}" 
        class="tab-item {{ $tab === 'clientes' ? 'active' : '' }}" 
        style="padding: 0.75rem 1.25rem; font-weight: 700; text-decoration: none; border-bottom: 3px solid {{ $tab === 'clientes' ? 'var(--primary)' : 'transparent' }}; color: {{ $tab === 'clientes' ? 'var(--primary)' : 'var(--text-muted)' }};">
         <i class="fa-solid fa-users-gear"></i> Reporte de Clientes
     </a>
-    <a href="{{ route('reportes.index', ['tab' => 'proveedores', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin]) }}" 
+    <a href="{{ route('reportes.index', ['tab' => 'proveedores', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin, 'per_page' => $perPage]) }}" 
        class="tab-item {{ $tab === 'proveedores' ? 'active' : '' }}" 
        style="padding: 0.75rem 1.25rem; font-weight: 700; text-decoration: none; border-bottom: 3px solid {{ $tab === 'proveedores' ? 'var(--primary)' : 'transparent' }}; color: {{ $tab === 'proveedores' ? 'var(--primary)' : 'var(--text-muted)' }};">
         <i class="fa-solid fa-truck-field"></i> Reporte de Proveedores
     </a>
-    <a href="{{ route('reportes.index', ['tab' => 'inventario', 'familia_id' => $familiaId, 'filtro_stock' => $filtroStock]) }}" 
+    <a href="{{ route('reportes.index', ['tab' => 'inventario', 'familia_id' => $familiaId, 'filtro_stock' => $filtroStock, 'per_page' => $perPage]) }}" 
        class="tab-item {{ $tab === 'inventario' ? 'active' : '' }}" 
        style="padding: 0.75rem 1.25rem; font-weight: 700; text-decoration: none; border-bottom: 3px solid {{ $tab === 'inventario' ? 'var(--primary)' : 'transparent' }}; color: {{ $tab === 'inventario' ? 'var(--primary)' : 'var(--text-muted)' }};">
         <i class="fa-solid fa-boxes-stacked"></i> Inventario Comparativo
@@ -50,13 +55,79 @@
 </div>
 
 <!-- FILTROS DE BÚSQUEDA -->
-<div class="card" style="margin-bottom: 1.5rem; padding: 1.25rem;">
+<div class="card" style="margin-bottom: 1.5rem; padding: 1.25rem; overflow: visible; position: relative; z-index: 100;">
     <form method="GET" action="{{ route('reportes.index') }}" id="form-filtros-reporte" style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
         <input type="hidden" name="tab" value="{{ $tab }}">
         <input type="hidden" name="fecha_inicio" id="hidden-fecha-inicio" value="{{ $fechaInicio }}">
         <input type="hidden" name="fecha_fin" id="hidden-fecha-fin" value="{{ $fechaFin }}">
+        <input type="hidden" name="per_page" value="{{ $perPage }}">
 
-        @if($tab === 'ventas' || $tab === 'compras' || $tab === 'caja' || $tab === 'clientes' || $tab === 'proveedores')
+        @if($tab === 'kardex')
+            <!-- DATE RANGE PICKER TRIGGER -->
+            <div style="min-width: 220px;">
+                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">
+                    <i class="fa-solid fa-calendar-days"></i> Período
+                </label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <button type="button" id="btn-abrir-datepicker" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 1rem; border: 2px solid var(--primary); border-radius: 8px; background: rgba(37,99,235,0.05); color: var(--primary); font-weight: 700; font-size: 0.9rem; cursor: pointer; white-space: nowrap;">
+                        <i class="fa-solid fa-calendar-range"></i>
+                        <span id="label-rango-fecha">{{ \Carbon\Carbon::parse($fechaInicio)->format('d/m/Y') }} — {{ \Carbon\Carbon::parse($fechaFin)->format('d/m/Y') }}</span>
+                        <i class="fa-solid fa-chevron-down" style="margin-left: 0.25rem; font-size: 0.72rem;"></i>
+                    </button>
+                    <a href="{{ route('reportes.index', ['tab' => 'kardex']) }}" title="Limpiar filtro de fecha" style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border-color); color: var(--text-muted); background: white; text-decoration: none; font-size: 0.9rem; flex-shrink: 0;" onmouseover="this.style.borderColor='#ef4444';this.style.color='#ef4444'" onmouseout="this.style.borderColor='var(--border-color)';this.style.color='var(--text-muted)'">
+                        <i class="fa-solid fa-xmark"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- BUSCADOR INTELIGENTE DE PRODUCTO -->
+            <div style="flex: 2; min-width: 280px; position: relative; z-index: 1000;" id="container-kardex-search">
+                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">
+                    <i class="fa-solid fa-magnifying-glass" style="color: var(--primary);"></i> Buscar Producto (Nombre, SKU o Cód. Proveedor)
+                </label>
+                <div style="position: relative; display: flex; align-items: center;">
+                    <input type="text" 
+                           id="kardex-search-input" 
+                           class="input-modern" 
+                           placeholder="Escribe el nombre, SKU o código de proveedor..." 
+                           value="{{ $articuloKardex ? $articuloKardex->descripcion . ' (SKU: ' . $articuloKardex->codigo . ($articuloKardex->codigo_cliente ? ' | Prov: ' . $articuloKardex->codigo_cliente : '') . ')' : '' }}" 
+                           autocomplete="off" 
+                           style="width: 100%; padding-right: 2.2rem; font-weight: 600;">
+                    
+                    <input type="hidden" name="articulo_id" id="hidden-kardex-articulo-id" value="{{ $articuloId }}">
+
+                    <button type="button" 
+                            id="btn-clear-kardex-search" 
+                            onclick="limpiarBusquedaKardex()" 
+                            style="position: absolute; right: 10px; background: none; border: none; font-size: 1.1rem; color: #94a3b8; cursor: pointer; display: {{ $articuloId ? 'block' : 'none' }}; line-height: 1;" 
+                            title="Limpiar búsqueda y ver rotación general">
+                        <i class="fa-solid fa-circle-xmark"></i>
+                    </button>
+                </div>
+
+                <!-- Dropdown interactivo de resultados -->
+                <div id="kardex-search-results" 
+                     style="display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: white; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 15px 35px -5px rgba(0,0,0,0.3); max-height: 320px; overflow-y: auto; z-index: 99999;">
+                </div>
+            </div>
+
+            <!-- FILTRO TIPO MOVIMIENTO -->
+            <div style="flex: 1; min-width: 170px;">
+                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">Movimientos</label>
+                <select name="filtro_movimiento" class="input-modern" onchange="document.getElementById('form-filtros-reporte').submit()">
+                    <option value="todos" @selected($filtroMovimiento === 'todos')>Todos los tipos</option>
+                    <option value="compra" @selected($filtroMovimiento === 'compra')>🟢 Solo Compras (Entradas)</option>
+                    <option value="venta" @selected($filtroMovimiento === 'venta')>🔴 Solo Ventas (Salidas)</option>
+                    <option value="devolucion" @selected($filtroMovimiento === 'devolucion')>🟠 Solo Devoluciones (Reingresos)</option>
+                </select>
+            </div>
+
+            <div>
+                <button type="submit" class="btn-modern btn-primary" style="width: auto;">
+                    <i class="fa-solid fa-filter"></i> Filtrar
+                </button>
+            </div>
+        @elseif($tab === 'ventas' || $tab === 'compras' || $tab === 'caja' || $tab === 'clientes' || $tab === 'proveedores')
             <!-- DATE RANGE PICKER TRIGGER -->
             <div style="flex: 1; min-width: 220px;">
                 <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">
@@ -375,37 +446,179 @@
         </div>
     </div>
 
+    <!-- TARJETA: GRÁFICO COMPARATIVO INTELIGENTE (VENTAS) -->
+    <div class="card" style="padding: 1.25rem; margin-bottom: 1.5rem; position: relative;">
+        <!-- Fila 1: Cabecera con Navegación de Niveles (Zoom Out / In) -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.85rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                <!-- Botón Flecha Atrás (Drill Up) -->
+                <button type="button" id="btn-back-level-ventas" onclick="navegarNivelAtras('ventas')" class="btn-modern btn-secondary" style="display: none; padding: 0.35rem 0.75rem; font-size: 0.8rem; font-weight: 700; gap: 0.4rem; align-items: center;" title="Regresar al nivel anterior">
+                    <i class="fa-solid fa-arrow-left"></i> <span id="label-back-level-ventas">Volver</span>
+                </button>
+
+                <h3 style="font-size: 1.1rem; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 0.5rem; color: var(--text-main);">
+                    <i class="fa-solid fa-chart-line" style="color: var(--primary);"></i> 
+                    <span id="titulo-grafico-ventas">Comparativo de Ventas</span>
+                </h3>
+            </div>
+            
+            <!-- Selector de Niveles (Pills) -->
+            <div style="display: flex; align-items: center; gap: 0.4rem; background: #f1f5f9; padding: 3px; border-radius: 8px; flex-wrap: wrap;">
+                <button type="button" id="pill-nivel-anual-ventas" class="btn-nivel-ventas" onclick="setNivelGrafico('ventas', 'anual')" style="padding: 0.35rem 0.7rem; font-size: 0.78rem; font-weight: 700; border: none; border-radius: 6px; cursor: pointer; background: transparent; color: var(--text-muted);">
+                    <i class="fa-solid fa-chart-column"></i> Anual (12 Meses)
+                </button>
+                <button type="button" id="pill-nivel-mensual-ventas" class="btn-nivel-ventas active" onclick="setNivelGrafico('ventas', 'mensual')" style="padding: 0.35rem 0.7rem; font-size: 0.78rem; font-weight: 700; border: none; border-radius: 6px; cursor: pointer; background: white; color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <i class="fa-solid fa-calendar-days"></i> Mensual (Día 1-31)
+                </button>
+                <button type="button" id="pill-nivel-semanal-ventas" class="btn-nivel-ventas" onclick="setNivelGrafico('ventas', 'semanal')" style="padding: 0.35rem 0.7rem; font-size: 0.78rem; font-weight: 700; border: none; border-radius: 6px; cursor: pointer; background: transparent; color: var(--text-muted);">
+                    <i class="fa-solid fa-calendar-week"></i> Semanal (Lun-Dom)
+                </button>
+            </div>
+        </div>
+
+        <!-- Fila 2: Barra de Selección de Período Base y Comparación -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; background: #f8fafc; padding: 0.65rem 1rem; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <!-- Controles Período Base -->
+            <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Período Base:</span>
+                
+                <button type="button" onclick="periodoPasoAnterior('ventas')" class="btn-modern btn-secondary" style="padding: 0.3rem 0.55rem; font-size: 0.8rem;" title="Período anterior">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+
+                <!-- Selector de Meses Base -->
+                <select id="select-mes-base-ventas" onchange="onSelectMesBaseChange('ventas', this.value)" class="input-modern" style="padding: 0.3rem 0.6rem; font-size: 0.85rem; font-weight: 700; background: white; color: var(--primary); min-width: 150px;">
+                </select>
+
+                <!-- Selector de Semanas Base -->
+                <select id="select-semana-base-ventas" onchange="onSelectSemanaBaseChange('ventas', this.value)" class="input-modern" style="display: none; padding: 0.3rem 0.6rem; font-size: 0.85rem; font-weight: 700; background: white; color: var(--primary); min-width: 190px;">
+                </select>
+
+                <!-- Selector de Años Base -->
+                <select id="select-ano-base-ventas" onchange="onSelectAnoBaseChange('ventas', this.value)" class="input-modern" style="display: none; padding: 0.3rem 0.6rem; font-size: 0.85rem; font-weight: 700; background: white; color: var(--primary); min-width: 100px;">
+                </select>
+
+                <button type="button" onclick="periodoPasoSiguiente('ventas')" class="btn-modern btn-secondary" style="padding: 0.3rem 0.55rem; font-size: 0.8rem;" title="Período siguiente">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+
+                <!-- Botón Flecha Adelante (Drill Down hacia Semanas cuando está en Mensual) -->
+                <button type="button" id="btn-forward-weeks-ventas" onclick="desglosarEnSemanas('ventas')" class="btn-modern btn-secondary" style="padding: 0.3rem 0.65rem; font-size: 0.8rem; font-weight: 700; gap: 0.35rem; align-items: center; margin-left: 0.35rem;" title="Desglosar este mes en semanas específicas">
+                    <span>Ver en Semanas</span> <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+
+            <!-- Controles Período a Comparar -->
+            <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Comparar contra:</span>
+                <select id="select-comparar-ventas" onchange="onSelectCompararChange('ventas', this.value)" class="input-modern" style="padding: 0.3rem 0.6rem; font-size: 0.85rem; font-weight: 600; background: white; min-width: 210px;">
+                </select>
+            </div>
+        </div>
+
+        <!-- Fila 3: Barra Resumen KPI Dinámica -->
+        <div id="resumen-comparativo-ventas" style="display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem; padding: 0.75rem 1rem; background: rgba(37,99,235,0.04); border-radius: 8px; border-left: 4px solid var(--primary);">
+            <div style="font-size: 0.85rem;">
+                <span style="color: var(--text-muted); font-weight: 600;" id="kpi-label-base-ventas">Período Base:</span>
+                <strong style="color: var(--primary); font-size: 1.15rem; margin-left: 0.35rem;" id="kpi-val-base-ventas">$0.00</strong>
+            </div>
+            <div style="font-size: 0.85rem;" id="kpi-box-comp-ventas">
+                <span style="color: var(--text-muted); font-weight: 600;" id="kpi-label-comp-ventas">Período Comparado:</span>
+                <strong style="color: #64748b; font-size: 1.15rem; margin-left: 0.35rem;" id="kpi-val-comp-ventas">$0.00</strong>
+            </div>
+            <div style="font-size: 0.85rem; margin-left: auto; display: flex; align-items: center; gap: 0.5rem;" id="kpi-box-diff-ventas">
+                <span style="color: var(--text-muted); font-weight: 600;">Diferencia:</span>
+                <strong style="font-size: 1rem;" id="kpi-val-diff-monto-ventas">+$0.00</strong>
+                <span class="badge badge-success" id="kpi-badge-diff-ventas" style="font-weight: 800; font-size: 0.9rem;">+0.0%</span>
+            </div>
+        </div>
+
+        <!-- Fila 4: Contenedor del Gráfico -->
+        <div style="position: relative; height: 300px; width: 100%;">
+            <canvas id="canvasChartVentas"></canvas>
+            <div id="chart-loading-ventas" style="display: none; position: absolute; inset: 0; background: rgba(255,255,255,0.75); backdrop-filter: blur(2px); align-items: center; justify-content: center; font-weight: 700; color: var(--primary); font-size: 0.95rem; border-radius: 8px;">
+                <i class="fa-solid fa-spinner fa-spin" style="margin-right: 0.5rem; font-size: 1.2rem;"></i> Cargando comparativa...
+            </div>
+        </div>
+    </div>
+
     <!-- Sección Secundaria: Top Productos & Métodos de Pago -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
         <!-- Top Productos -->
-        <div class="card" style="padding: 1.25rem;">
-            <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem;">
-                <i class="fa-solid fa-trophy" style="color: #f59e0b;"></i> Top 10 Productos Más Vendidos
-            </h3>
-            <table class="table-modern" style="width: 100%;">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Producto</th>
-                        <th style="text-align: right;">Cantidad</th>
-                        <th style="text-align: right;">Total ($)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($topProductosVendidos as $index => $top)
+        <div class="card" style="padding: 1.25rem; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                <h3 style="font-size: 1.05rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fa-solid fa-trophy" style="color: #f59e0b;"></i> Top 10 Productos Más Vendidos
+                </h3>
+                <a href="{{ route('reportes.index', ['tab' => 'kardex', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin]) }}" 
+                   class="btn-modern btn-secondary" 
+                   style="padding: 0.35rem 0.75rem; font-size: 0.8rem; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem;" 
+                   title="Ir a la vista completa de rotación y ventas de todo el inventario">
+                    <i class="fa-solid fa-arrow-up-right-from-square" style="color: var(--primary);"></i> Ver Todos los del Inventario
+                </a>
+            </div>
+
+            <div style="overflow-x: auto; flex: 1;">
+                <table class="table-modern" style="width: 100%;">
+                    <thead>
                         <tr>
-                            <td><span class="badge badge-info" style="font-weight: 700;">{{ $index + 1 }}</span></td>
-                            <td style="font-weight: 600;">{{ $top->articulo ? $top->articulo->descripcion : 'Producto Eliminado' }}</td>
-                            <td style="text-align: right; font-weight: 700;">{{ number_format($top->total_cantidad, 2) }} {{ $unidadPeso }}</td>
-                            <td style="text-align: right; color: var(--primary); font-weight: 700;">${{ number_format($top->total_monto, 2) }}</td>
+                            <th style="width: 40px; text-align: center;">#</th>
+                            <th>Producto / SKU</th>
+                            <th style="text-align: right;">Cantidad</th>
+                            <th style="text-align: right;">Total ($)</th>
                         </tr>
-                    @empty
-                        <tr>
-                            <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1rem;">No hay ventas registradas en el período.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @forelse($topProductosVendidos as $index => $top)
+                            <tr>
+                                <td style="text-align: center;">
+                                    @if($index === 0)
+                                        <span class="badge" style="background: #fef3c7; color: #b45309; font-weight: 800;">🥇 1</span>
+                                    @elseif($index === 1)
+                                        <span class="badge" style="background: #f1f5f9; color: #475569; font-weight: 800;">🥈 2</span>
+                                    @elseif($index === 2)
+                                        <span class="badge" style="background: #ffedd5; color: #c2410c; font-weight: 800;">🥉 3</span>
+                                    @else
+                                        <span class="badge badge-info" style="font-weight: 700;">{{ $index + 1 }}</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    <div style="font-weight: 700; color: var(--text-main);">
+                                        {{ $top->articulo ? $top->articulo->descripcion : 'Producto Eliminado' }}
+                                    </div>
+                                    @if($top->articulo)
+                                        <div style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">
+                                            SKU: {{ $top->articulo->codigo }}
+                                            @if($top->articulo->codigo_cliente)
+                                                | Prov: {{ $top->articulo->codigo_cliente }}
+                                            @endif
+                                        </div>
+                                    @endif
+                                </td>
+                                <td style="text-align: right; font-weight: 700; white-space: nowrap;">
+                                    {{ number_format($top->total_cantidad, 3) }} {{ $unidadPeso }}
+                                </td>
+                                <td style="text-align: right; color: var(--primary); font-weight: 800; white-space: nowrap;">
+                                    ${{ number_format($top->total_monto, 2) }}
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+                                    No hay ventas registradas en el período.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="margin-top: 0.85rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color); text-align: right;">
+                <a href="{{ route('reportes.index', ['tab' => 'kardex', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin]) }}" 
+                   style="font-size: 0.82rem; font-weight: 700; color: var(--primary); text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem;">
+                    Ver ranking, rotación y cobertura de todos los productos del inventario <i class="fa-solid fa-arrow-right"></i>
+                </a>
+            </div>
         </div>
 
         <!-- Métodos de Pago -->
@@ -556,8 +769,22 @@
                 </tbody>
             </table>
         </div>
-        <div style="margin-top: 1rem;">
-            {{ $ventasLista->appends(['tab' => 'ventas', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin, 'filtro_venta' => $filtroVenta ?? 'todas'])->links() }}
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+            <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">
+                <span>Mostrar:</span>
+                <select onchange="cambiarPaginacion(this.value)" class="input-modern" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.85rem; font-weight: 700; background: white;">
+                    <option value="10" @selected($perPage == 10)>10 por página</option>
+                    <option value="15" @selected($perPage == 15)>15 por página</option>
+                    <option value="25" @selected($perPage == 25)>25 por página</option>
+                    <option value="50" @selected($perPage == 50)>50 por página</option>
+                    <option value="100" @selected($perPage == 100)>100 por página</option>
+                    <option value="99999" @selected($perPage >= 99999)>Todos los registros</option>
+                </select>
+                <span>(Total: {{ $ventasLista->total() }})</span>
+            </div>
+            <div>
+                {{ $ventasLista->appends(['tab' => 'ventas', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin, 'filtro_venta' => $filtroVenta ?? 'todas'])->links() }}
+            </div>
         </div>
     </div>
 @endif
@@ -582,6 +809,102 @@
             <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Nº RECEPCIONES / FACTURAS</div>
             <div style="font-size: 1.8rem; font-weight: 800; color: #6366f1; margin-top: 0.25rem;">{{ $numCompras }}</div>
             <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Compras registradas en el período</div>
+        </div>
+    </div>
+
+    <!-- TARJETA: GRÁFICO COMPARATIVO INTELIGENTE (COMPRAS) -->
+    <div class="card" style="padding: 1.25rem; margin-bottom: 1.5rem; position: relative;">
+        <!-- Fila 1: Cabecera con Navegación de Niveles (Zoom Out / In) -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.85rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                <!-- Botón Flecha Atrás (Drill Up) -->
+                <button type="button" id="btn-back-level-compras" onclick="navegarNivelAtras('compras')" class="btn-modern btn-secondary" style="display: none; padding: 0.35rem 0.75rem; font-size: 0.8rem; font-weight: 700; gap: 0.4rem; align-items: center;" title="Regresar al nivel anterior">
+                    <i class="fa-solid fa-arrow-left"></i> <span id="label-back-level-compras">Volver</span>
+                </button>
+
+                <h3 style="font-size: 1.1rem; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 0.5rem; color: var(--text-main);">
+                    <i class="fa-solid fa-chart-area" style="color: var(--accent);"></i> 
+                    <span id="titulo-grafico-compras">Comparativo de Inversión en Compras</span>
+                </h3>
+            </div>
+            
+            <!-- Selector de Niveles (Pills) -->
+            <div style="display: flex; align-items: center; gap: 0.4rem; background: #f1f5f9; padding: 3px; border-radius: 8px; flex-wrap: wrap;">
+                <button type="button" id="pill-nivel-anual-compras" class="btn-nivel-compras" onclick="setNivelGrafico('compras', 'anual')" style="padding: 0.35rem 0.7rem; font-size: 0.78rem; font-weight: 700; border: none; border-radius: 6px; cursor: pointer; background: transparent; color: var(--text-muted);">
+                    <i class="fa-solid fa-chart-column"></i> Anual (12 Meses)
+                </button>
+                <button type="button" id="pill-nivel-mensual-compras" class="btn-nivel-compras active" onclick="setNivelGrafico('compras', 'mensual')" style="padding: 0.35rem 0.7rem; font-size: 0.78rem; font-weight: 700; border: none; border-radius: 6px; cursor: pointer; background: white; color: var(--accent); box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <i class="fa-solid fa-calendar-days"></i> Mensual (Día 1-31)
+                </button>
+                <button type="button" id="pill-nivel-semanal-compras" class="btn-nivel-compras" onclick="setNivelGrafico('compras', 'semanal')" style="padding: 0.35rem 0.7rem; font-size: 0.78rem; font-weight: 700; border: none; border-radius: 6px; cursor: pointer; background: transparent; color: var(--text-muted);">
+                    <i class="fa-solid fa-calendar-week"></i> Semanal (Lun-Dom)
+                </button>
+            </div>
+        </div>
+
+        <!-- Fila 2: Barra de Selección de Período Base y Comparación -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; background: #f8fafc; padding: 0.65rem 1rem; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <!-- Controles Período Base -->
+            <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Período Base:</span>
+                
+                <button type="button" onclick="periodoPasoAnterior('compras')" class="btn-modern btn-secondary" style="padding: 0.3rem 0.55rem; font-size: 0.8rem;" title="Período anterior">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+
+                <!-- Selector de Meses Base -->
+                <select id="select-mes-base-compras" onchange="onSelectMesBaseChange('compras', this.value)" class="input-modern" style="padding: 0.3rem 0.6rem; font-size: 0.85rem; font-weight: 700; background: white; color: var(--accent); min-width: 150px;">
+                </select>
+
+                <!-- Selector de Semanas Base -->
+                <select id="select-semana-base-compras" onchange="onSelectSemanaBaseChange('compras', this.value)" class="input-modern" style="display: none; padding: 0.3rem 0.6rem; font-size: 0.85rem; font-weight: 700; background: white; color: var(--accent); min-width: 190px;">
+                </select>
+
+                <!-- Selector de Años Base -->
+                <select id="select-ano-base-compras" onchange="onSelectAnoBaseChange('compras', this.value)" class="input-modern" style="display: none; padding: 0.3rem 0.6rem; font-size: 0.85rem; font-weight: 700; background: white; color: var(--accent); min-width: 100px;">
+                </select>
+
+                <button type="button" onclick="periodoPasoSiguiente('compras')" class="btn-modern btn-secondary" style="padding: 0.3rem 0.55rem; font-size: 0.8rem;" title="Período siguiente">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+
+                <!-- Botón Flecha Adelante (Drill Down hacia Semanas cuando está en Mensual) -->
+                <button type="button" id="btn-forward-weeks-compras" onclick="desglosarEnSemanas('compras')" class="btn-modern btn-secondary" style="padding: 0.3rem 0.65rem; font-size: 0.8rem; font-weight: 700; gap: 0.35rem; align-items: center; margin-left: 0.35rem;" title="Desglosar este mes en semanas específicas">
+                    <span>Ver en Semanas</span> <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+
+            <!-- Controles Período a Comparar -->
+            <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Comparar contra:</span>
+                <select id="select-comparar-compras" onchange="onSelectCompararChange('compras', this.value)" class="input-modern" style="padding: 0.3rem 0.6rem; font-size: 0.85rem; font-weight: 600; background: white; min-width: 210px;">
+                </select>
+            </div>
+        </div>
+
+        <!-- Fila 3: Barra Resumen KPI Dinámica -->
+        <div id="resumen-comparativo-compras" style="display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem; padding: 0.75rem 1rem; background: rgba(249,115,22,0.04); border-radius: 8px; border-left: 4px solid var(--accent);">
+            <div style="font-size: 0.85rem;">
+                <span style="color: var(--text-muted); font-weight: 600;" id="kpi-label-base-compras">Período Base:</span>
+                <strong style="color: var(--accent); font-size: 1.15rem; margin-left: 0.35rem;" id="kpi-val-base-compras">$0.00</strong>
+            </div>
+            <div style="font-size: 0.85rem;" id="kpi-box-comp-compras">
+                <span style="color: var(--text-muted); font-weight: 600;" id="kpi-label-comp-compras">Período Comparado:</span>
+                <strong style="color: #64748b; font-size: 1.15rem; margin-left: 0.35rem;" id="kpi-val-comp-compras">$0.00</strong>
+            </div>
+            <div style="font-size: 0.85rem; margin-left: auto; display: flex; align-items: center; gap: 0.5rem;" id="kpi-box-diff-compras">
+                <span style="color: var(--text-muted); font-weight: 600;">Diferencia:</span>
+                <strong style="font-size: 1rem;" id="kpi-val-diff-monto-compras">+$0.00</strong>
+                <span class="badge badge-success" id="kpi-badge-diff-compras" style="font-weight: 800; font-size: 0.9rem;">+0.0%</span>
+            </div>
+        </div>
+
+        <!-- Fila 4: Contenedor del Gráfico -->
+        <div style="position: relative; height: 300px; width: 100%;">
+            <canvas id="canvasChartCompras"></canvas>
+            <div id="chart-loading-compras" style="display: none; position: absolute; inset: 0; background: rgba(255,255,255,0.75); backdrop-filter: blur(2px); align-items: center; justify-content: center; font-weight: 700; color: var(--accent); font-size: 0.95rem; border-radius: 8px;">
+                <i class="fa-solid fa-spinner fa-spin" style="margin-right: 0.5rem; font-size: 1.2rem;"></i> Cargando comparativa...
+            </div>
         </div>
     </div>
 
@@ -626,8 +949,22 @@
                 </tbody>
             </table>
         </div>
-        <div style="margin-top: 1rem;">
-            {{ $comprasLista->appends(['tab' => 'compras', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin])->links() }}
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+            <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">
+                <span>Mostrar:</span>
+                <select onchange="cambiarPaginacion(this.value)" class="input-modern" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.85rem; font-weight: 700; background: white;">
+                    <option value="10" @selected($perPage == 10)>10 por página</option>
+                    <option value="15" @selected($perPage == 15)>15 por página</option>
+                    <option value="25" @selected($perPage == 25)>25 por página</option>
+                    <option value="50" @selected($perPage == 50)>50 por página</option>
+                    <option value="100" @selected($perPage == 100)>100 por página</option>
+                    <option value="99999" @selected($perPage >= 99999)>Todos los registros</option>
+                </select>
+                <span>(Total: {{ $comprasLista->total() }})</span>
+            </div>
+            <div>
+                {{ $comprasLista->appends(['tab' => 'compras', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin])->links() }}
+            </div>
         </div>
     </div>
 @endif
@@ -741,8 +1078,341 @@
             </table>
         </div>
 
-        <div style="margin-top: 1rem;">
-            {{ $cajasLista->appends(['tab' => 'caja', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin])->links() }}
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+            <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">
+                <span>Mostrar:</span>
+                <select onchange="cambiarPaginacion(this.value)" class="input-modern" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.85rem; font-weight: 700; background: white;">
+                    <option value="10" @selected($perPage == 10)>10 por página</option>
+                    <option value="15" @selected($perPage == 15)>15 por página</option>
+                    <option value="25" @selected($perPage == 25)>25 por página</option>
+                    <option value="50" @selected($perPage == 50)>50 por página</option>
+                    <option value="100" @selected($perPage == 100)>100 por página</option>
+                    <option value="99999" @selected($perPage >= 99999)>Todos los registros</option>
+                </select>
+                <span>(Total: {{ $cajasLista->total() }})</span>
+            </div>
+            <div>
+                {{ $cajasLista->appends(['tab' => 'caja', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin])->links() }}
+            </div>
+        </div>
+    </div>
+@endif
+
+<!-- PESTAÑA: KARDEX DE INVENTARIO Y ROTACIÓN -->
+@if($tab === 'kardex')
+    @if($articuloKardex)
+        <!-- RESUMEN DEL ARTÍCULO SELECCIONADO -->
+        <div class="card" style="padding: 1.25rem; margin-bottom: 1.5rem; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-left: 5px solid var(--primary);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <div style="font-size: 0.8rem; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 0.05em;">
+                        <i class="fa-solid fa-barcode"></i> SKU: {{ $articuloKardex->codigo }} @if($articuloKardex->codigo_cliente) | Cód. Proveedor: {{ $articuloKardex->codigo_cliente }} @endif
+                    </div>
+                    <h2 style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); margin: 0.25rem 0 0.5rem 0;">
+                        {{ $articuloKardex->descripcion }}
+                    </h2>
+                    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; font-size: 0.85rem; color: var(--text-muted);">
+                        <span><i class="fa-solid fa-tag"></i> Familia: <strong>{{ $articuloKardex->familia?->nombre ?? 'Sin Familia' }}</strong></span>
+                        <span><i class="fa-solid fa-weight-hanging"></i> Unidad: <strong>{{ $unidadPeso }}</strong></span>
+                        <span><i class="fa-solid fa-dollar-sign"></i> Costo Compra: <strong>${{ number_format($articuloKardex->precio_compra ?: $articuloKardex->precio_sin_iva, 2) }}</strong></span>
+                        <span><i class="fa-solid fa-receipt"></i> PVP: <strong>${{ number_format($articuloKardex->pvp, 2) }}</strong></span>
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <a href="{{ route('articulos.edit', $articuloKardex->id) }}" class="btn-modern btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.82rem;">
+                        <i class="fa-solid fa-pen-to-square"></i> Editar Catálogo
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- TARJETAS BALANCE PROGRESIVO DE STOCK -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+            <div class="card" style="padding: 1.1rem; border-left: 4px solid #64748b;">
+                <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 700;">STOCK INICIAL PERÍODO</div>
+                <div style="font-size: 1.5rem; font-weight: 800; color: #334155; margin-top: 0.25rem;">
+                    {{ number_format($stockInicialPeriodo, 3) }} <span style="font-size: 0.85rem; font-weight: 600;">{{ $unidadPeso }}</span>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">Previo al {{ \Carbon\Carbon::parse($fechaInicio)->format('d/m/Y') }}</div>
+            </div>
+
+            <div class="card" style="padding: 1.1rem; border-left: 4px solid #10b981;">
+                <div style="font-size: 0.8rem; color: #10b981; font-weight: 700;">(+) ENTRADAS (COMPRAS)</div>
+                <div style="font-size: 1.5rem; font-weight: 800; color: #10b981; margin-top: 0.25rem;">
+                    +{{ number_format($totalKardexEntradas, 3) }} <span style="font-size: 0.85rem; font-weight: 600;">{{ $unidadPeso }}</span>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">Mercancía recibida</div>
+            </div>
+
+            <div class="card" style="padding: 1.1rem; border-left: 4px solid #ef4444;">
+                <div style="font-size: 0.8rem; color: #ef4444; font-weight: 700;">(-) SALIDAS (VENTAS)</div>
+                <div style="font-size: 1.5rem; font-weight: 800; color: #ef4444; margin-top: 0.25rem;">
+                    -{{ number_format($totalKardexSalidas, 3) }} <span style="font-size: 0.85rem; font-weight: 600;">{{ $unidadPeso }}</span>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">Ventas contado y crédito</div>
+            </div>
+
+            <div class="card" style="padding: 1.1rem; border-left: 4px solid #d97706;">
+                <div style="font-size: 0.8rem; color: #d97706; font-weight: 700;">(+) DEVOLUCIONES</div>
+                <div style="font-size: 1.5rem; font-weight: 800; color: #d97706; margin-top: 0.25rem;">
+                    +{{ number_format($totalKardexDevoluciones, 3) }} <span style="font-size: 0.85rem; font-weight: 600;">{{ $unidadPeso }}</span>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">Reingresos al stock</div>
+            </div>
+
+            <div class="card" style="padding: 1.1rem; border-left: 4px solid var(--primary); background: rgba(37,99,235,0.03);">
+                <div style="font-size: 0.8rem; color: var(--primary); font-weight: 700;">(=) SALDO RESULTANTE</div>
+                <div style="font-size: 1.5rem; font-weight: 800; color: var(--primary); margin-top: 0.25rem;">
+                    {{ number_format($stockFinalKardex, 3) }} <span style="font-size: 0.85rem; font-weight: 600;">{{ $unidadPeso }}</span>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">Stock actual físico: {{ number_format($articuloKardex->stock, 3) }} {{ $unidadPeso }}</div>
+            </div>
+        </div>
+
+        <!-- TABLA DETALLE DE KARDEX -->
+        <div class="card" style="padding: 1.25rem; margin-bottom: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                <div>
+                    <h3 style="font-size: 1.15rem; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fa-solid fa-timeline" style="color: var(--primary);"></i> Historial Cronológico de Movimientos (Kardex)
+                    </h3>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.25rem 0 0 0;">
+                        Trazabilidad completa con balance progresivo de existencias.
+                    </p>
+                </div>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <a href="{{ route('reportes.exportar', ['tipo' => 'kardex', 'articulo_id' => $articuloKardex->id, 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin]) }}" class="btn-modern btn-accent" style="padding: 0.4rem 0.8rem; font-size: 0.82rem;">
+                        <i class="fa-solid fa-file-excel"></i> Exportar Kardex
+                    </a>
+                </div>
+            </div>
+
+            <div style="overflow-x: auto;">
+                <table class="table-modern" style="width: 100%; font-size: 0.88rem;">
+                    <thead>
+                        <tr style="background: #f8fafc;">
+                            <th>Fecha / Hora</th>
+                            <th>Tipo Movimiento</th>
+                            <th>Comprobante / Folio</th>
+                            <th>Tercero (Cliente / Prov.)</th>
+                            <th>Lote / Serie</th>
+                            <th style="text-align: right; color: #10b981;">Entrada ({{ $unidadPeso }})</th>
+                            <th style="text-align: right; color: #10b981;">Costo Unit.</th>
+                            <th style="text-align: right; color: #10b981;">Total Entrada</th>
+                            <th style="text-align: right; color: #ef4444;">Salida ({{ $unidadPeso }})</th>
+                            <th style="text-align: right; color: #ef4444;">Precio Unit.</th>
+                            <th style="text-align: right; color: #ef4444;">Total Salida</th>
+                            <th style="text-align: right; color: var(--primary); font-weight: 800;">Saldo Stock ({{ $unidadPeso }})</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if($stockInicialPeriodo > 0)
+                            <tr style="background: rgba(100, 116, 139, 0.05); font-style: italic;">
+                                <td style="font-family: monospace; font-size: 0.85rem;">{{ \Carbon\Carbon::parse($fechaInicio)->format('d/m/Y') }} 00:00</td>
+                                <td><span class="badge" style="background: #e2e8f0; color: #475569; font-weight: 700;"><i class="fa-solid fa-flag"></i> SALDO INICIAL</span></td>
+                                <td colspan="3" style="color: var(--text-muted);">Stock acumulado previo al período</td>
+                                <td style="text-align: right;">-</td>
+                                <td style="text-align: right;">-</td>
+                                <td style="text-align: right;">-</td>
+                                <td style="text-align: right;">-</td>
+                                <td style="text-align: right;">-</td>
+                                <td style="text-align: right;">-</td>
+                                <td style="text-align: right; font-weight: 800; color: #334155; font-size: 0.95rem;">
+                                    {{ number_format($stockInicialPeriodo, 3) }}
+                                </td>
+                            </tr>
+                        @endif
+
+                        @forelse($kardexLista as $mov)
+                            <tr>
+                                <td style="font-family: monospace; font-size: 0.85rem;">
+                                    {{ \Carbon\Carbon::parse($mov['fecha'])->format('d/m/Y H:i') }}
+                                </td>
+                                <td>
+                                    <span class="badge {{ $mov['badge'] }}" style="display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 700;">
+                                        <i class="fa-solid {{ $mov['icon'] }}"></i> {{ $mov['tipo_label'] }}
+                                    </span>
+                                </td>
+                                <td style="font-weight: 700; font-family: monospace;">
+                                    {{ $mov['documento'] }}
+                                </td>
+                                <td>
+                                    {{ $mov['tercero'] }}
+                                </td>
+                                <td style="font-size: 0.8rem; color: var(--text-muted); font-family: monospace;">
+                                    @if($mov['lote'] || $mov['serie'])
+                                        {{ $mov['lote'] ? 'L: '.$mov['lote'] : '' }} {{ $mov['serie'] ? 'S: '.$mov['serie'] : '' }}
+                                    @else
+                                        -
+                                    @endif
+                                </td>
+                                <!-- ENTRADAS -->
+                                <td style="text-align: right; font-weight: 700; color: #10b981;">
+                                    {{ $mov['entrada_qty'] > 0 ? '+'.number_format($mov['entrada_qty'], 3) : '-' }}
+                                </td>
+                                <td style="text-align: right; color: var(--text-muted);">
+                                    {{ $mov['entrada_qty'] > 0 ? '$'.number_format($mov['entrada_costo'], 2) : '-' }}
+                                </td>
+                                <td style="text-align: right; font-weight: 600; color: #10b981;">
+                                    {{ $mov['entrada_qty'] > 0 ? '$'.number_format($mov['entrada_total'], 2) : '-' }}
+                                </td>
+                                <!-- SALIDAS -->
+                                <td style="text-align: right; font-weight: 700; color: #ef4444;">
+                                    {{ $mov['salida_qty'] > 0 ? '-'.number_format($mov['salida_qty'], 3) : '-' }}
+                                </td>
+                                <td style="text-align: right; color: var(--text-muted);">
+                                    {{ $mov['salida_qty'] > 0 ? '$'.number_format($mov['salida_precio'], 2) : '-' }}
+                                </td>
+                                <td style="text-align: right; font-weight: 600; color: #ef4444;">
+                                    {{ $mov['salida_qty'] > 0 ? '$'.number_format($mov['salida_total'], 2) : '-' }}
+                                </td>
+                                <!-- SALDO RESULTANTE -->
+                                <td style="text-align: right; font-weight: 800; color: var(--primary); font-size: 1rem; background: rgba(37,99,235,0.02);">
+                                    {{ number_format($mov['saldo_stock'], 3) }}
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="12" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">
+                                    <i class="fa-solid fa-box-open" style="font-size: 2rem; margin-bottom: 0.5rem; display: block; opacity: 0.4;"></i>
+                                    No se encontraron movimientos registrados para este producto en el período seleccionado.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- PAGINACIÓN DINÁMICA KARDEX -->
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">
+                    <span>Mostrar:</span>
+                    <select onchange="cambiarPaginacion(this.value)" class="input-modern" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.85rem; font-weight: 700; background: white;">
+                        <option value="10" @selected($perPage == 10)>10 por página</option>
+                        <option value="15" @selected($perPage == 15)>15 por página</option>
+                        <option value="25" @selected($perPage == 25)>25 por página</option>
+                        <option value="50" @selected($perPage == 50)>50 por página</option>
+                        <option value="100" @selected($perPage == 100)>100 por página</option>
+                        <option value="99999" @selected($perPage >= 99999)>Todos los registros</option>
+                    </select>
+                    <span>(Total: {{ $kardexLista->total() }})</span>
+                </div>
+                <div>
+                    {{ $kardexLista->links() }}
+                </div>
+            </div>
+        </div>
+    @endif
+
+    <!-- SECCIÓN: TABLA Y ANÁLISIS DE ROTACIÓN DE INVENTARIO (TODOS LOS PRODUCTOS) -->
+    <div class="card" style="padding: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <h3 style="font-size: 1.2rem; font-weight: 800; margin: 0; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fa-solid fa-arrows-spin" style="color: #3b82f6;"></i> Rotación y Rendimiento de Productos
+                </h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.25rem 0 0 0;">
+                    Compara compras vs ventas netas para evaluar la velocidad de rotación y los días de stock proyectados.
+                </p>
+            </div>
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table class="table-modern" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th style="width: 45px; text-align: center;">#</th>
+                        <th>Producto / SKU</th>
+                        <th>Familia</th>
+                        <th style="text-align: right;">Stock Actual ({{ $unidadPeso }})</th>
+                        <th style="text-align: right; color: #10b981;">Comprado ({{ $unidadPeso }})</th>
+                        <th style="text-align: right; color: #ef4444;">Venta Neta ({{ $unidadPeso }})</th>
+                        <th style="text-align: center; width: 140px;">% Rotación</th>
+                        <th style="text-align: center;">Velocidad / Nivel</th>
+                        <th style="text-align: center;">Días de Cobertura</th>
+                        <th style="text-align: center;">Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($rotacionProductos as $index => $art)
+                        <tr>
+                            <td style="text-align: center; font-weight: 800; color: var(--text-muted);">
+                                {{ ($rotacionProductos->currentPage() - 1) * $rotacionProductos->perPage() + $index + 1 }}
+                            </td>
+                            <td>
+                                <a href="{{ route('reportes.index', ['tab' => 'kardex', 'articulo_id' => $art->id, 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin, 'per_page' => $perPage]) }}" style="font-weight: 700; color: var(--primary); text-decoration: none;">
+                                    {{ $art->descripcion }}
+                                </a>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">
+                                    SKU: {{ $art->codigo }}
+                                </div>
+                            </td>
+                            <td>{{ $art->familia?->nombre ?? 'Sin Familia' }}</td>
+                            <td style="text-align: right; font-weight: 700;">
+                                {{ number_format($art->stock_actual_num, 3) }}
+                            </td>
+                            <td style="text-align: right; color: #10b981; font-weight: 600;">
+                                {{ $art->total_comprado_periodo > 0 ? '+'.number_format($art->total_comprado_periodo, 3) : '-' }}
+                            </td>
+                            <td style="text-align: right; color: #ef4444; font-weight: 700; font-size: 0.95rem;">
+                                {{ $art->venta_neta_periodo > 0 ? number_format($art->venta_neta_periodo, 3) : '-' }}
+                            </td>
+                            <td style="text-align: center;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem; justify-content: center;">
+                                    <div style="flex: 1; background: #e2e8f0; border-radius: 9999px; height: 8px; overflow: hidden; min-width: 60px;">
+                                        <div style="width: {{ min(100, $art->rotacion_pct) }}%; background: {{ $art->rotacion_categoria === 'alta' ? '#10b981' : ($art->rotacion_categoria === 'media' ? '#f59e0b' : '#ef4444') }}; height: 100%;"></div>
+                                    </div>
+                                    <span style="font-size: 0.8rem; font-weight: 800; min-width: 38px;">{{ $art->rotacion_pct }}%</span>
+                                </div>
+                            </td>
+                            <td style="text-align: center;">
+                                <span class="badge {{ $art->rotacion_badge }}" style="font-weight: 700;">
+                                    {{ $art->rotacion_label }}
+                                </span>
+                            </td>
+                            <td style="text-align: center; font-weight: 700; color: {{ $art->dias_cobertura <= 3 ? '#ef4444' : ($art->dias_cobertura <= 15 ? '#10b981' : '#d97706') }};">
+                                @if($art->dias_cobertura === 999)
+                                    <span title="Sin ventas recientes en el período">Sin Salidas</span>
+                                @elseif($art->dias_cobertura === 0)
+                                    <span style="color: #94a3b8;">Agotado</span>
+                                @else
+                                    ~{{ $art->dias_cobertura }} días
+                                @endif
+                            </td>
+                            <td style="text-align: center;">
+                                <a href="{{ route('reportes.index', ['tab' => 'kardex', 'articulo_id' => $art->id, 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin, 'per_page' => $perPage]) }}" class="btn-modern btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; white-space: nowrap;">
+                                    <i class="fa-solid fa-timeline" style="color: var(--primary);"></i> Ver Kardex
+                                </a>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="10" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                                No hay productos en catálogo.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        <!-- PAGINACIÓN DINÁMICA ROTACIÓN -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+            <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">
+                <span>Mostrar:</span>
+                <select onchange="cambiarPaginacion(this.value)" class="input-modern" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.85rem; font-weight: 700; background: white;">
+                    <option value="10" @selected($perPage == 10)>10 por página</option>
+                    <option value="15" @selected($perPage == 15)>15 por página</option>
+                    <option value="25" @selected($perPage == 25)>25 por página</option>
+                    <option value="50" @selected($perPage == 50)>50 por página</option>
+                    <option value="100" @selected($perPage == 100)>100 por página</option>
+                    <option value="99999" @selected($perPage >= 99999)>Todos los registros</option>
+                </select>
+                <span>(Total: {{ $rotacionProductos->total() }})</span>
+            </div>
+            <div>
+                {{ $rotacionProductos->links() }}
+            </div>
         </div>
     </div>
 @endif
@@ -786,7 +1456,7 @@
     <div class="card" style="padding: 1.25rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
             <h3 style="font-size: 1.1rem; font-weight: 700;">Comparativa de Stock Físico vs Mínimo Configurado</h3>
-            <span class="badge badge-info" style="font-size: 0.85rem;">{{ $articulosFiltrados->count() }} productos listados</span>
+            <span class="badge badge-info" style="font-size: 0.85rem;">{{ $articulosFiltrados->total() }} productos listados</span>
         </div>
 
         <div style="overflow-x: auto;">
@@ -830,7 +1500,7 @@
                                     @endif
                                 </span>
                             </td>
-                            <td style="text-align: right;">${{ number_format($art->precio_sin_iva, 2) }}</td>
+                            <td style="text-align: right;">${{ number_format($art->precio_compra ?: $art->precio_sin_iva, 2) }}</td>
                             <td style="text-align: right; font-weight: 700; color: var(--primary);">${{ number_format($art->valor_inversion, 2) }}</td>
                         </tr>
                     @empty
@@ -840,6 +1510,24 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+            <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">
+                <span>Mostrar:</span>
+                <select onchange="cambiarPaginacion(this.value)" class="input-modern" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.85rem; font-weight: 700; background: white;">
+                    <option value="10" @selected($perPage == 10)>10 por página</option>
+                    <option value="15" @selected($perPage == 15)>15 por página</option>
+                    <option value="25" @selected($perPage == 25)>25 por página</option>
+                    <option value="50" @selected($perPage == 50)>50 por página</option>
+                    <option value="100" @selected($perPage == 100)>100 por página</option>
+                    <option value="99999" @selected($perPage >= 99999)>Todos los registros</option>
+                </select>
+                <span>(Total: {{ $articulosFiltrados->total() }})</span>
+            </div>
+            <div>
+                {{ $articulosFiltrados->links() }}
+            </div>
         </div>
     </div>
 @endif
@@ -994,8 +1682,22 @@
                 </tbody>
             </table>
         </div>
-        <div style="margin-top: 1rem;">
-            {{ $clientesDeudores->appends(['tab' => 'clientes', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin])->links() }}
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+            <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">
+                <span>Mostrar:</span>
+                <select onchange="cambiarPaginacion(this.value)" class="input-modern" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.85rem; font-weight: 700; background: white;">
+                    <option value="10" @selected($perPage == 10)>10 por página</option>
+                    <option value="15" @selected($perPage == 15)>15 por página</option>
+                    <option value="25" @selected($perPage == 25)>25 por página</option>
+                    <option value="50" @selected($perPage == 50)>50 por página</option>
+                    <option value="100" @selected($perPage == 100)>100 por página</option>
+                    <option value="99999" @selected($perPage >= 99999)>Todos los registros</option>
+                </select>
+                <span>(Total: {{ $clientesDeudores->total() }})</span>
+            </div>
+            <div>
+                {{ $clientesDeudores->appends(['tab' => 'clientes', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin])->links() }}
+            </div>
         </div>
     </div>
 
@@ -1060,8 +1762,22 @@
                 </tbody>
             </table>
         </div>
-        <div style="margin-top: 1rem;">
-            {{ $abonosLista->appends(['tab' => 'clientes', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin])->links() }}
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+            <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">
+                <span>Mostrar:</span>
+                <select onchange="cambiarPaginacion(this.value)" class="input-modern" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.85rem; font-weight: 700; background: white;">
+                    <option value="10" @selected($perPage == 10)>10 por página</option>
+                    <option value="15" @selected($perPage == 15)>15 por página</option>
+                    <option value="25" @selected($perPage == 25)>25 por página</option>
+                    <option value="50" @selected($perPage == 50)>50 por página</option>
+                    <option value="100" @selected($perPage == 100)>100 por página</option>
+                    <option value="99999" @selected($perPage >= 99999)>Todos los registros</option>
+                </select>
+                <span>(Total: {{ $abonosLista->total() }})</span>
+            </div>
+            <div>
+                {{ $abonosLista->appends(['tab' => 'clientes', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin])->links() }}
+            </div>
         </div>
     </div>
 @endif
@@ -1196,8 +1912,22 @@
                 </tbody>
             </table>
         </div>
-        <div style="margin-top: 1rem;">
-            {{ $comprasPorProveedor->appends(['tab' => 'proveedores', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin])->links() }}
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+            <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">
+                <span>Mostrar:</span>
+                <select onchange="cambiarPaginacion(this.value)" class="input-modern" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.85rem; font-weight: 700; background: white;">
+                    <option value="10" @selected($perPage == 10)>10 por página</option>
+                    <option value="15" @selected($perPage == 15)>15 por página</option>
+                    <option value="25" @selected($perPage == 25)>25 por página</option>
+                    <option value="50" @selected($perPage == 50)>50 por página</option>
+                    <option value="100" @selected($perPage == 100)>100 por página</option>
+                    <option value="99999" @selected($perPage >= 99999)>Todos los registros</option>
+                </select>
+                <span>(Total: {{ $comprasPorProveedor->total() }})</span>
+            </div>
+            <div>
+                {{ $comprasPorProveedor->appends(['tab' => 'proveedores', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin])->links() }}
+            </div>
         </div>
     </div>
 
@@ -1254,8 +1984,22 @@
                 </tbody>
             </table>
         </div>
-        <div style="margin-top: 1rem;">
-            {{ $historialRecepciones->appends(['tab' => 'proveedores', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin])->links() }}
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+            <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">
+                <span>Mostrar:</span>
+                <select onchange="cambiarPaginacion(this.value)" class="input-modern" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.85rem; font-weight: 700; background: white;">
+                    <option value="10" @selected($perPage == 10)>10 por página</option>
+                    <option value="15" @selected($perPage == 15)>15 por página</option>
+                    <option value="25" @selected($perPage == 25)>25 por página</option>
+                    <option value="50" @selected($perPage == 50)>50 por página</option>
+                    <option value="100" @selected($perPage == 100)>100 por página</option>
+                    <option value="99999" @selected($perPage >= 99999)>Todos los registros</option>
+                </select>
+                <span>(Total: {{ $historialRecepciones->total() }})</span>
+            </div>
+            <div>
+                {{ $historialRecepciones->appends(['tab' => 'proveedores', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin])->links() }}
+            </div>
         </div>
     </div>
 @endif
@@ -1389,6 +2133,7 @@
 @endpush
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     const unidadPesoGlobal = "{{ $unidadPeso }}";
 
@@ -1808,6 +2553,568 @@
     function imprimirTicketAbono() {
         window.print();
     }
+
+    function cambiarPaginacion(val) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('per_page', val);
+        url.searchParams.delete('page_ventas');
+        url.searchParams.delete('page_compras');
+        url.searchParams.delete('page_caja');
+        url.searchParams.delete('page_deudores');
+        url.searchParams.delete('page_abonos');
+        url.searchParams.delete('page_prov');
+        url.searchParams.delete('page_recepciones');
+        url.searchParams.delete('page_inv');
+        url.searchParams.delete('page_kardex');
+        url.searchParams.delete('page_rot');
+        window.location.href = url.toString();
+    }
+
+    function cambiarTopLimit(val) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('top_limit', val);
+        window.location.href = url.toString();
+    }
+
+    // CATÁLOGO DE PRODUCTOS PARA EL BUSCADOR DE KARDEX
+    const articulosKardexCatalog = {!! json_encode($articulosKardexJson ?? []) !!};
+
+    const kardexSearchInput = document.getElementById('kardex-search-input');
+    const kardexResultsContainer = document.getElementById('kardex-search-results');
+    const hiddenKardexArticuloId = document.getElementById('hidden-kardex-articulo-id');
+    const btnClearKardex = document.getElementById('btn-clear-kardex-search');
+
+    function renderKardexSearchResults(query = '') {
+        if (!kardexResultsContainer) return;
+        const q = String(query).trim().toLowerCase();
+
+        let filtered = articulosKardexCatalog;
+        if (q !== '') {
+            filtered = articulosKardexCatalog.filter(a => {
+                const desc = String(a.descripcion || '').toLowerCase();
+                const sku = String(a.codigo || '').toLowerCase();
+                const prov = String(a.codigo_cliente || '').toLowerCase();
+                const item = String(a.item || '').toLowerCase();
+                const fam = String(a.familia || '').toLowerCase();
+                return desc.includes(q) || sku.includes(q) || prov.includes(q) || item.includes(q) || fam.includes(q);
+            });
+        }
+
+        let html = '';
+
+        // Opción predeterminada: Todos los productos
+        const isAllSelected = !hiddenKardexArticuloId || !hiddenKardexArticuloId.value;
+        html += `
+            <div class="kardex-item-opt" onclick="seleccionarArticuloKardex('', '')" 
+                 style="padding: 0.65rem 1rem; border-bottom: 1px solid #f1f5f9; cursor: pointer; display: flex; align-items: center; justify-content: space-between; background: ${isAllSelected ? 'rgba(37,99,235,0.06)' : 'white'};"
+                 onmouseover="this.style.background='rgba(37,99,235,0.08)'" onmouseout="this.style.background='${isAllSelected ? 'rgba(37,99,235,0.06)' : 'white'}'">
+                <div style="font-weight: 700; color: var(--primary); font-size: 0.9rem;">
+                    <i class="fa-solid fa-arrows-spin"></i> -- Todos los Productos (Análisis de Rotación General) --
+                </div>
+                <span class="badge badge-info" style="font-size: 0.72rem;">Catálogo General</span>
+            </div>
+        `;
+
+        if (filtered.length === 0) {
+            html += `
+                <div style="padding: 1.25rem; text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+                    <i class="fa-solid fa-magnifying-glass" style="margin-bottom: 0.35rem; display: block; opacity: 0.4;"></i>
+                    No se encontraron productos con "<strong>${q}</strong>"
+                </div>
+            `;
+        } else {
+            filtered.forEach(art => {
+                const isSelected = hiddenKardexArticuloId && String(hiddenKardexArticuloId.value) === String(art.id);
+                const provBadge = art.codigo_cliente ? `<span style="background: rgba(249,115,22,0.12); color: #ea580c; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-family: monospace; font-weight: 700;"><i class="fa-solid fa-truck" style="font-size: 0.7rem;"></i> Prov: ${art.codigo_cliente}</span>` : '';
+                const skuBadge = `<span style="background: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-family: monospace; font-weight: 700;"><i class="fa-solid fa-barcode" style="font-size: 0.7rem;"></i> SKU: ${art.codigo}</span>`;
+
+                const labelEscaped = `${art.descripcion} (SKU: ${art.codigo}${art.codigo_cliente ? ' | Prov: ' + art.codigo_cliente : ''})`.replace(/'/g, "\\'");
+
+                html += `
+                    <div class="kardex-item-opt" onclick="seleccionarArticuloKardex(${art.id}, '${labelEscaped}')"
+                         style="padding: 0.65rem 1rem; border-bottom: 1px solid #f1f5f9; cursor: pointer; display: flex; align-items: center; justify-content: space-between; background: ${isSelected ? 'rgba(37,99,235,0.06)' : 'white'};"
+                         onmouseover="this.style.background='rgba(37,99,235,0.08)'" onmouseout="this.style.background='${isSelected ? 'rgba(37,99,235,0.06)' : 'white'}'">
+                        <div style="flex: 1; min-width: 0; padding-right: 0.75rem;">
+                            <div style="font-weight: 700; color: var(--text-main); font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                ${art.descripcion}
+                            </div>
+                            <div style="display: flex; gap: 0.4rem; align-items: center; margin-top: 0.25rem; flex-wrap: wrap;">
+                                ${skuBadge}
+                                ${provBadge}
+                                ${art.familia ? `<span style="font-size: 0.75rem; color: var(--text-muted);"><i class="fa-solid fa-tag" style="font-size: 0.7rem;"></i> ${art.familia}</span>` : ''}
+                            </div>
+                        </div>
+                        <div style="text-align: right; white-space: nowrap;">
+                            <span style="font-weight: 800; font-size: 0.95rem; color: ${art.stock <= 0 ? '#ef4444' : '#10b981'};">
+                                ${Number(art.stock).toFixed(3)} ${art.unidad}
+                            </span>
+                            <div style="font-size: 0.72rem; color: var(--text-muted);">Stock actual</div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        kardexResultsContainer.innerHTML = html;
+        kardexResultsContainer.style.display = 'block';
+    }
+
+    function seleccionarArticuloKardex(id, label) {
+        if (hiddenKardexArticuloId) hiddenKardexArticuloId.value = id || '';
+        if (kardexSearchInput) kardexSearchInput.value = label || '';
+        if (btnClearKardex) btnClearKardex.style.display = id ? 'block' : 'none';
+        if (kardexResultsContainer) kardexResultsContainer.style.display = 'none';
+
+        const form = document.getElementById('form-filtros-reporte');
+        if (form) form.submit();
+    }
+
+    function limpiarBusquedaKardex() {
+        if (hiddenKardexArticuloId) hiddenKardexArticuloId.value = '';
+        if (kardexSearchInput) kardexSearchInput.value = '';
+        if (btnClearKardex) btnClearKardex.style.display = 'none';
+        if (kardexResultsContainer) kardexResultsContainer.style.display = 'none';
+
+        const form = document.getElementById('form-filtros-reporte');
+        if (form) form.submit();
+    }
+
+    if (kardexSearchInput) {
+        kardexSearchInput.addEventListener('input', function() {
+            renderKardexSearchResults(this.value);
+            if (btnClearKardex) {
+                btnClearKardex.style.display = this.value.trim() ? 'block' : 'none';
+            }
+        });
+
+        kardexSearchInput.addEventListener('focus', function() {
+            renderKardexSearchResults(this.value);
+        });
+
+        document.addEventListener('click', function(e) {
+            const container = document.getElementById('container-kardex-search');
+            if (container && !container.contains(e.target) && kardexResultsContainer) {
+                kardexResultsContainer.style.display = 'none';
+            }
+        });
+    }
+
+    // -------------------------------------------------------------
+    // CONTROLADOR DE GRÁFICOS COMPARATIVOS INTELIGENTES (CHART.JS)
+    // -------------------------------------------------------------
+    const chartApiUrl = "{{ route('reportes.api.grafico') }}";
+
+    const chartState = {
+        ventas: {
+            nivel: 'mensual', // Por defecto: Mensual (Día 1-31)
+            mesBase: '{{ \Carbon\Carbon::parse($fechaFin)->format("Y-m") }}',
+            mesComparar: 'auto',
+            semanaFecha: '{{ \Carbon\Carbon::parse($fechaFin)->format("Y-m-d") }}',
+            semanaComparar: 'auto',
+            anoBase: '{{ \Carbon\Carbon::parse($fechaFin)->format("Y") }}',
+            anoComparar: 'auto',
+            instance: null,
+            data: null
+        },
+        compras: {
+            nivel: 'mensual', // Por defecto: Mensual (Día 1-31)
+            mesBase: '{{ \Carbon\Carbon::parse($fechaFin)->format("Y-m") }}',
+            mesComparar: 'auto',
+            semanaFecha: '{{ \Carbon\Carbon::parse($fechaFin)->format("Y-m-d") }}',
+            semanaComparar: 'auto',
+            anoBase: '{{ \Carbon\Carbon::parse($fechaFin)->format("Y") }}',
+            anoComparar: 'auto',
+            instance: null,
+            data: null
+        }
+    };
+
+    function formatCurrency(val) {
+        return '$' + Number(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    async function cargarGraficoComparativo(tipo = 'ventas') {
+        const st = chartState[tipo];
+        if (!st) return;
+
+        const loadingEl = document.getElementById(`chart-loading-${tipo}`);
+        if (loadingEl) loadingEl.style.display = 'flex';
+
+        try {
+            const params = new URLSearchParams({
+                tipo: tipo,
+                nivel: st.nivel,
+                mes_base: st.mesBase,
+                mes_comparar: st.mesComparar,
+                semana_fecha: st.semanaFecha,
+                semana_comparar: st.semanaComparar,
+                ano_base: st.anoBase,
+                ano_comparar: st.anoComparar
+            });
+
+            const res = await fetch(`${chartApiUrl}?${params.toString()}`);
+            if (!res.ok) throw new Error('Error al cargar datos del gráfico');
+            const data = await res.json();
+            st.data = data;
+
+            actualizarControlesUI(tipo, data);
+            renderizarCanvasChart(tipo, data);
+        } catch (err) {
+            console.error('Error en cargarGraficoComparativo:', err);
+        } finally {
+            if (loadingEl) loadingEl.style.display = 'none';
+        }
+    }
+
+    function actualizarControlesUI(tipo, data) {
+        const st = chartState[tipo];
+        const primaryColor = tipo === 'ventas' ? 'var(--primary)' : 'var(--accent)';
+
+        // 1. Actualizar Píldoras de Nivel
+        ['anual', 'mensual', 'semanal'].forEach(lvl => {
+            const pill = document.getElementById(`pill-nivel-${lvl}-${tipo}`);
+            if (pill) {
+                if (lvl === st.nivel) {
+                    pill.style.background = 'white';
+                    pill.style.color = primaryColor;
+                    pill.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+                } else {
+                    pill.style.background = 'transparent';
+                    pill.style.color = 'var(--text-muted)';
+                    pill.style.boxShadow = 'none';
+                }
+            }
+        });
+
+        // 2. Botón Volver / Drill Up
+        const btnBack = document.getElementById(`btn-back-level-${tipo}`);
+        const labelBack = document.getElementById(`label-back-level-${tipo}`);
+        if (btnBack && labelBack) {
+            if (st.nivel === 'semanal') {
+                btnBack.style.display = 'inline-flex';
+                labelBack.innerText = `Volver a ${data.mesPertenecienteLabel || 'Mes'}`;
+            } else if (st.nivel === 'mensual') {
+                btnBack.style.display = 'inline-flex';
+                labelBack.innerText = `Ver Meses de ${data.anoPertenece || 'Año'}`;
+            } else {
+                btnBack.style.display = 'none';
+            }
+        }
+
+        // 3. Botón Adelante / Drill Down hacia Semanas
+        const btnFwdWeeks = document.getElementById(`btn-forward-weeks-${tipo}`);
+        if (btnFwdWeeks) {
+            if (st.nivel === 'mensual') {
+                btnFwdWeeks.style.display = 'inline-flex';
+                btnFwdWeeks.innerHTML = `<span>Ver por Semanas</span> <i class="fa-solid fa-arrow-right"></i>`;
+            } else if (st.nivel === 'anual') {
+                btnFwdWeeks.style.display = 'inline-flex';
+                btnFwdWeeks.innerHTML = `<span>Ver Mes Base</span> <i class="fa-solid fa-arrow-right"></i>`;
+            } else {
+                btnFwdWeeks.style.display = 'none';
+            }
+        }
+
+        // 4. Título Principal
+        const tituloEl = document.getElementById(`titulo-grafico-${tipo}`);
+        if (tituloEl) {
+            if (st.nivel === 'mensual') {
+                tituloEl.innerText = `Comparativo Mensual: ${data.mesBaseLabel} ${data.hasComparison ? 'vs ' + data.mesCompararLabel : ''}`;
+            } else if (st.nivel === 'semanal') {
+                tituloEl.innerText = `Comparativo Semanal: ${data.semanaBaseLabel} ${data.hasComparison ? 'vs ' + data.semanaCompararLabel : ''}`;
+            } else if (st.nivel === 'anual') {
+                tituloEl.innerText = `Comparativo Anual: ${data.anoBaseLabel} ${data.hasComparison ? 'vs ' + data.anoCompararLabel : ''}`;
+            }
+        }
+
+        // 5. Selectores de Período Base
+        const selMes = document.getElementById(`select-mes-base-${tipo}`);
+        const selSem = document.getElementById(`select-semana-base-${tipo}`);
+        const selAno = document.getElementById(`select-ano-base-${tipo}`);
+
+        if (selMes && selSem && selAno) {
+            selMes.style.display = st.nivel === 'mensual' ? 'inline-block' : 'none';
+            selSem.style.display = st.nivel === 'semanal' ? 'inline-block' : 'none';
+            selAno.style.display = st.nivel === 'anual' ? 'inline-block' : 'none';
+
+            // Llenar select de Meses
+            if (data.mesesDisponibles && selMes.options.length === 0) {
+                selMes.innerHTML = data.mesesDisponibles.map(m => `<option value="${m.value}">${m.label}</option>`).join('');
+            }
+            if (data.mesBase) selMes.value = data.mesBase;
+
+            // Llenar select de Semanas
+            if (data.semanasDelMes) {
+                selSem.innerHTML = data.semanasDelMes.map(s => `<option value="${s.fecha}">${s.label}</option>`).join('');
+                if (data.semanaFecha) selSem.value = data.semanaFecha;
+            }
+
+            // Llenar select de Años
+            if (data.anosDisponibles && selAno.options.length === 0) {
+                selAno.innerHTML = data.anosDisponibles.map(a => `<option value="${a}">Año ${a}</option>`).join('');
+            }
+            if (data.anoBase) selAno.value = String(data.anoBase);
+        }
+
+        // 6. Selector de Comparar Contra
+        const selComp = document.getElementById(`select-comparar-${tipo}`);
+        if (selComp) {
+            let compHtml = '';
+            if (st.nivel === 'mensual') {
+                compHtml += `<option value="auto">Mes Anterior (Automático)</option>`;
+                compHtml += `<option value="mismo_ano_anterior">Mismo Mes del Año Anterior</option>`;
+                compHtml += `<option value="ventas_vs_compras">${tipo === 'ventas' ? 'Ventas vs Compras (Costos)' : 'Compras vs Ventas'}</option>`;
+                compHtml += `<option value="ninguno">Sin Comparación (Solo este mes)</option>`;
+                if (data.mesesDisponibles && data.mesesDisponibles.length > 0) {
+                    compHtml += `<optgroup label="Comparar con Mes Específico">`;
+                    data.mesesDisponibles.forEach(m => {
+                        if (m.value !== data.mesBase) {
+                            compHtml += `<option value="${m.value}">${m.label}</option>`;
+                        }
+                    });
+                    compHtml += `</optgroup>`;
+                }
+                selComp.innerHTML = compHtml;
+                selComp.value = st.mesComparar;
+            } else if (st.nivel === 'semanal') {
+                compHtml += `<option value="auto">Semana Anterior (Inmediata)</option>`;
+                compHtml += `<option value="mes_anterior">Misma Semana del Mes Anterior</option>`;
+                compHtml += `<option value="ventas_vs_compras">${tipo === 'ventas' ? 'Ventas vs Compras (Costos)' : 'Compras vs Ventas'}</option>`;
+                compHtml += `<option value="ninguna">Sin Comparación</option>`;
+                selComp.innerHTML = compHtml;
+                selComp.value = st.semanaComparar;
+            } else if (st.nivel === 'anual') {
+                compHtml += `<option value="auto">Año Anterior (Automático)</option>`;
+                compHtml += `<option value="ventas_vs_compras">${tipo === 'ventas' ? 'Ventas vs Compras (12 Meses)' : 'Compras vs Ventas (12 Meses)'}</option>`;
+                compHtml += `<option value="ninguno">Sin Comparación</option>`;
+                if (data.anosDisponibles && data.anosDisponibles.length > 0) {
+                    compHtml += `<optgroup label="Comparar con Año Específico">`;
+                    data.anosDisponibles.forEach(a => {
+                        if (String(a) !== String(data.anoBase)) {
+                            compHtml += `<option value="${a}">Año ${a}</option>`;
+                        }
+                    });
+                    compHtml += `</optgroup>`;
+                }
+                selComp.innerHTML = compHtml;
+                selComp.value = st.anoComparar;
+            }
+        }
+
+        // 7. Banda de Resumen KPI
+        const kpiLblBase = document.getElementById(`kpi-label-base-${tipo}`);
+        const kpiValBase = document.getElementById(`kpi-val-base-${tipo}`);
+        const kpiBoxComp = document.getElementById(`kpi-box-comp-${tipo}`);
+        const kpiLblComp = document.getElementById(`kpi-label-comp-${tipo}`);
+        const kpiValComp = document.getElementById(`kpi-val-comp-${tipo}`);
+        const kpiBoxDiff = document.getElementById(`kpi-box-diff-${tipo}`);
+        const kpiValDiff = document.getElementById(`kpi-val-diff-monto-${tipo}`);
+        const kpiBadgeDiff = document.getElementById(`kpi-badge-diff-${tipo}`);
+
+        if (kpiLblBase) kpiLblBase.innerText = (data.labelBase || 'Base') + ':';
+        if (kpiValBase) kpiValBase.innerText = formatCurrency(data.totalBase);
+
+        if (data.hasComparison) {
+            if (kpiBoxComp) kpiBoxComp.style.display = 'block';
+            if (kpiBoxDiff) kpiBoxDiff.style.display = 'flex';
+            if (kpiLblComp) kpiLblComp.innerText = (data.labelComparar || 'Comparado') + ':';
+            if (kpiValComp) kpiValComp.innerText = formatCurrency(data.totalComparar);
+
+            if (kpiValDiff) {
+                const prefix = data.diffMonto >= 0 ? '+' : '';
+                kpiValDiff.innerText = prefix + formatCurrency(data.diffMonto);
+                kpiValDiff.style.color = (tipo === 'ventas' ? data.diffMonto >= 0 : data.diffMonto <= 0) ? '#16a34a' : '#dc2626';
+            }
+
+            if (kpiBadgeDiff) {
+                const isPositive = (tipo === 'ventas') ? (data.diffPct >= 0) : (data.diffPct <= 0);
+                kpiBadgeDiff.className = `badge ${isPositive ? 'badge-success' : 'badge-danger'}`;
+                kpiBadgeDiff.innerText = (data.diffPct >= 0 ? '+' : '') + data.diffPct + '%';
+            }
+        } else {
+            if (kpiBoxComp) kpiBoxComp.style.display = 'none';
+            if (kpiBoxDiff) kpiBoxDiff.style.display = 'none';
+        }
+    }
+
+    function renderizarCanvasChart(tipo, data) {
+        const st = chartState[tipo];
+        const canvasId = tipo === 'ventas' ? 'canvasChartVentas' : 'canvasChartCompras';
+        const canvas = document.getElementById(canvasId);
+        if (!canvas || typeof Chart === 'undefined') return;
+
+        const ctx = canvas.getContext('2d');
+        if (st.instance) st.instance.destroy();
+
+        const baseColor = tipo === 'ventas' ? '#2563eb' : '#ea580c';
+        const baseBgColor = tipo === 'ventas' ? 'rgba(37, 99, 235, 0.12)' : 'rgba(234, 88, 12, 0.12)';
+        const compColor = data.isVentasVsCompras ? (tipo === 'ventas' ? '#ea580c' : '#2563eb') : '#94a3b8';
+        const compBgColor = data.isVentasVsCompras ? (tipo === 'ventas' ? 'rgba(234, 88, 12, 0.8)' : 'rgba(37, 99, 235, 0.8)') : 'rgba(148, 163, 184, 0.06)';
+
+        const isBar = st.nivel === 'anual';
+
+        const datasets = [];
+
+        // Dataset Base
+        datasets.push({
+            type: isBar ? 'bar' : 'line',
+            label: data.labelBase,
+            data: data.dataBase,
+            borderColor: baseColor,
+            backgroundColor: isBar ? (tipo === 'ventas' ? 'rgba(37, 99, 235, 0.85)' : 'rgba(234, 88, 12, 0.85)') : baseBgColor,
+            borderWidth: isBar ? 1 : 3,
+            borderRadius: isBar ? 6 : 0,
+            tension: isBar ? 0 : 0.35,
+            fill: !isBar,
+            pointRadius: isBar ? 0 : 4,
+            pointHoverRadius: isBar ? 0 : 6,
+            pointBackgroundColor: baseColor
+        });
+
+        // Dataset Comparar
+        if (data.hasComparison && data.dataComparar && data.dataComparar.length > 0) {
+            datasets.push({
+                type: isBar ? 'bar' : 'line',
+                label: data.labelComparar,
+                data: data.dataComparar,
+                borderColor: compColor,
+                backgroundColor: isBar ? compBgColor : 'rgba(148, 163, 184, 0.05)',
+                borderWidth: isBar ? 1 : 2,
+                borderRadius: isBar ? 6 : 0,
+                borderDash: (!isBar && !data.isVentasVsCompras) ? [5, 5] : [],
+                tension: isBar ? 0 : 0.35,
+                fill: false,
+                pointRadius: isBar ? 0 : 3.5,
+                pointHoverRadius: isBar ? 0 : 5.5,
+                pointBackgroundColor: compColor
+            });
+        }
+
+        st.instance = new Chart(ctx, {
+            data: {
+                labels: data.labels,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'top', labels: { font: { weight: '600' } } },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) { return ctx.dataset.label + ': ' + formatCurrency(ctx.parsed.y); }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { callback: function(val) { return '$' + val; } },
+                        grid: { color: '#f1f5f9' }
+                    },
+                    x: { grid: { display: false } }
+                },
+                onClick: function(evt, elements) {
+                    if (elements.length > 0 && st.nivel === 'anual') {
+                        // Click on month bar -> Drill down to that month!
+                        const idx = elements[0].index;
+                        const monthNum = String(idx + 1).padStart(2, '0');
+                        const targetYm = `${data.anoBase}-${monthNum}`;
+                        st.mesBase = targetYm;
+                        st.nivel = 'mensual';
+                        cargarGraficoComparativo(tipo);
+                    }
+                }
+            }
+        });
+    }
+
+    // Funciones de navegación e interacción
+    function setNivelGrafico(tipo, nivel) {
+        chartState[tipo].nivel = nivel;
+        cargarGraficoComparativo(tipo);
+    }
+
+    function navegarNivelAtras(tipo) {
+        const st = chartState[tipo];
+        if (st.nivel === 'semanal') {
+            setNivelGrafico(tipo, 'mensual');
+        } else if (st.nivel === 'mensual') {
+            setNivelGrafico(tipo, 'anual');
+        }
+    }
+
+    function desglosarEnSemanas(tipo) {
+        const st = chartState[tipo];
+        if (st.nivel === 'mensual') {
+            setNivelGrafico(tipo, 'semanal');
+        } else if (st.nivel === 'anual') {
+            setNivelGrafico(tipo, 'mensual');
+        }
+    }
+
+    function periodoPasoAnterior(tipo) {
+        const st = chartState[tipo];
+        const data = st.data;
+        if (!data) return;
+
+        if (st.nivel === 'mensual' && data.mesBasePrev) {
+            st.mesBase = data.mesBasePrev;
+        } else if (st.nivel === 'semanal' && data.semanaPrevFecha) {
+            st.semanaFecha = data.semanaPrevFecha;
+        } else if (st.nivel === 'anual' && data.anoBasePrev) {
+            st.anoBase = data.anoBasePrev;
+        }
+        cargarGraficoComparativo(tipo);
+    }
+
+    function periodoPasoSiguiente(tipo) {
+        const st = chartState[tipo];
+        const data = st.data;
+        if (!data) return;
+
+        if (st.nivel === 'mensual' && data.mesBaseNext) {
+            st.mesBase = data.mesBaseNext;
+        } else if (st.nivel === 'semanal' && data.semanaNextFecha) {
+            st.semanaFecha = data.semanaNextFecha;
+        } else if (st.nivel === 'anual' && data.anoBaseNext) {
+            st.anoBase = data.anoBaseNext;
+        }
+        cargarGraficoComparativo(tipo);
+    }
+
+    function onSelectMesBaseChange(tipo, val) {
+        chartState[tipo].mesBase = val;
+        cargarGraficoComparativo(tipo);
+    }
+
+    function onSelectSemanaBaseChange(tipo, val) {
+        chartState[tipo].semanaFecha = val;
+        cargarGraficoComparativo(tipo);
+    }
+
+    function onSelectAnoBaseChange(tipo, val) {
+        chartState[tipo].anoBase = val;
+        cargarGraficoComparativo(tipo);
+    }
+
+    function onSelectCompararChange(tipo, val) {
+        const st = chartState[tipo];
+        if (st.nivel === 'mensual') st.mesComparar = val;
+        else if (st.nivel === 'semanal') st.semanaComparar = val;
+        else if (st.nivel === 'anual') st.anoComparar = val;
+        cargarGraficoComparativo(tipo);
+    }
+
+    // Inicializar al cargar el DOM
+    document.addEventListener('DOMContentLoaded', function() {
+        @if($tab === 'ventas')
+            cargarGraficoComparativo('ventas');
+        @elseif($tab === 'compras')
+            cargarGraficoComparativo('compras');
+        @endif
+    });
 </script>
 @endpush
 

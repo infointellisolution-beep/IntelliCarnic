@@ -55,6 +55,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/compras/{compra}', [CompraController::class, 'show'])->name('compras.show');
     // Reportes
     Route::get('/reportes', [\App\Http\Controllers\ReporteController::class, 'index'])->name('reportes.index');
+    Route::get('/reportes/api/grafico-comparativo', [\App\Http\Controllers\ReporteController::class, 'apiGraficoComparativo'])->name('reportes.api.grafico');
     Route::get('/reportes/exportar/{tipo}', [\App\Http\Controllers\ReporteController::class, 'exportarCsv'])->name('reportes.exportar');
 
     // Control de Caja

@@ -5,11 +5,17 @@ namespace App\Http\Controllers;
 use App\Models\Articulo;
 use App\Models\Compra;
 use App\Models\CompraDetalle;
+use App\Models\Devolucion;
+use App\Models\DevolucionDetalle;
 use App\Models\Familia;
 use App\Models\Setting;
 use App\Models\Venta;
 use App\Models\VentaDetalle;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -22,10 +28,14 @@ class ReporteController extends Controller
         $fechaFin = $request->get('fecha_fin', now()->toDateString());
         $familiaId = $request->get('familia_id');
         $filtroStock = $request->get('filtro_stock', 'todos'); // todos, ok, bajo, sin_stock
+        $perPage = (int) $request->get('per_page', 15);
+        if ($perPage <= 0) $perPage = 15;
+        if ($perPage > 99999) $perPage = 99999;
 
         $settings = Setting::values();
         $unidadPeso = strtoupper($settings['unidad_peso'] ?? 'LB');
         $familias = Familia::orderBy('nombre', 'asc')->get();
+        $articulosCatalogo = Articulo::with('familia')->orderBy('descripcion', 'asc')->get();
 
         // 1. Datos para Reporte de Ventas
         $ventasQuery = Venta::query()
@@ -37,8 +47,8 @@ class ReporteController extends Controller
         $numVentas = $ventasQuery->count();
         $promedioVenta = $numVentas > 0 ? $totalVentasMonto / $numVentas : 0;
 
-        $totalDevolucionesMonto = (float) \App\Models\Devolucion::whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])->sum('total_reembolsado');
-        $countDevoluciones = \App\Models\Devolucion::whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])->count();
+        $totalDevolucionesMonto = (float) Devolucion::whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])->sum('total_reembolsado');
+        $countDevoluciones = Devolucion::whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])->count();
         $totalVentasNeto = max(0, $totalVentasMonto - $totalDevolucionesMonto);
 
         $totalPesoVendido = (float) VentaDetalle::whereHas('venta', function ($q) use ($fechaInicio, $fechaFin) {
@@ -55,7 +65,7 @@ class ReporteController extends Controller
             $q->whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']);
         })
             ->select('articulo_id', DB::raw('SUM(cantidad) as total_cantidad'), DB::raw('SUM(subtotal) as total_monto'))
-            ->with('articulo')
+            ->with(['articulo.familia'])
             ->groupBy('articulo_id')
             ->orderByDesc('total_cantidad')
             ->take(10)
@@ -77,7 +87,8 @@ class ReporteController extends Controller
         }
 
         $ventasLista = $ventasListaQuery->orderBy('created_at', 'desc')
-            ->paginate(15, ['*'], 'page_ventas');
+            ->paginate($perPage, ['*'], 'page_ventas')
+            ->withQueryString();
 
         // Mapeo FIFO de estado e imputación de abonos a ventas a crédito
         $clientIds = $ventasLista->pluck('cliente_id')->filter()->unique();
@@ -148,7 +159,8 @@ class ReporteController extends Controller
         $comprasLista = Compra::with('detalles.articulo')
             ->whereBetween('fecha_compra', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])
             ->orderBy('fecha_compra', 'desc')
-            ->paginate(15, ['*'], 'page_compras');
+            ->paginate($perPage, ['*'], 'page_compras')
+            ->withQueryString();
 
         // 3. Datos para Reporte de Inventario Comparativo (Físico vs Mínimo)
         $articulosQuery = Articulo::with('familia');
@@ -179,7 +191,7 @@ class ReporteController extends Controller
                 $estadoLabel = 'Stock Normal';
             }
 
-            $valorInversion = $stockFisico * (float) $art->precio_sin_iva;
+            $valorInversion = $stockFisico * (float) ($art->precio_compra ?: $art->precio_sin_iva);
 
             $art->stock_fisico_num = $stockFisico;
             $art->stock_minimo_num = $stockMinimo;
@@ -199,10 +211,21 @@ class ReporteController extends Controller
         $valorTotalInventario = $articulosProcesados->sum('valor_inversion');
 
         // Filtrar según la selección del usuario (ok, bajo, sin_stock)
-        $articulosFiltrados = $articulosProcesados;
+        $articulosFiltradosCol = $articulosProcesados;
         if ($filtroStock !== 'todos') {
-            $articulosFiltrados = $articulosProcesados->where('estado_evaluado', $filtroStock);
+            $articulosFiltradosCol = $articulosProcesados->where('estado_evaluado', $filtroStock)->values();
         }
+
+        // Paginación manual de la colección de inventario comparativo
+        $pageInv = (int) $request->get('page_inv', 1);
+        $articulosFiltrados = new LengthAwarePaginator(
+            $articulosFiltradosCol->forPage($pageInv, $perPage),
+            $articulosFiltradosCol->count(),
+            $perPage,
+            $pageInv,
+            ['path' => Paginator::resolveCurrentPath(), 'pageName' => 'page_inv']
+        );
+        $articulosFiltrados->withQueryString();
 
         // 4. Datos para Reporte de Caja
         $cajaQuery = \App\Models\CajaSesion::query()
@@ -221,7 +244,8 @@ class ReporteController extends Controller
         $cajasLista = \App\Models\CajaSesion::with('user')
             ->whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])
             ->orderBy('created_at', 'desc')
-            ->paginate(15, ['*'], 'page_caja');
+            ->paginate($perPage, ['*'], 'page_caja')
+            ->withQueryString();
 
         // 5. Datos para Reporte de Clientes
         $carteraTotal = (float) \App\Models\Cliente::sum('saldo_deudor');
@@ -250,13 +274,15 @@ class ReporteController extends Controller
         // Estado General de Cartera (Clientes deudores)
         $clientesDeudores = \App\Models\Cliente::where('saldo_deudor', '>', 0)
             ->orderByDesc('saldo_deudor')
-            ->paginate(15, ['*'], 'page_deudores');
+            ->paginate($perPage, ['*'], 'page_deudores')
+            ->withQueryString();
 
         // Historial de Abonos Recibidos en el período
         $abonosLista = \App\Models\Abono::with(['cliente', 'user'])
             ->whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])
             ->orderBy('created_at', 'desc')
-            ->paginate(15, ['*'], 'page_abonos');
+            ->paginate($perPage, ['*'], 'page_abonos')
+            ->withQueryString();
 
         // 6. Datos para Reporte de Proveedores
         $comprasProvQuery = Compra::query()
@@ -296,13 +322,246 @@ class ReporteController extends Controller
                 $q->whereBetween('fecha_compra', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']);
             }], 'total')
             ->orderByDesc('compras_sum_total')
-            ->paginate(15, ['*'], 'page_prov');
+            ->paginate($perPage, ['*'], 'page_prov')
+            ->withQueryString();
 
         // Historial General de Recepciones en el Período
         $historialRecepciones = Compra::with(['proveedor', 'user', 'detalles.articulo'])
             ->whereBetween('fecha_compra', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])
             ->orderBy('fecha_compra', 'desc')
-            ->paginate(15, ['*'], 'page_recepciones');
+            ->paginate($perPage, ['*'], 'page_recepciones')
+            ->withQueryString();
+
+        // 7. Datos para Reporte de KARDEX & Rotación de Inventario
+        $articuloId = $request->get('articulo_id');
+        $filtroMovimiento = $request->get('filtro_movimiento', 'todos'); // todos, compra, venta, devolucion
+        $articuloKardex = $articuloId ? Articulo::with('familia')->find($articuloId) : null;
+
+        $kardexTimeline = collect();
+        $stockInicialPeriodo = 0.0;
+        $totalKardexEntradas = 0.0;
+        $totalKardexSalidas = 0.0;
+        $totalKardexDevoluciones = 0.0;
+        $stockFinalKardex = 0.0;
+
+        if ($articuloKardex) {
+            // 7.1 Stock previo a la fecha de inicio
+            $comprasPrevias = (float) CompraDetalle::where('articulo_id', $articuloKardex->id)
+                ->whereHas('compra', fn($q) => $q->where('fecha_compra', '<', $fechaInicio . ' 00:00:00'))
+                ->sum('cantidad_peso');
+
+            $ventasPrevias = (float) VentaDetalle::where('articulo_id', $articuloKardex->id)
+                ->whereHas('venta', fn($q) => $q->where('created_at', '<', $fechaInicio . ' 00:00:00'))
+                ->sum('cantidad');
+
+            $devolucionesPrevias = (float) DevolucionDetalle::where('articulo_id', $articuloKardex->id)
+                ->where('reingresar_stock', true)
+                ->whereHas('devolucion', fn($q) => $q->where('created_at', '<', $fechaInicio . ' 00:00:00'))
+                ->sum('cantidad');
+
+            $stockInicialPeriodo = max(0, round($comprasPrevias - $ventasPrevias + $devolucionesPrevias, 3));
+
+            // 7.2 Movimientos dentro del período
+            $comprasKardex = CompraDetalle::with(['compra.proveedor', 'compra.user'])
+                ->where('articulo_id', $articuloKardex->id)
+                ->whereHas('compra', fn($q) => $q->whereBetween('fecha_compra', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']))
+                ->get()
+                ->map(function ($cd) {
+                    return [
+                        'tipo' => 'compra',
+                        'tipo_label' => 'Compra / Entrada',
+                        'badge' => 'badge-success',
+                        'icon' => 'fa-truck-ramp-box',
+                        'color' => '#10b981',
+                        'fecha' => $cd->compra->fecha_compra ?? $cd->created_at,
+                        'documento' => $cd->compra->numero_factura ? 'Factura #' . $cd->compra->numero_factura : 'Compra #' . $cd->compra_id,
+                        'tercero' => $cd->compra->proveedor_nombre ?: ($cd->compra->proveedor->nombre ?? 'Proveedor'),
+                        'lote' => $cd->lote,
+                        'serie' => $cd->serie,
+                        'entrada_qty' => (float) $cd->cantidad_peso,
+                        'entrada_costo' => (float) $cd->costo_unitario,
+                        'entrada_total' => (float) $cd->subtotal,
+                        'salida_qty' => 0.0,
+                        'salida_precio' => 0.0,
+                        'salida_total' => 0.0,
+                        'usuario' => $cd->compra->user->name ?? 'Sistema'
+                    ];
+                });
+
+            $ventasKardex = VentaDetalle::with(['venta.cliente', 'venta.user'])
+                ->where('articulo_id', $articuloKardex->id)
+                ->whereHas('venta', fn($q) => $q->whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']))
+                ->get()
+                ->map(function ($vd) {
+                    return [
+                        'tipo' => 'venta',
+                        'tipo_label' => 'Venta / Salida',
+                        'badge' => 'badge-danger',
+                        'icon' => 'fa-cash-register',
+                        'color' => '#ef4444',
+                        'fecha' => $vd->venta->created_at ?? $vd->created_at,
+                        'documento' => 'Ticket #' . $vd->venta_id . ($vd->venta->tipo_venta === 'credito' ? ' (Crédito)' : ''),
+                        'tercero' => $vd->venta->cliente->nombre ?? 'Consumidor Final',
+                        'lote' => null,
+                        'serie' => null,
+                        'entrada_qty' => 0.0,
+                        'entrada_costo' => 0.0,
+                        'entrada_total' => 0.0,
+                        'salida_qty' => (float) $vd->cantidad,
+                        'salida_precio' => (float) $vd->precio_unitario,
+                        'salida_total' => (float) $vd->subtotal,
+                        'usuario' => $vd->venta->user->name ?? 'Cajero'
+                    ];
+                });
+
+            $devolucionesKardex = DevolucionDetalle::with(['devolucion.venta', 'devolucion.user'])
+                ->where('articulo_id', $articuloKardex->id)
+                ->where('reingresar_stock', true)
+                ->whereHas('devolucion', fn($q) => $q->whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']))
+                ->get()
+                ->map(function ($dd) {
+                    return [
+                        'tipo' => 'devolucion',
+                        'tipo_label' => 'Devolución / Reingreso',
+                        'badge' => 'badge-warning',
+                        'icon' => 'fa-rotate-left',
+                        'color' => '#d97706',
+                        'fecha' => $dd->devolucion->created_at ?? $dd->created_at,
+                        'documento' => 'Devolución #' . $dd->devolucion_id . ' (Ref: Ticket #' . $dd->devolucion->venta_id . ')',
+                        'tercero' => $dd->devolucion->motivo ?: 'Cliente',
+                        'lote' => null,
+                        'serie' => null,
+                        'entrada_qty' => (float) $dd->cantidad,
+                        'entrada_costo' => (float) $dd->precio_unitario,
+                        'entrada_total' => (float) $dd->subtotal,
+                        'salida_qty' => 0.0,
+                        'salida_precio' => 0.0,
+                        'salida_total' => 0.0,
+                        'usuario' => $dd->devolucion->user->name ?? 'Cajero'
+                    ];
+                });
+
+            // Unificar y ordenar cronológicamente de forma ascendente para calcular saldo acumulado
+            $todosMovimientos = $comprasKardex->concat($ventasKardex)->concat($devolucionesKardex)
+                ->sortBy(function ($m) {
+                    return \Carbon\Carbon::parse($m['fecha'])->timestamp;
+                })->values();
+
+            $runningStock = $stockInicialPeriodo;
+            $costoRef = (float) ($articuloKardex->precio_compra ?: $articuloKardex->precio_sin_iva);
+
+            $kardexTimeline = $todosMovimientos->map(function ($m) use (&$runningStock, $costoRef, &$totalKardexEntradas, &$totalKardexSalidas, &$totalKardexDevoluciones) {
+                if ($m['tipo'] === 'compra') {
+                    $runningStock += $m['entrada_qty'];
+                    $totalKardexEntradas += $m['entrada_qty'];
+                } elseif ($m['tipo'] === 'devolucion') {
+                    $runningStock += $m['entrada_qty'];
+                    $totalKardexDevoluciones += $m['entrada_qty'];
+                } else {
+                    $runningStock -= $m['salida_qty'];
+                    $totalKardexSalidas += $m['salida_qty'];
+                }
+
+                $m['saldo_stock'] = round($runningStock, 3);
+                $m['saldo_valorado'] = round($runningStock * $costoRef, 2);
+                return $m;
+            });
+
+            $stockFinalKardex = round($runningStock, 3);
+
+            if ($filtroMovimiento !== 'todos') {
+                $kardexTimeline = $kardexTimeline->where('tipo', $filtroMovimiento)->values();
+            }
+        }
+
+        // Paginación del Kardex
+        $pageKardex = (int) $request->get('page_kardex', 1);
+        $kardexLista = new LengthAwarePaginator(
+            $kardexTimeline->forPage($pageKardex, $perPage),
+            $kardexTimeline->count(),
+            $perPage,
+            $pageKardex,
+            ['path' => Paginator::resolveCurrentPath(), 'pageName' => 'page_kardex']
+        );
+        $kardexLista->withQueryString();
+
+        // 7.3 Análisis de Rotación de Inventario de todos los productos
+        $diasPeriodo = max(1, (int) \Carbon\Carbon::parse($fechaInicio)->diffInDays(\Carbon\Carbon::parse($fechaFin)) + 1);
+
+        $rotacionProductosCol = $articulosCatalogo->map(function ($art) use ($fechaInicio, $fechaFin, $diasPeriodo) {
+            $comprado = (float) CompraDetalle::where('articulo_id', $art->id)
+                ->whereHas('compra', fn($q) => $q->whereBetween('fecha_compra', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']))
+                ->sum('cantidad_peso');
+
+            $vendido = (float) VentaDetalle::where('articulo_id', $art->id)
+                ->whereHas('venta', fn($q) => $q->whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']))
+                ->sum('cantidad');
+
+            $devuelto = (float) DevolucionDetalle::where('articulo_id', $art->id)
+                ->where('reingresar_stock', true)
+                ->whereHas('devolucion', fn($q) => $q->whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']))
+                ->sum('cantidad');
+
+            $ventaNeta = max(0, round($vendido - $devuelto, 3));
+            $stockActual = (float) $art->stock;
+            $baseTotal = $comprado + $stockActual;
+
+            $rotacionPct = $baseTotal > 0 ? round(($ventaNeta / $baseTotal) * 100, 1) : ($ventaNeta > 0 ? 100.0 : 0.0);
+
+            if ($rotacionPct >= 60 || ($ventaNeta >= 20 && $stockActual <= $ventaNeta)) {
+                $categoria = 'alta';
+                $categoriaLabel = '🔥 Alta Rotación';
+                $badgeClass = 'badge-success';
+            } elseif ($rotacionPct >= 20 || $ventaNeta > 0) {
+                $categoria = 'media';
+                $categoriaLabel = '⚡ Media Rotación';
+                $badgeClass = 'badge-warning';
+            } else {
+                $categoria = 'baja';
+                $categoriaLabel = '❄️ Baja / Estancado';
+                $badgeClass = 'badge-danger';
+            }
+
+            $ventaDiariaPromedio = $ventaNeta / $diasPeriodo;
+            $diasCobertura = $ventaDiariaPromedio > 0 ? round($stockActual / $ventaDiariaPromedio, 0) : ($stockActual > 0 ? 999 : 0);
+
+            $art->total_comprado_periodo = $comprado;
+            $art->total_vendido_periodo = $vendido;
+            $art->total_devuelto_periodo = $devuelto;
+            $art->venta_neta_periodo = $ventaNeta;
+            $art->stock_actual_num = $stockActual;
+            $art->rotacion_pct = $rotacionPct;
+            $art->rotacion_categoria = $categoria;
+            $art->rotacion_label = $categoriaLabel;
+            $art->rotacion_badge = $badgeClass;
+            $art->dias_cobertura = $diasCobertura;
+            $art->valor_stock_actual = round($stockActual * (float) ($art->precio_compra ?: $art->precio_sin_iva), 2);
+
+            return $art;
+        })->sortByDesc('venta_neta_periodo')->values();
+
+        $pageRot = (int) $request->get('page_rot', 1);
+        $rotacionProductos = new LengthAwarePaginator(
+            $rotacionProductosCol->forPage($pageRot, $perPage),
+            $rotacionProductosCol->count(),
+            $perPage,
+            $pageRot,
+            ['path' => Paginator::resolveCurrentPath(), 'pageName' => 'page_rot']
+        );
+        $rotacionProductos->withQueryString();
+
+        $articulosKardexJson = $articulosCatalogo->map(function ($a) use ($unidadPeso) {
+            return [
+                'id' => $a->id,
+                'descripcion' => $a->descripcion,
+                'codigo' => (string) ($a->codigo ?? ''),
+                'codigo_cliente' => (string) ($a->codigo_cliente ?? ''),
+                'item' => (string) ($a->item ?? ''),
+                'stock' => (float) $a->stock,
+                'unidad' => $unidadPeso,
+                'familia' => $a->familia?->nombre ?? ''
+            ];
+        })->values();
 
         return view('reportes.index', compact(
             'tab',
@@ -312,6 +571,9 @@ class ReporteController extends Controller
             'filtroStock',
             'unidadPeso',
             'familias',
+            'articulosCatalogo',
+            'articulosKardexJson',
+            'perPage',
             // Ventas
             'totalVentasMonto',
             'totalVentasSubtotal',
@@ -365,7 +627,18 @@ class ReporteController extends Controller
             'topProveedorPeriodo',
             'topProveedoresInversion',
             'comprasPorProveedor',
-            'historialRecepciones'
+            'historialRecepciones',
+            // Kardex & Rotacion
+            'articuloId',
+            'filtroMovimiento',
+            'articuloKardex',
+            'stockInicialPeriodo',
+            'totalKardexEntradas',
+            'totalKardexSalidas',
+            'totalKardexDevoluciones',
+            'stockFinalKardex',
+            'kardexLista',
+            'rotacionProductos'
         ));
     }
 
@@ -373,6 +646,7 @@ class ReporteController extends Controller
     {
         $fechaInicio = $request->get('fecha_inicio', now()->startOfMonth()->toDateString());
         $fechaFin = $request->get('fecha_fin', now()->toDateString());
+        $articuloId = $request->get('articulo_id');
         $filename = "Reporte_{$tipo}_" . date('Y-m-d_H-i') . ".csv";
 
         $headers = [
@@ -380,7 +654,7 @@ class ReporteController extends Controller
             'Content-Disposition' => "attachment; filename=\"$filename\"",
         ];
 
-        return response()->stream(function () use ($tipo, $fechaInicio, $fechaFin, $request) {
+        return response()->stream(function () use ($tipo, $fechaInicio, $fechaFin, $articuloId, $request) {
             $handle = fopen('php://output', 'w');
             // BOM UTF-8 para Excel
             fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
@@ -428,7 +702,7 @@ class ReporteController extends Controller
                         $stockMinimo = (float) ($art->stock_minimo ?? 0);
                         $dif = $stockFisico - $stockMinimo;
                         $estado = $stockFisico <= 0 ? 'SIN STOCK' : ($stockFisico <= $stockMinimo ? 'STOCK BAJO' : 'NORMAL');
-                        $valor = $stockFisico * (float) $art->precio_sin_iva;
+                        $valor = $stockFisico * (float) ($art->precio_compra ?: $art->precio_sin_iva);
 
                         fputcsv($handle, [
                             $art->codigo,
@@ -438,7 +712,7 @@ class ReporteController extends Controller
                             number_format($stockMinimo, 3, '.', ''),
                             number_format($dif, 3, '.', ''),
                             $estado,
-                            number_format($art->precio_sin_iva, 2, '.', ''),
+                            number_format((float)($art->precio_compra ?: $art->precio_sin_iva), 2, '.', ''),
                             number_format($valor, 2, '.', ''),
                         ]);
                     }
@@ -470,9 +744,463 @@ class ReporteController extends Controller
                             ]);
                         }
                     });
+            } elseif ($tipo === 'kardex') {
+                fputcsv($handle, ['Fecha / Hora', 'Tipo Movimiento', 'Documento / Referencia', 'Tercero (Proveedor / Cliente)', 'Lote / Serie', 'Entrada Cant/Peso', 'Entrada Costo ($)', 'Entrada Total ($)', 'Salida Cant/Peso', 'Salida Precio ($)', 'Salida Total ($)', 'Saldo Stock']);
+
+                if ($articuloId) {
+                    $art = Articulo::find($articuloId);
+                    if ($art) {
+                        $compras = CompraDetalle::with('compra')
+                            ->where('articulo_id', $art->id)
+                            ->whereHas('compra', fn($q) => $q->whereBetween('fecha_compra', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']))
+                            ->get()->map(fn($cd) => [
+                                'fecha' => $cd->compra->fecha_compra ?? $cd->created_at,
+                                'tipo' => 'COMPRA',
+                                'doc' => $cd->compra->numero_factura ? 'Factura #' . $cd->compra->numero_factura : 'Compra #' . $cd->compra_id,
+                                'tercero' => $cd->compra->proveedor_nombre ?: 'Proveedor',
+                                'lote_serie' => ($cd->lote ? 'Lote: ' . $cd->lote : '') . ($cd->serie ? ' Serie: ' . $cd->serie : ''),
+                                'ent_qty' => (float)$cd->cantidad_peso,
+                                'ent_cost' => (float)$cd->costo_unitario,
+                                'ent_tot' => (float)$cd->subtotal,
+                                'sal_qty' => 0, 'sal_price' => 0, 'sal_tot' => 0
+                            ]);
+
+                        $ventas = VentaDetalle::with('venta.cliente')
+                            ->where('articulo_id', $art->id)
+                            ->whereHas('venta', fn($q) => $q->whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']))
+                            ->get()->map(fn($vd) => [
+                                'fecha' => $vd->venta->created_at ?? $vd->created_at,
+                                'tipo' => 'VENTA',
+                                'doc' => 'Ticket #' . $vd->venta_id,
+                                'tercero' => $vd->venta->cliente->nombre ?? 'Consumidor Final',
+                                'lote_serie' => '',
+                                'ent_qty' => 0, 'ent_cost' => 0, 'ent_tot' => 0,
+                                'sal_qty' => (float)$vd->cantidad,
+                                'sal_price' => (float)$vd->precio_unitario,
+                                'sal_tot' => (float)$vd->subtotal
+                            ]);
+
+                        $devs = DevolucionDetalle::with('devolucion')
+                            ->where('articulo_id', $art->id)->where('reingresar_stock', true)
+                            ->whereHas('devolucion', fn($q) => $q->whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']))
+                            ->get()->map(fn($dd) => [
+                                'fecha' => $dd->devolucion->created_at ?? $dd->created_at,
+                                'tipo' => 'DEVOLUCION',
+                                'doc' => 'Devolución #' . $dd->devolucion_id,
+                                'tercero' => $dd->devolucion->motivo ?: 'Cliente',
+                                'lote_serie' => '',
+                                'ent_qty' => (float)$dd->cantidad,
+                                'ent_cost' => (float)$dd->precio_unitario,
+                                'ent_tot' => (float)$dd->subtotal,
+                                'sal_qty' => 0, 'sal_price' => 0, 'sal_tot' => 0
+                            ]);
+
+                        $todos = $compras->concat($ventas)->concat($devs)->sortBy(fn($m) => \Carbon\Carbon::parse($m['fecha'])->timestamp)->values();
+
+                        $stockPrevio = (float) CompraDetalle::where('articulo_id', $art->id)->whereHas('compra', fn($q) => $q->where('fecha_compra', '<', $fechaInicio . ' 00:00:00'))->sum('cantidad_peso')
+                            - (float) VentaDetalle::where('articulo_id', $art->id)->whereHas('venta', fn($q) => $q->where('created_at', '<', $fechaInicio . ' 00:00:00'))->sum('cantidad')
+                            + (float) DevolucionDetalle::where('articulo_id', $art->id)->where('reingresar_stock', true)->whereHas('devolucion', fn($q) => $q->where('created_at', '<', $fechaInicio . ' 00:00:00'))->sum('cantidad');
+
+                        $running = max(0, round($stockPrevio, 3));
+                        foreach ($todos as $mov) {
+                            if ($mov['tipo'] === 'COMPRA' || $mov['tipo'] === 'DEVOLUCION') {
+                                $running += $mov['ent_qty'];
+                            } else {
+                                $running -= $mov['sal_qty'];
+                            }
+                            fputcsv($handle, [
+                                \Carbon\Carbon::parse($mov['fecha'])->format('Y-m-d H:i:s'),
+                                $mov['tipo'],
+                                $mov['doc'],
+                                $mov['tercero'],
+                                $mov['lote_serie'],
+                                number_format($mov['ent_qty'], 3, '.', ''),
+                                number_format($mov['ent_cost'], 2, '.', ''),
+                                number_format($mov['ent_tot'], 2, '.', ''),
+                                number_format($mov['sal_qty'], 3, '.', ''),
+                                number_format($mov['sal_price'], 2, '.', ''),
+                                number_format($mov['sal_tot'], 2, '.', ''),
+                                number_format($running, 3, '.', ''),
+                            ]);
+                        }
+                    }
+                }
             }
 
             fclose($handle);
         }, 200, $headers);
+    }
+
+    /**
+     * API para obtener datos dinámicos de gráficos comparativos
+     * Permite drill-down / drill-up: Anual (Meses) <-> Mensual (Días) <-> Semanal (Día a Día)
+     * Permite seleccionar cualquier mes o semana específica a comparar.
+     */
+    public function apiGraficoComparativo(Request $request)
+    {
+        $tipo = $request->get('tipo', 'ventas'); // 'ventas' o 'compras'
+        $nivel = $request->get('nivel', 'mensual'); // 'mensual', 'semanal', 'anual'
+        $mesBase = $request->get('mes_base', now()->format('Y-m')); // 'YYYY-MM'
+        $mesComparar = $request->get('mes_comparar', 'auto'); // 'auto', 'YYYY-MM', 'mismo_ano_anterior', 'ventas_vs_compras', 'ninguno'
+        $semanaFecha = $request->get('semana_fecha', now()->format('Y-m-d')); // YYYY-MM-DD
+        $semanaComparar = $request->get('semana_comparar', 'auto'); // 'auto', 'YYYY-MM-DD', 'ventas_vs_compras', 'ninguna'
+        $anoBase = (int) $request->get('ano_base', now()->format('Y'));
+        $anoComparar = $request->get('ano_comparar', 'auto'); // 'auto', 'YYYY', 'ventas_vs_compras', 'ninguno'
+
+        $mesesNombresMap = [
+            1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril', 5 => 'Mayo', 6 => 'Junio',
+            7 => 'Julio', 8 => 'Agosto', 9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre'
+        ];
+        $mesesNombresCortos = [
+            1 => 'Ene', 2 => 'Feb', 3 => 'Mar', 4 => 'Abr', 5 => 'May', 6 => 'Jun',
+            7 => 'Jul', 8 => 'Ago', 9 => 'Sep', 10 => 'Oct', 11 => 'Nov', 12 => 'Dic'
+        ];
+        $diasSemanaNombres = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+        // Obtener lista global de meses disponibles en la base de datos
+        $minVentaDate = Venta::min('created_at') ?: now()->format('Y-m-d');
+        $maxVentaDate = Venta::max('created_at') ?: now()->format('Y-m-d');
+        $minCompraDate = Compra::min('fecha_compra') ?: now()->format('Y-m-d');
+        $maxCompraDate = Compra::max('fecha_compra') ?: now()->format('Y-m-d');
+
+        $minDateGlobal = Carbon::parse(min($minVentaDate, $minCompraDate))->startOfMonth();
+        $maxDateGlobal = Carbon::parse(max($maxVentaDate, $maxCompraDate, now()->format('Y-m-d')))->startOfMonth();
+
+        $mesesDisponibles = [];
+        $cursorMonth = $maxDateGlobal->copy();
+        while ($cursorMonth->greaterThanOrEqualTo($minDateGlobal)) {
+            $mesVal = $cursorMonth->format('Y-m');
+            $mesesDisponibles[] = [
+                'value' => $mesVal,
+                'label' => $mesesNombresMap[(int) $cursorMonth->format('n')] . ' ' . $cursorMonth->format('Y'),
+                'year' => $cursorMonth->format('Y'),
+                'month' => (int) $cursorMonth->format('n')
+            ];
+            $cursorMonth->subMonthNoOverflow();
+        }
+
+        $anosDisponibles = array_values(array_unique(array_column($mesesDisponibles, 'year')));
+
+        // Helper para consultar datos diarios de un mes
+        $getDatosMes = function ($mesYm, $tipoConsulta) use ($mesesNombresMap) {
+            $date = Carbon::parse($mesYm . '-01');
+            $diasEnMes = (int) $date->daysInMonth;
+            $inicio = $date->copy()->startOfMonth()->format('Y-m-d 00:00:00');
+            $fin = $date->copy()->endOfMonth()->format('Y-m-d 23:59:59');
+
+            if ($tipoConsulta === 'compras') {
+                $raw = Compra::whereBetween('fecha_compra', [$inicio, $fin])
+                    ->selectRaw("CAST(strftime('%d', fecha_compra) AS INTEGER) as dia, SUM(total) as total")
+                    ->groupBy('dia')
+                    ->pluck('total', 'dia')
+                    ->toArray();
+            } else {
+                $raw = Venta::whereBetween('created_at', [$inicio, $fin])
+                    ->whereNotIn('estado', ['devuelta'])
+                    ->selectRaw("CAST(strftime('%d', created_at) AS INTEGER) as dia, SUM(total) as total")
+                    ->groupBy('dia')
+                    ->pluck('total', 'dia')
+                    ->toArray();
+            }
+
+            $dias = [];
+            for ($d = 1; $d <= $diasEnMes; $d++) {
+                $dias[$d] = round((float) ($raw[$d] ?? 0), 2);
+            }
+
+            return [
+                'dias' => $dias,
+                'total' => round(array_sum($dias), 2),
+                'countDias' => $diasEnMes,
+                'label' => ($mesesNombresMap[(int)$date->format('n')] ?? $date->format('M')) . ' ' . $date->format('Y')
+            ];
+        };
+
+        // Helper para consultar datos de una semana (Lunes a Domingo)
+        $getDatosSemana = function ($fechaEnSemana, $tipoConsulta) use ($diasSemanaNombres) {
+            $dateRef = Carbon::parse($fechaEnSemana);
+            $startOfWeek = $dateRef->copy()->startOfWeek(); // Lunes
+            $endOfWeek = $dateRef->copy()->endOfWeek();     // Domingo
+
+            $diasData = [];
+            $diasLabels = [];
+
+            for ($i = 0; $i < 7; $i++) {
+                $dayCur = $startOfWeek->copy()->addDays($i);
+                $diasLabels[] = $diasSemanaNombres[$i] . ' ' . $dayCur->format('d/m');
+
+                if ($tipoConsulta === 'compras') {
+                    $monto = (float) Compra::whereBetween('fecha_compra', [$dayCur->format('Y-m-d 00:00:00'), $dayCur->format('Y-m-d 23:59:59')])
+                        ->sum('total');
+                } else {
+                    $monto = (float) Venta::whereBetween('created_at', [$dayCur->format('Y-m-d 00:00:00'), $dayCur->format('Y-m-d 23:59:59')])
+                        ->whereNotIn('estado', ['devuelta'])
+                        ->sum('total');
+                }
+                $diasData[] = round($monto, 2);
+            }
+
+            return [
+                'data' => $diasData,
+                'labels' => $diasLabels,
+                'total' => round(array_sum($diasData), 2),
+                'start' => $startOfWeek->format('Y-m-d'),
+                'end' => $endOfWeek->format('Y-m-d'),
+                'label' => 'Sem ' . $startOfWeek->format('W') . ' (' . $startOfWeek->format('d/m') . ' - ' . $endOfWeek->format('d/m') . ')'
+            ];
+        };
+
+        // Helper para consultar datos de 12 meses de un año
+        $getDatosAno = function ($ano, $tipoConsulta) use ($mesesNombresCortos) {
+            $inicioAno = $ano . '-01-01 00:00:00';
+            $finAno = $ano . '-12-31 23:59:59';
+
+            if ($tipoConsulta === 'compras') {
+                $raw = Compra::whereBetween('fecha_compra', [$inicioAno, $finAno])
+                    ->selectRaw("CAST(strftime('%m', fecha_compra) AS INTEGER) as mes, SUM(total) as total")
+                    ->groupBy('mes')
+                    ->pluck('total', 'mes')
+                    ->toArray();
+            } else {
+                $raw = Venta::whereBetween('created_at', [$inicioAno, $finAno])
+                    ->whereNotIn('estado', ['devuelta'])
+                    ->selectRaw("CAST(strftime('%m', created_at) AS INTEGER) as mes, SUM(total) as total")
+                    ->groupBy('mes')
+                    ->pluck('total', 'mes')
+                    ->toArray();
+            }
+
+            $mesesData = [];
+            for ($m = 1; $m <= 12; $m++) {
+                $mesesData[] = round((float) ($raw[$m] ?? 0), 2);
+            }
+
+            return [
+                'data' => $mesesData,
+                'labels' => array_values($mesesNombresCortos),
+                'total' => round(array_sum($mesesData), 2),
+                'label' => 'Año ' . $ano
+            ];
+        };
+
+        // -------------------------------------------------------------
+        // NIVEL 1: MENSUAL (Día 1 al 31)
+        // -------------------------------------------------------------
+        if ($nivel === 'mensual') {
+            $dateBase = Carbon::parse($mesBase . '-01');
+            $resBase = $getDatosMes($mesBase, $tipo);
+
+            $targetCompararYm = null;
+            $hasComparison = true;
+            $isVentasVsCompras = false;
+
+            if ($mesComparar === 'ventas_vs_compras') {
+                $isVentasVsCompras = true;
+                $resComp = $getDatosMes($mesBase, $tipo === 'ventas' ? 'compras' : 'ventas');
+                $labelComp = ($tipo === 'ventas' ? 'Compras / Costos' : 'Ventas Facturadas') . ' (' . $resBase['label'] . ')';
+            } elseif ($mesComparar === 'ninguno') {
+                $hasComparison = false;
+                $resComp = null;
+                $labelComp = 'Sin comparación';
+            } else {
+                if ($mesComparar === 'auto' || $mesComparar === 'previo') {
+                    $targetCompararYm = $dateBase->copy()->subMonthNoOverflow()->format('Y-m');
+                } elseif ($mesComparar === 'mismo_ano_anterior') {
+                    $targetCompararYm = $dateBase->copy()->subYear()->format('Y-m');
+                } else {
+                    $targetCompararYm = $mesComparar;
+                }
+
+                $resComp = $getDatosMes($targetCompararYm, $tipo);
+                $labelComp = $mesesNombresMap[(int) Carbon::parse($targetCompararYm . '-01')->format('n')] . ' ' . Carbon::parse($targetCompararYm . '-01')->format('Y');
+            }
+
+            $maxDias = $hasComparison && $resComp ? max($resBase['countDias'], $resComp['countDias']) : $resBase['countDias'];
+            $labels = [];
+            $dataBase = [];
+            $dataComparar = [];
+
+            for ($d = 1; $d <= $maxDias; $d++) {
+                $labels[] = 'Día ' . $d;
+                $dataBase[] = $resBase['dias'][$d] ?? 0;
+                if ($hasComparison && $resComp) {
+                    $dataComparar[] = $resComp['dias'][$d] ?? 0;
+                }
+            }
+
+            // Desglose de semanas del mes para drill-down
+            $semanasDelMes = [];
+            $firstDayOfMonth = $dateBase->copy()->startOfMonth();
+            $lastDayOfMonth = $dateBase->copy()->endOfMonth();
+            $cursorWeek = $firstDayOfMonth->copy();
+            $wNum = 1;
+
+            while ($cursorWeek->lessThanOrEqualTo($lastDayOfMonth)) {
+                $wStart = $cursorWeek->copy()->startOfWeek();
+                $wEnd = $cursorWeek->copy()->endOfWeek();
+                
+                $semanasDelMes[] = [
+                    'num' => $wNum,
+                    'label' => 'Semana ' . $wNum . ' (' . $wStart->format('d/m') . ' - ' . $wEnd->format('d/m') . ')',
+                    'fecha' => $cursorWeek->format('Y-m-d'),
+                    'start' => $wStart->format('d/m'),
+                    'end' => $wEnd->format('d/m')
+                ];
+                $cursorWeek->addWeek();
+                $wNum++;
+            }
+
+            $totalBase = $resBase['total'];
+            $totalComp = $hasComparison && $resComp ? $resComp['total'] : 0;
+            $diffMonto = round($totalBase - $totalComp, 2);
+            $diffPct = $totalComp > 0 ? round(($diffMonto / $totalComp) * 100, 1) : ($totalBase > 0 ? 100.0 : 0.0);
+
+            return response()->json([
+                'success' => true,
+                'nivel' => 'mensual',
+                'tipo' => $tipo,
+                'mesBase' => $mesBase,
+                'mesBaseLabel' => $mesesNombresMap[(int) $dateBase->format('n')] . ' ' . $dateBase->format('Y'),
+                'mesBasePrev' => $dateBase->copy()->subMonthNoOverflow()->format('Y-m'),
+                'mesBaseNext' => $dateBase->copy()->addMonthNoOverflow()->format('Y-m'),
+                'anoPertenece' => $dateBase->format('Y'),
+                'mesComparar' => $mesComparar,
+                'mesCompararLabel' => $labelComp,
+                'hasComparison' => $hasComparison,
+                'isVentasVsCompras' => $isVentasVsCompras,
+                'labels' => $labels,
+                'labelBase' => ($tipo === 'ventas' ? 'Ventas ' : 'Compras ') . $mesesNombresMap[(int) $dateBase->format('n')] . ' ' . $dateBase->format('Y'),
+                'labelComparar' => $labelComp,
+                'dataBase' => $dataBase,
+                'dataComparar' => $hasComparison ? $dataComparar : [],
+                'totalBase' => $totalBase,
+                'totalComparar' => $totalComp,
+                'diffMonto' => $diffMonto,
+                'diffPct' => $diffPct,
+                'semanasDelMes' => $semanasDelMes,
+                'mesesDisponibles' => $mesesDisponibles,
+                'anosDisponibles' => $anosDisponibles
+            ]);
+        }
+
+        // -------------------------------------------------------------
+        // NIVEL 2: SEMANAL (Día a Día: Lun a Dom)
+        // -------------------------------------------------------------
+        if ($nivel === 'semanal') {
+            $dateSemana = Carbon::parse($semanaFecha);
+            $resBase = $getDatosSemana($semanaFecha, $tipo);
+
+            $hasComparison = true;
+            $isVentasVsCompras = false;
+
+            if ($semanaComparar === 'ventas_vs_compras') {
+                $isVentasVsCompras = true;
+                $resComp = $getDatosSemana($semanaFecha, $tipo === 'ventas' ? 'compras' : 'ventas');
+                $labelComp = ($tipo === 'ventas' ? 'Compras / Costos' : 'Ventas') . ' (' . $resBase['label'] . ')';
+            } elseif ($semanaComparar === 'ninguna') {
+                $hasComparison = false;
+                $resComp = null;
+                $labelComp = 'Sin comparación';
+            } else {
+                if ($semanaComparar === 'auto' || $semanaComparar === 'anterior') {
+                    $fechaComp = $dateSemana->copy()->subWeek()->format('Y-m-d');
+                } elseif ($semanaComparar === 'mes_anterior') {
+                    $fechaComp = $dateSemana->copy()->subMonthNoOverflow()->format('Y-m-d');
+                } else {
+                    $fechaComp = $semanaComparar;
+                }
+
+                $resComp = $getDatosSemana($fechaComp, $tipo);
+                $labelComp = $resComp['label'];
+            }
+
+            $totalBase = $resBase['total'];
+            $totalComp = $hasComparison && $resComp ? $resComp['total'] : 0;
+            $diffMonto = round($totalBase - $totalComp, 2);
+            $diffPct = $totalComp > 0 ? round(($diffMonto / $totalComp) * 100, 1) : ($totalBase > 0 ? 100.0 : 0.0);
+
+            return response()->json([
+                'success' => true,
+                'nivel' => 'semanal',
+                'tipo' => $tipo,
+                'semanaFecha' => $semanaFecha,
+                'semanaBaseLabel' => $resBase['label'],
+                'semanaPrevFecha' => $dateSemana->copy()->subWeek()->format('Y-m-d'),
+                'semanaNextFecha' => $dateSemana->copy()->addWeek()->format('Y-m-d'),
+                'mesPerteneciente' => $dateSemana->format('Y-m'),
+                'mesPertenecienteLabel' => $mesesNombresMap[(int) $dateSemana->format('n')] . ' ' . $dateSemana->format('Y'),
+                'semanaComparar' => $semanaComparar,
+                'semanaCompararLabel' => $labelComp,
+                'hasComparison' => $hasComparison,
+                'isVentasVsCompras' => $isVentasVsCompras,
+                'labels' => $resBase['labels'],
+                'labelBase' => ($tipo === 'ventas' ? 'Ventas ' : 'Compras ') . $resBase['label'],
+                'labelComparar' => $labelComp,
+                'dataBase' => $resBase['data'],
+                'dataComparar' => $hasComparison && $resComp ? $resComp['data'] : [],
+                'totalBase' => $totalBase,
+                'totalComparar' => $totalComp,
+                'diffMonto' => $diffMonto,
+                'diffPct' => $diffPct,
+                'mesesDisponibles' => $mesesDisponibles,
+                'anosDisponibles' => $anosDisponibles
+            ]);
+        }
+
+        // -------------------------------------------------------------
+        // NIVEL 3: ANUAL / MULTIMES (Ene a Dic)
+        // -------------------------------------------------------------
+        if ($nivel === 'anual') {
+            $resBase = $getDatosAno($anoBase, $tipo);
+
+            $hasComparison = true;
+            $isVentasVsCompras = false;
+
+            if ($anoComparar === 'ventas_vs_compras') {
+                $isVentasVsCompras = true;
+                $resComp = $getDatosAno($anoBase, $tipo === 'ventas' ? 'compras' : 'ventas');
+                $labelComp = ($tipo === 'ventas' ? 'Compras / Costos' : 'Ventas') . ' (Año ' . $anoBase . ')';
+            } elseif ($anoComparar === 'ninguno') {
+                $hasComparison = false;
+                $resComp = null;
+                $labelComp = 'Sin comparación';
+            } else {
+                $targetAno = ($anoComparar === 'auto') ? ($anoBase - 1) : (int) $anoComparar;
+                $resComp = $getDatosAno($targetAno, $tipo);
+                $labelComp = 'Año ' . $targetAno;
+            }
+
+            $totalBase = $resBase['total'];
+            $totalComp = $hasComparison && $resComp ? $resComp['total'] : 0;
+            $diffMonto = round($totalBase - $totalComp, 2);
+            $diffPct = $totalComp > 0 ? round(($diffMonto / $totalComp) * 100, 1) : ($totalBase > 0 ? 100.0 : 0.0);
+
+            return response()->json([
+                'success' => true,
+                'nivel' => 'anual',
+                'tipo' => $tipo,
+                'anoBase' => $anoBase,
+                'anoBaseLabel' => 'Año ' . $anoBase,
+                'anoBasePrev' => $anoBase - 1,
+                'anoBaseNext' => $anoBase + 1,
+                'anoComparar' => $anoComparar,
+                'anoCompararLabel' => $labelComp,
+                'hasComparison' => $hasComparison,
+                'isVentasVsCompras' => $isVentasVsCompras,
+                'labels' => $resBase['labels'],
+                'labelBase' => ($tipo === 'ventas' ? 'Ventas ' : 'Compras ') . 'Año ' . $anoBase,
+                'labelComparar' => $labelComp,
+                'dataBase' => $resBase['data'],
+                'dataComparar' => $hasComparison && $resComp ? $resComp['data'] : [],
+                'totalBase' => $totalBase,
+                'totalComparar' => $totalComp,
+                'diffMonto' => $diffMonto,
+                'diffPct' => $diffPct,
+                'mesesDisponibles' => $mesesDisponibles,
+                'anosDisponibles' => $anosDisponibles
+            ]);
+        }
+
+        return response()->json(['error' => 'Nivel no válido'], 400);
     }
 }
