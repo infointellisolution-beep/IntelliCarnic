@@ -22,6 +22,11 @@
        style="padding: 0.75rem 1.25rem; font-weight: 700; text-decoration: none; border-bottom: 3px solid {{ $tab === 'ventas' ? 'var(--primary)' : 'transparent' }}; color: {{ $tab === 'ventas' ? 'var(--primary)' : 'var(--text-muted)' }};">
         <i class="fa-solid fa-cash-register"></i> Reporte de Ventas
     </a>
+    <a href="{{ route('reportes.index', ['tab' => 'beneficios', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin, 'per_page' => $perPage]) }}" 
+       class="tab-item {{ $tab === 'beneficios' ? 'active' : '' }}" 
+       style="padding: 0.75rem 1.25rem; font-weight: 700; text-decoration: none; border-bottom: 3px solid {{ $tab === 'beneficios' ? '#10b981' : 'transparent' }}; color: {{ $tab === 'beneficios' ? '#10b981' : 'var(--text-muted)' }};">
+        <i class="fa-solid fa-chart-pie" style="color: #10b981;"></i> Beneficios & Rentabilidad
+    </a>
     <a href="{{ route('reportes.index', ['tab' => 'compras', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin, 'per_page' => $perPage]) }}" 
        class="tab-item {{ $tab === 'compras' ? 'active' : '' }}" 
        style="padding: 0.75rem 1.25rem; font-weight: 700; text-decoration: none; border-bottom: 3px solid {{ $tab === 'compras' ? 'var(--primary)' : 'transparent' }}; color: {{ $tab === 'compras' ? 'var(--primary)' : 'var(--text-muted)' }};">
@@ -211,7 +216,7 @@
                     <i class="fa-solid fa-filter"></i> Filtrar
                 </button>
             </div>
-        @elseif($tab === 'ventas' || $tab === 'compras' || $tab === 'caja' || $tab === 'clientes' || $tab === 'proveedores')
+        @elseif($tab === 'ventas' || $tab === 'beneficios' || $tab === 'compras' || $tab === 'caja' || $tab === 'clientes' || $tab === 'proveedores')
             <!-- DATE RANGE PICKER TRIGGER -->
             <div style="flex: 1; min-width: 220px;">
                 <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">
@@ -2340,6 +2345,420 @@
     </div>
 @endif
 
+@if($tab === 'beneficios')
+    <!-- Tarjetas KPI de Beneficios y Estado de Resultados -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+        <div class="card" style="padding: 1.25rem;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Ingresos Netos</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: #2563eb; margin-top: 0.25rem;">${{ number_format($beneficioVentasNeto, 2) }}</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Facturación neta sin devoluciones</div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Costo de Ventas (COGS)</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: #f59e0b; margin-top: 0.25rem;">${{ number_format($beneficioCostoNeto, 2) }}</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Costo de adquisición de mercancía</div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Ganancia Bruta ($)</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: #10b981; margin-top: 0.25rem;">${{ number_format($beneficioGananciaBruta, 2) }}</div>
+            <div style="font-size: 0.8rem; margin-top: 0.25rem;">
+                <span class="badge" style="background: rgba(16,185,129,0.15); color: #047857; font-weight: 700;">{{ $beneficioMargenPct }}% Margen Bruto</span>
+            </div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Pérdida por Mermas</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: #ef4444; margin-top: 0.25rem;">-${{ number_format($beneficioPerdidaMermas, 2) }}</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Ajustes negativos valorizados</div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Beneficio Neto Estimado</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: #8b5cf6; margin-top: 0.25rem;">${{ number_format($beneficioGananciaAjustada, 2) }}</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Ganancia Bruta - Mermas</div>
+        </div>
+    </div>
+
+    <!-- TARJETA: GRÁFICO COMPARATIVO INTELIGENTE (BENEFICIOS) -->
+    <div class="card" style="padding: 1.25rem; margin-bottom: 1.5rem; position: relative;">
+        <!-- Fila 1: Cabecera con Navegación de Niveles (Zoom Out / In) -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.85rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                <!-- Botón Flecha Atrás (Drill Up) -->
+                <button type="button" id="btn-back-level-beneficios" onclick="navegarNivelAtras('beneficios')" class="btn-modern btn-secondary" style="display: none; padding: 0.35rem 0.75rem; font-size: 0.8rem; font-weight: 700; gap: 0.4rem; align-items: center;" title="Regresar al nivel anterior">
+                    <i class="fa-solid fa-arrow-left"></i> <span id="label-back-level-beneficios">Volver</span>
+                </button>
+
+                <h3 style="font-size: 1.1rem; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 0.5rem; color: var(--text-main);">
+                    <i class="fa-solid fa-chart-column" style="color: #10b981;"></i> 
+                    <span id="titulo-grafico-beneficios">Comparativo de Beneficios y Utilidad</span>
+                </h3>
+            </div>
+            
+            <!-- Selector de Niveles (Pills) -->
+            <div style="display: flex; align-items: center; gap: 0.4rem; background: #f1f5f9; padding: 3px; border-radius: 8px; flex-wrap: wrap;">
+                <button type="button" id="pill-nivel-anual-beneficios" class="btn-nivel-beneficios" onclick="setNivelGrafico('beneficios', 'anual')" style="padding: 0.35rem 0.7rem; font-size: 0.78rem; font-weight: 700; border: none; border-radius: 6px; cursor: pointer; background: transparent; color: var(--text-muted);">
+                    <i class="fa-solid fa-chart-column"></i> Anual (12 Meses)
+                </button>
+                <button type="button" id="pill-nivel-mensual-beneficios" class="btn-nivel-beneficios active" onclick="setNivelGrafico('beneficios', 'mensual')" style="padding: 0.35rem 0.7rem; font-size: 0.78rem; font-weight: 700; border: none; border-radius: 6px; cursor: pointer; background: white; color: #10b981; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <i class="fa-solid fa-calendar-days"></i> Mensual (Día 1-31)
+                </button>
+                <button type="button" id="pill-nivel-semanal-beneficios" class="btn-nivel-beneficios" onclick="setNivelGrafico('beneficios', 'semanal')" style="padding: 0.35rem 0.7rem; font-size: 0.78rem; font-weight: 700; border: none; border-radius: 6px; cursor: pointer; background: transparent; color: var(--text-muted);">
+                    <i class="fa-solid fa-calendar-week"></i> Semanal (Lun-Dom)
+                </button>
+            </div>
+        </div>
+
+        <!-- Fila 2: Barra de Selección de Período Base y Comparación -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; background: #f8fafc; padding: 0.65rem 1rem; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <!-- Controles Período Base -->
+            <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Período Base:</span>
+                
+                <button type="button" onclick="periodoPasoAnterior('beneficios')" class="btn-modern btn-secondary" style="padding: 0.3rem 0.55rem; font-size: 0.8rem;" title="Período anterior">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+
+                <!-- Selector de Meses Base -->
+                <select id="select-mes-base-beneficios" onchange="onSelectMesBaseChange('beneficios', this.value)" class="input-modern" style="padding: 0.3rem 0.6rem; font-size: 0.85rem; font-weight: 700; background: white; color: #10b981; min-width: 150px;">
+                </select>
+
+                <!-- Selector de Semanas Base -->
+                <select id="select-semana-base-beneficios" onchange="onSelectSemanaBaseChange('beneficios', this.value)" class="input-modern" style="display: none; padding: 0.3rem 0.6rem; font-size: 0.85rem; font-weight: 700; background: white; color: #10b981; min-width: 190px;">
+                </select>
+
+                <!-- Selector de Años Base -->
+                <select id="select-ano-base-beneficios" onchange="onSelectAnoBaseChange('beneficios', this.value)" class="input-modern" style="display: none; padding: 0.3rem 0.6rem; font-size: 0.85rem; font-weight: 700; background: white; color: #10b981; min-width: 100px;">
+                </select>
+
+                <button type="button" onclick="periodoPasoSiguiente('beneficios')" class="btn-modern btn-secondary" style="padding: 0.3rem 0.55rem; font-size: 0.8rem;" title="Período siguiente">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+
+            <!-- Controles Período a Comparar -->
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Comparar con:</span>
+
+                <!-- Comparador para Nivel Mensual -->
+                <select id="select-comparar-beneficios" onchange="onSelectCompararChange('beneficios', this.value)" class="input-modern" style="padding: 0.3rem 0.6rem; font-size: 0.85rem; font-weight: 700; background: white; min-width: 180px;">
+                    <option value="auto">Mes Anterior (Automático)</option>
+                    <option value="mismo_ano_anterior">Mismo Mes del Año Anterior</option>
+                    <option value="ninguno">Sin Comparación (Solo este mes)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Fila 3: Tarjetas de Resumen KPI Comparativo y Métricas -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; margin-bottom: 1.25rem;">
+            <!-- Total Base -->
+            <div style="background: white; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem 1rem; display: flex; flex-direction: column; justify-content: center;">
+                <span id="kpi-label-base-beneficios" style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Beneficio Base:</span>
+                <span id="kpi-val-base-beneficios" style="font-size: 1.35rem; font-weight: 800; color: #10b981; margin-top: 0.2rem;">$0.00</span>
+            </div>
+
+            <!-- Total Comparado -->
+            <div id="kpi-box-comp-beneficios" style="background: white; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem 1rem; display: flex; flex-direction: column; justify-content: center;">
+                <span id="kpi-label-comp-beneficios" style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Comparado con:</span>
+                <span id="kpi-val-comp-beneficios" style="font-size: 1.35rem; font-weight: 800; color: var(--text-main); margin-top: 0.2rem;">$0.00</span>
+            </div>
+
+            <!-- Diferencia y Porcentaje -->
+            <div id="kpi-box-diff-beneficios" style="background: white; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem 1rem; display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <span style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; display: block;">Diferencia Neta:</span>
+                    <span id="kpi-val-diff-monto-beneficios" style="font-size: 1.35rem; font-weight: 800; margin-top: 0.2rem; display: inline-block;">$0.00</span>
+                </div>
+                <div>
+                    <span id="kpi-badge-diff-beneficios" class="badge" style="font-size: 0.85rem; font-weight: 800; padding: 0.35rem 0.65rem;">+0.0%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fila 4: Contenedor del Gráfico Canvas -->
+        <div style="position: relative; height: 340px; width: 100%;">
+            <div id="chart-loading-beneficios" style="display: none; position: absolute; inset: 0; background: rgba(255,255,255,0.7); z-index: 10; align-items: center; justify-content: center; font-weight: 700; color: var(--text-muted); gap: 0.5rem;">
+                <i class="fa-solid fa-circle-notch fa-spin"></i> Cargando gráfico...
+            </div>
+            <canvas id="canvasChartBeneficios"></canvas>
+        </div>
+
+        <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.75rem; text-align: center;">
+            <i class="fa-solid fa-circle-info"></i> <strong>Tip interactivo:</strong> Haz clic en cualquier barra o punto para hacer <em>Drill-Down</em> y explorar el desglose diario o semanal.
+        </div>
+    </div>
+
+    <!-- Sección Secundaria: Top Productos Rentables & Contribución por Familia -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
+        <!-- Top Productos Rentables con Selector de Categoría -->
+        <div class="card" style="padding: 1.25rem; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                <h3 style="font-size: 1.05rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fa-solid fa-trophy" style="color: #f59e0b;"></i> Top Productos Más Rentables
+                </h3>
+                <!-- Selector de Categoría para el Top -->
+                <div style="display: flex; align-items: center; gap: 0.4rem;">
+                    <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted);">Categoría:</label>
+                    <select id="select-filtro-categoria-top" class="input-modern" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; font-weight: 700; width: auto; background: white;" onchange="filtrarTopPorCategoria(this.value)">
+                        <option value="todas">-- Todas las Familias --</option>
+                        @foreach($familias as $fam)
+                            <option value="{{ $fam->id }}">{{ $fam->nombre }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+
+            <div style="overflow-x: auto; flex: 1;">
+                <table class="table-modern" style="width: 100%; font-size: 0.88rem;">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px; text-align: center;">#</th>
+                            <th>Producto / SKU</th>
+                            <th style="text-align: right;">Ventas ($)</th>
+                            <th style="text-align: right;">Ganancia ($)</th>
+                            <th style="text-align: center;">Margen %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-top-rentables">
+                        @php $rankCount = 1; @endphp
+                        @forelse($rentabilidadProductosCol as $rp)
+                            <tr class="fila-top-rentable" data-familia-id="{{ $rp->familia_id ?? 0 }}">
+                                <td style="text-align: center;">
+                                    @if($rankCount === 1)
+                                        <span class="badge js-top-rank" style="background: #fef3c7; color: #b45309; font-weight: 800;">🥇 1</span>
+                                    @elseif($rankCount === 2)
+                                        <span class="badge js-top-rank" style="background: #f1f5f9; color: #475569; font-weight: 800;">🥈 2</span>
+                                    @elseif($rankCount === 3)
+                                        <span class="badge js-top-rank" style="background: #ffedd5; color: #c2410c; font-weight: 800;">🥉 3</span>
+                                    @else
+                                        <span class="badge badge-info js-top-rank" style="font-weight: 700;">{{ $rankCount }}</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    <div style="font-weight: 700; color: var(--text-main);">
+                                        {{ $rp->descripcion }}
+                                        @if($rp->tipo_articulo === 'unidad')
+                                            <span class="badge" style="font-size: 0.65rem; background: #fff7ed; color: #ea580c; border: 1px solid #fed7aa; margin-left: 0.25rem;">UND</span>
+                                        @else
+                                            <span class="badge" style="font-size: 0.65rem; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; margin-left: 0.25rem;">LB</span>
+                                        @endif
+                                    </div>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">
+                                        SKU: {{ $rp->codigo ?: 'S/C' }} | {{ $rp->familia_nombre }}
+                                    </div>
+                                </td>
+                                <td style="text-align: right; color: var(--text-muted); font-weight: 600;">
+                                    ${{ number_format($rp->total_venta, 2) }}
+                                </td>
+                                <td style="text-align: right; color: #10b981; font-weight: 800;">
+                                    +${{ number_format($rp->ganancia_bruta, 2) }}
+                                </td>
+                                <td style="text-align: center;">
+                                    <span class="badge {{ $rp->badge_class }}" style="font-size: 0.75rem;">
+                                        {{ $rp->margen_pct }}%
+                                    </span>
+                                </td>
+                            </tr>
+                            @php $rankCount++; @endphp
+                        @empty
+                            <tr>
+                                <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+                                    No hay ventas registradas en el período.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Contribución por Familia / Categoría -->
+        <div class="card" style="padding: 1.25rem; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3 style="font-size: 1.05rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fa-solid fa-layer-group" style="color: #6366f1;"></i> Contribución a la Ganancia por Familia
+                </h3>
+            </div>
+
+            <div style="overflow-x: auto; flex: 1;">
+                <table class="table-modern" style="width: 100%; font-size: 0.88rem;">
+                    <thead>
+                        <tr>
+                            <th>Familia / Categoría</th>
+                            <th style="text-align: right;">Ventas ($)</th>
+                            <th style="text-align: right;">Ganancia ($)</th>
+                            <th style="text-align: center;">Margen %</th>
+                            <th style="width: 110px;">% Ganancia Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($rentabilidadFamilias as $rf)
+                            <tr>
+                                <td style="font-weight: 700; color: var(--text-main);">
+                                    {{ $rf->familia_nombre }}
+                                </td>
+                                <td style="text-align: right; color: var(--text-muted); font-size: 0.85rem;">
+                                    ${{ number_format($rf->total_venta, 2) }}
+                                </td>
+                                <td style="text-align: right; font-weight: 800; color: #10b981;">
+                                    +${{ number_format($rf->ganancia_bruta, 2) }}
+                                </td>
+                                <td style="text-align: center;">
+                                    <span class="badge badge-success" style="font-size: 0.75rem;">
+                                        {{ $rf->margen_pct }}%
+                                    </span>
+                                </td>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 0.4rem;">
+                                        <div style="flex: 1; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden;">
+                                            <div style="width: {{ min(100, $rf->contribucion_pct) }}%; height: 100%; background: #10b981; border-radius: 3px;"></div>
+                                        </div>
+                                        <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); min-width: 32px;">{{ $rf->contribucion_pct }}%</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+                                    No hay datos registrados en el período.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TABLA MATRIZ DE RENTABILIDAD POR PRODUCTO -->
+    <div class="card" style="padding: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+            <div>
+                <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fa-solid fa-ranking-star" style="color: #f59e0b;"></i> Matriz de Rentabilidad Detallada por Producto
+                </h3>
+                <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.2rem;">
+                    Desglose unitario de ventas, costos, utilidad líquida generada y clasificación de margen por producto.
+                </p>
+            </div>
+            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                <a href="{{ route('reportes.exportar', ['tipo' => 'beneficios', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin]) }}" class="btn-modern btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.82rem; background: white;">
+                    <i class="fa-solid fa-file-csv" style="color: #10b981;"></i> Exportar CSV
+                </a>
+                <div style="min-width: 240px; position: relative;">
+                    <input type="text" id="filtro-live-rentabilidad" class="input-modern" placeholder="🔍 Filtrar corte o producto..." style="padding-left: 2rem; font-size: 0.85rem;" onkeyup="filtrarTablaRentabilidad(this.value)">
+                    <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.85rem;"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table-modern" id="tabla-rentabilidad-productos" style="font-size: 0.88rem;">
+                <thead>
+                    <tr>
+                        <th style="width: 40px; text-align: center;">#</th>
+                        <th>Producto / SKU</th>
+                        <th>Familia</th>
+                        <th style="text-align: right;">Volumen Vendido</th>
+                        <th style="text-align: right;">Ventas Netas ($)</th>
+                        <th style="text-align: right;">Costo Total ($)</th>
+                        <th style="text-align: right;">Ganancia Bruta ($)</th>
+                        <th style="text-align: center;">Margen %</th>
+                        <th style="text-align: right;">Margen Unit.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($rentabilidadProductos as $idx => $rp)
+                        <tr class="fila-rentabilidad" data-search="{{ strtolower($rp->descripcion . ' ' . $rp->codigo . ' ' . $rp->familia_nombre) }}">
+                            <td style="text-align: center; color: var(--text-muted); font-weight: 700;">
+                                {{ $rentabilidadProductos->firstItem() + $idx }}
+                            </td>
+                            <td>
+                                <div style="font-weight: 700; color: var(--text-main);">
+                                    {{ $rp->descripcion }}
+                                    @if($rp->tipo_articulo === 'unidad')
+                                        <span class="badge" style="font-size: 0.65rem; background: #fff7ed; color: #ea580c; border: 1px solid #fed7aa; margin-left: 0.25rem;">UND</span>
+                                    @else
+                                        <span class="badge" style="font-size: 0.65rem; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; margin-left: 0.25rem;">LB</span>
+                                    @endif
+                                </div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">
+                                    SKU: {{ $rp->codigo ?: 'S/C' }}
+                                </div>
+                            </td>
+                            <td style="color: var(--text-muted); font-size: 0.82rem;">
+                                {{ $rp->familia_nombre }}
+                            </td>
+                            <td style="text-align: right; font-weight: 600;">
+                                {{ $rp->tipo_articulo === 'unidad' ? number_format($rp->cantidad_vendida, 0) : number_format($rp->cantidad_vendida, 2) }} {{ $rp->unidad_simbolo }}
+                            </td>
+                            <td style="text-align: right; font-weight: 600;">
+                                ${{ number_format($rp->total_venta, 2) }}
+                            </td>
+                            <td style="text-align: right; color: var(--text-muted);">
+                                ${{ number_format($rp->total_costo, 2) }}
+                            </td>
+                            <td style="text-align: right; font-weight: 800; font-size: 0.95rem; color: {{ $rp->ganancia_bruta >= 0 ? '#10b981' : '#ef4444' }};">
+                                ${{ number_format($rp->ganancia_bruta, 2) }}
+                            </td>
+                            <td style="text-align: center;">
+                                @if($rp->margen_pct >= 35)
+                                    <span class="badge badge-success" style="font-weight: 700; font-size: 0.78rem;">
+                                        🟢 {{ $rp->margen_pct }}%
+                                    </span>
+                                @elseif($rp->margen_pct >= 15)
+                                    <span class="badge badge-warning" style="font-weight: 700; font-size: 0.78rem;">
+                                        🟡 {{ $rp->margen_pct }}%
+                                    </span>
+                                @else
+                                    <span class="badge badge-danger" style="font-weight: 700; font-size: 0.78rem;">
+                                        🔴 {{ $rp->margen_pct }}%
+                                    </span>
+                                @endif
+                            </td>
+                            <td style="text-align: right; font-weight: 700; color: var(--text-muted);">
+                                ${{ number_format($rp->margen_unitario, 2) }}/{{ $rp->unidad_simbolo }}
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="9" style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
+                                <div style="font-size: 2rem; margin-bottom: 0.5rem; color: #cbd5e1;">
+                                    <i class="fa-solid fa-chart-pie"></i>
+                                </div>
+                                <div style="font-weight: 700; font-size: 1rem;">No hay ventas registradas en este período</div>
+                                <div style="font-size: 0.85rem; margin-top: 0.25rem;">
+                                    Selecciona un rango de fechas con ventas facturadas para visualizar la matriz de rentabilidad y beneficios.
+                                </div>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+            <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">
+                <span>Mostrar:</span>
+                <select onchange="cambiarPaginacion(this.value)" class="input-modern" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.85rem; font-weight: 700; background: white;">
+                    <option value="10" @selected($perPage == 10)>10 por página</option>
+                    <option value="15" @selected($perPage == 15)>15 por página</option>
+                    <option value="25" @selected($perPage == 25)>25 por página</option>
+                    <option value="50" @selected($perPage == 50)>50 por página</option>
+                    <option value="100" @selected($perPage == 100)>100 por página</option>
+                    <option value="99999" @selected($perPage >= 99999)>Todos los registros</option>
+                </select>
+                <span>(Total: {{ $rentabilidadProductos->total() }} productos)</span>
+            </div>
+            <div>
+                {{ $rentabilidadProductos->appends(['tab' => 'beneficios', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin])->links() }}
+            </div>
+        </div>
+    </div>
+@endif
+
 <!-- MODAL DOCUMENTO DE VENTA (TICKET TÉRMICO IDÉNTICO AL TPV) -->
 <div id="modal-documento-venta" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); z-index: 999; align-items: center; justify-content: center; padding: 1rem;">
     <div style="background: white; border-radius: 14px; max-width: 480px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); border: 1px solid var(--border-color); overflow: hidden;">
@@ -3185,6 +3604,17 @@
             anoComparar: 'auto',
             instance: null,
             data: null
+        },
+        beneficios: {
+            nivel: 'mensual', // Por defecto: Mensual (Día 1-31)
+            mesBase: '{{ \Carbon\Carbon::parse($fechaFin)->format("Y-m") }}',
+            mesComparar: 'auto',
+            semanaFecha: '{{ \Carbon\Carbon::parse($fechaFin)->format("Y-m-d") }}',
+            semanaComparar: 'auto',
+            anoBase: '{{ \Carbon\Carbon::parse($fechaFin)->format("Y") }}',
+            anoComparar: 'auto',
+            instance: null,
+            data: null
         }
     };
 
@@ -3227,7 +3657,7 @@
 
     function actualizarControlesUI(tipo, data) {
         const st = chartState[tipo];
-        const primaryColor = tipo === 'ventas' ? 'var(--primary)' : 'var(--accent)';
+        const primaryColor = tipo === 'ventas' ? 'var(--primary)' : (tipo === 'compras' ? 'var(--accent)' : '#10b981');
 
         // 1. Actualizar Píldoras de Nivel
         ['anual', 'mensual', 'semanal'].forEach(lvl => {
@@ -3322,7 +3752,9 @@
             if (st.nivel === 'mensual') {
                 compHtml += `<option value="auto">Mes Anterior (Automático)</option>`;
                 compHtml += `<option value="mismo_ano_anterior">Mismo Mes del Año Anterior</option>`;
-                compHtml += `<option value="ventas_vs_compras">${tipo === 'ventas' ? 'Ventas vs Compras (Costos)' : 'Compras vs Ventas'}</option>`;
+                if (tipo !== 'beneficios') {
+                    compHtml += `<option value="ventas_vs_compras">${tipo === 'ventas' ? 'Ventas vs Compras (Costos)' : 'Compras vs Ventas'}</option>`;
+                }
                 compHtml += `<option value="ninguno">Sin Comparación (Solo este mes)</option>`;
                 if (data.mesesDisponibles && data.mesesDisponibles.length > 0) {
                     compHtml += `<optgroup label="Comparar con Mes Específico">`;
@@ -3338,13 +3770,17 @@
             } else if (st.nivel === 'semanal') {
                 compHtml += `<option value="auto">Semana Anterior (Inmediata)</option>`;
                 compHtml += `<option value="mes_anterior">Misma Semana del Mes Anterior</option>`;
-                compHtml += `<option value="ventas_vs_compras">${tipo === 'ventas' ? 'Ventas vs Compras (Costos)' : 'Compras vs Ventas'}</option>`;
+                if (tipo !== 'beneficios') {
+                    compHtml += `<option value="ventas_vs_compras">${tipo === 'ventas' ? 'Ventas vs Compras (Costos)' : 'Compras vs Ventas'}</option>`;
+                }
                 compHtml += `<option value="ninguna">Sin Comparación</option>`;
                 selComp.innerHTML = compHtml;
                 selComp.value = st.semanaComparar;
             } else if (st.nivel === 'anual') {
                 compHtml += `<option value="auto">Año Anterior (Automático)</option>`;
-                compHtml += `<option value="ventas_vs_compras">${tipo === 'ventas' ? 'Ventas vs Compras (12 Meses)' : 'Compras vs Ventas (12 Meses)'}</option>`;
+                if (tipo !== 'beneficios') {
+                    compHtml += `<option value="ventas_vs_compras">${tipo === 'ventas' ? 'Ventas vs Compras (12 Meses)' : 'Compras vs Ventas (12 Meses)'}</option>`;
+                }
                 compHtml += `<option value="ninguno">Sin Comparación</option>`;
                 if (data.anosDisponibles && data.anosDisponibles.length > 0) {
                     compHtml += `<optgroup label="Comparar con Año Específico">`;
@@ -3382,11 +3818,11 @@
             if (kpiValDiff) {
                 const prefix = data.diffMonto >= 0 ? '+' : '';
                 kpiValDiff.innerText = prefix + formatCurrency(data.diffMonto);
-                kpiValDiff.style.color = (tipo === 'ventas' ? data.diffMonto >= 0 : data.diffMonto <= 0) ? '#16a34a' : '#dc2626';
+                kpiValDiff.style.color = (tipo === 'compras' ? data.diffMonto <= 0 : data.diffMonto >= 0) ? '#16a34a' : '#dc2626';
             }
 
             if (kpiBadgeDiff) {
-                const isPositive = (tipo === 'ventas') ? (data.diffPct >= 0) : (data.diffPct <= 0);
+                const isPositive = (tipo === 'compras') ? (data.diffPct <= 0) : (data.diffPct >= 0);
                 kpiBadgeDiff.className = `badge ${isPositive ? 'badge-success' : 'badge-danger'}`;
                 kpiBadgeDiff.innerText = (data.diffPct >= 0 ? '+' : '') + data.diffPct + '%';
             }
@@ -3398,15 +3834,15 @@
 
     function renderizarCanvasChart(tipo, data) {
         const st = chartState[tipo];
-        const canvasId = tipo === 'ventas' ? 'canvasChartVentas' : 'canvasChartCompras';
+        const canvasId = tipo === 'ventas' ? 'canvasChartVentas' : (tipo === 'compras' ? 'canvasChartCompras' : 'canvasChartBeneficios');
         const canvas = document.getElementById(canvasId);
         if (!canvas || typeof Chart === 'undefined') return;
 
         const ctx = canvas.getContext('2d');
         if (st.instance) st.instance.destroy();
 
-        const baseColor = tipo === 'ventas' ? '#2563eb' : '#ea580c';
-        const baseBgColor = tipo === 'ventas' ? 'rgba(37, 99, 235, 0.12)' : 'rgba(234, 88, 12, 0.12)';
+        const baseColor = tipo === 'ventas' ? '#2563eb' : (tipo === 'compras' ? '#ea580c' : '#10b981');
+        const baseBgColor = tipo === 'ventas' ? 'rgba(37, 99, 235, 0.12)' : (tipo === 'compras' ? 'rgba(234, 88, 12, 0.12)' : 'rgba(16, 185, 129, 0.12)');
         const compColor = data.isVentasVsCompras ? (tipo === 'ventas' ? '#ea580c' : '#2563eb') : '#94a3b8';
         const compBgColor = data.isVentasVsCompras ? (tipo === 'ventas' ? 'rgba(234, 88, 12, 0.8)' : 'rgba(37, 99, 235, 0.8)') : 'rgba(148, 163, 184, 0.06)';
 
@@ -3420,7 +3856,7 @@
             label: data.labelBase,
             data: data.dataBase,
             borderColor: baseColor,
-            backgroundColor: isBar ? (tipo === 'ventas' ? 'rgba(37, 99, 235, 0.85)' : 'rgba(234, 88, 12, 0.85)') : baseBgColor,
+            backgroundColor: isBar ? (tipo === 'ventas' ? 'rgba(37, 99, 235, 0.85)' : (tipo === 'compras' ? 'rgba(234, 88, 12, 0.85)' : 'rgba(16, 185, 129, 0.85)')) : baseBgColor,
             borderWidth: isBar ? 1 : 3,
             borderRadius: isBar ? 6 : 0,
             tension: isBar ? 0 : 0.35,
@@ -3554,7 +3990,7 @@
     }
 
     function onSelectAnoBaseChange(tipo, val) {
-        chartState[tipo].anoBase = val;
+        chartState[tipo].anoBase = parseInt(val, 10);
         cargarGraficoComparativo(tipo);
     }
 
@@ -3566,12 +4002,51 @@
         cargarGraficoComparativo(tipo);
     }
 
+    function filtrarTablaRentabilidad(term) {
+        const q = (term || '').toLowerCase().trim();
+        document.querySelectorAll('.fila-rentabilidad').forEach(row => {
+            const searchTxt = row.dataset.search || '';
+            if (!q || searchTxt.includes(q)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    function filtrarTopPorCategoria(famId) {
+        let count = 1;
+        document.querySelectorAll('.fila-top-rentable').forEach(row => {
+            const rowFamId = row.dataset.familiaId;
+            if (famId === 'todas' || rowFamId == famId) {
+                row.style.display = '';
+                const badgeRank = row.querySelector('.js-top-rank');
+                if (badgeRank) {
+                    if (count === 1) {
+                        badgeRank.outerHTML = `<span class="badge js-top-rank" style="background: #fef3c7; color: #b45309; font-weight: 800;">🥇 1</span>`;
+                    } else if (count === 2) {
+                        badgeRank.outerHTML = `<span class="badge js-top-rank" style="background: #f1f5f9; color: #475569; font-weight: 800;">🥈 2</span>`;
+                    } else if (count === 3) {
+                        badgeRank.outerHTML = `<span class="badge js-top-rank" style="background: #ffedd5; color: #c2410c; font-weight: 800;">🥉 3</span>`;
+                    } else {
+                        badgeRank.outerHTML = `<span class="badge badge-info js-top-rank" style="font-weight: 700;">${count}</span>`;
+                    }
+                }
+                count++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
     // Inicializar al cargar el DOM
     document.addEventListener('DOMContentLoaded', function() {
         @if($tab === 'ventas')
             cargarGraficoComparativo('ventas');
         @elseif($tab === 'compras')
             cargarGraficoComparativo('compras');
+        @elseif($tab === 'beneficios')
+            cargarGraficoComparativo('beneficios');
         @endif
     });
 </script>

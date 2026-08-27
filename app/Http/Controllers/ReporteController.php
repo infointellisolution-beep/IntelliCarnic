@@ -608,6 +608,184 @@ class ReporteController extends Controller
 
         $articuloAjuste = $articuloId ? Articulo::find($articuloId) : null;
 
+        // 9. Datos para Reporte de Beneficios y Rentabilidad (Utilidad & COGS)
+        $ventasValidas = Venta::whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])
+            ->whereNotIn('estado', ['devuelta'])
+            ->with(['detalles.articulo.familia'])
+            ->get();
+
+        $devolucionesPeriodo = Devolucion::whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])
+            ->with(['detalles.articulo.familia'])
+            ->get();
+
+        $beneficioVentasBruto = 0.0;
+        $beneficioCostoVentas = 0.0;
+        $productosRentabilidadMap = [];
+        $familiasRentabilidadMap = [];
+
+        foreach ($ventasValidas as $v) {
+            foreach ($v->detalles as $d) {
+                $art = $d->articulo;
+                if (!$art) continue;
+
+                $cant = (float) $d->cantidad;
+                $lineVenta = (float) $d->subtotal;
+                $costoUnit = (float) ($art->precio_compra ?: $art->precio_sin_iva ?: 0);
+                $lineCosto = $cant * $costoUnit;
+
+                $beneficioVentasBruto += $lineVenta;
+                $beneficioCostoVentas += $lineCosto;
+
+                $artId = $art->id;
+                if (!isset($productosRentabilidadMap[$artId])) {
+                    $productosRentabilidadMap[$artId] = [
+                        'articulo' => $art,
+                        'cantidad_vendida' => 0.0,
+                        'total_venta' => 0.0,
+                        'total_costo' => 0.0,
+                    ];
+                }
+                $productosRentabilidadMap[$artId]['cantidad_vendida'] += $cant;
+                $productosRentabilidadMap[$artId]['total_venta'] += $lineVenta;
+                $productosRentabilidadMap[$artId]['total_costo'] += $lineCosto;
+
+                $famId = $art->familia_id ?? 0;
+                $famNombre = $art->familia?->nombre ?? 'Sin Familia';
+                if (!isset($familiasRentabilidadMap[$famId])) {
+                    $familiasRentabilidadMap[$famId] = [
+                        'familia_nombre' => $famNombre,
+                        'total_venta' => 0.0,
+                        'total_costo' => 0.0,
+                    ];
+                }
+                $familiasRentabilidadMap[$famId]['total_venta'] += $lineVenta;
+                $familiasRentabilidadMap[$famId]['total_costo'] += $lineCosto;
+            }
+        }
+
+        // Restar devoluciones
+        $beneficioDevolucionesMonto = 0.0;
+        $beneficioDevolucionesCosto = 0.0;
+
+        foreach ($devolucionesPeriodo as $dev) {
+            foreach ($dev->detalles as $dd) {
+                $art = $dd->articulo;
+                if (!$art) continue;
+
+                $cant = (float) $dd->cantidad;
+                $lineDevVenta = (float) $dd->subtotal;
+                $costoUnit = (float) ($art->precio_compra ?: $art->precio_sin_iva ?: 0);
+                $lineDevCosto = $cant * $costoUnit;
+
+                $beneficioDevolucionesMonto += $lineDevVenta;
+                $beneficioDevolucionesCosto += $lineDevCosto;
+
+                $artId = $art->id;
+                if (isset($productosRentabilidadMap[$artId])) {
+                    $productosRentabilidadMap[$artId]['cantidad_vendida'] = max(0, $productosRentabilidadMap[$artId]['cantidad_vendida'] - $cant);
+                    $productosRentabilidadMap[$artId]['total_venta'] = max(0, $productosRentabilidadMap[$artId]['total_venta'] - $lineDevVenta);
+                    $productosRentabilidadMap[$artId]['total_costo'] = max(0, $productosRentabilidadMap[$artId]['total_costo'] - $lineDevCosto);
+                }
+
+                $famId = $art->familia_id ?? 0;
+                if (isset($familiasRentabilidadMap[$famId])) {
+                    $familiasRentabilidadMap[$famId]['total_venta'] = max(0, $familiasRentabilidadMap[$famId]['total_venta'] - $lineDevVenta);
+                    $familiasRentabilidadMap[$famId]['total_costo'] = max(0, $familiasRentabilidadMap[$famId]['total_costo'] - $lineDevCosto);
+                }
+            }
+        }
+
+        $beneficioVentasNeto = max(0, $beneficioVentasBruto - $beneficioDevolucionesMonto);
+        $beneficioCostoNeto = max(0, $beneficioCostoVentas - $beneficioDevolucionesCosto);
+        $beneficioGananciaBruta = round($beneficioVentasNeto - $beneficioCostoNeto, 2);
+        $beneficioMargenPct = $beneficioVentasNeto > 0 ? round(($beneficioGananciaBruta / $beneficioVentasNeto) * 100, 1) : 0.0;
+
+        // Pérdida por mermas y ajustes negativos
+        $mermasPeriodo = AjusteInventario::whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])
+            ->where('diferencia_stock', '<', 0)
+            ->with('articulo')
+            ->get();
+
+        $beneficioPerdidaMermas = 0.0;
+        foreach ($mermasPeriodo as $m) {
+            $costoUnit = (float) ($m->articulo?->precio_compra ?: $m->articulo?->precio_sin_iva ?: 0);
+            $beneficioPerdidaMermas += abs((float)$m->diferencia_stock) * $costoUnit;
+        }
+        $beneficioPerdidaMermas = round($beneficioPerdidaMermas, 2);
+        $beneficioGananciaAjustada = round($beneficioGananciaBruta - $beneficioPerdidaMermas, 2);
+
+        // Procesar colección de productos con rentabilidad
+        $rentabilidadProductosCol = collect($productosRentabilidadMap)->map(function ($item) {
+            $art = $item['articulo'];
+            $vNet = (float) $item['total_venta'];
+            $cNet = (float) $item['total_costo'];
+            $ganancia = round($vNet - $cNet, 2);
+            $margenPct = $vNet > 0 ? round(($ganancia / $vNet) * 100, 1) : 0.0;
+            $cant = (float) $item['cantidad_vendida'];
+            $margenUnitario = $cant > 0 ? round($ganancia / $cant, 2) : 0.0;
+
+            if ($margenPct >= 35) {
+                $badgeClass = 'badge-success';
+                $badgeLabel = '🟢 Alto Margen';
+                $categoriaMargen = 'alto';
+            } elseif ($margenPct >= 15) {
+                $badgeClass = 'badge-warning';
+                $badgeLabel = '🟡 Margen Medio';
+                $categoriaMargen = 'medio';
+            } else {
+                $badgeClass = 'badge-danger';
+                $badgeLabel = '🔴 Bajo Margen';
+                $categoriaMargen = 'bajo';
+            }
+
+            return (object) [
+                'id' => $art->id,
+                'descripcion' => $art->descripcion,
+                'codigo' => $art->codigo,
+                'tipo_articulo' => $art->tipo_articulo ?? 'pesable',
+                'unidad_simbolo' => $art->isUnidad() ? 'UND' : ($art->unidad_simbolo ?? 'LB'),
+                'familia_id' => $art->familia_id ?? 0,
+                'familia_nombre' => $art->familia?->nombre ?? 'Sin Familia',
+                'cantidad_vendida' => $cant,
+                'total_venta' => $vNet,
+                'total_costo' => $cNet,
+                'ganancia_bruta' => $ganancia,
+                'margen_pct' => $margenPct,
+                'margen_unitario' => $margenUnitario,
+                'badge_class' => $badgeClass,
+                'badge_label' => $badgeLabel,
+                'categoria_margen' => $categoriaMargen,
+            ];
+        })->sortByDesc('ganancia_bruta')->values();
+
+        $pageBeneficios = (int) $request->get('page_beneficios', 1);
+        $rentabilidadProductos = new LengthAwarePaginator(
+            $rentabilidadProductosCol->forPage($pageBeneficios, $perPage),
+            $rentabilidadProductosCol->count(),
+            $perPage,
+            $pageBeneficios,
+            ['path' => Paginator::resolveCurrentPath(), 'pageName' => 'page_beneficios']
+        );
+        $rentabilidadProductos->withQueryString();
+
+        // Procesar rentabilidad por familias
+        $rentabilidadFamilias = collect($familiasRentabilidadMap)->map(function ($fam) use ($beneficioGananciaBruta) {
+            $v = (float) $fam['total_venta'];
+            $c = (float) $fam['total_costo'];
+            $g = round($v - $c, 2);
+            $mPct = $v > 0 ? round(($g / $v) * 100, 1) : 0.0;
+            $contribucion = $beneficioGananciaBruta > 0 ? round(($g / $beneficioGananciaBruta) * 100, 1) : 0.0;
+
+            return (object) [
+                'familia_nombre' => $fam['familia_nombre'],
+                'total_venta' => $v,
+                'total_costo' => $c,
+                'ganancia_bruta' => $g,
+                'margen_pct' => $mPct,
+                'contribucion_pct' => max(0, $contribucion),
+            ];
+        })->sortByDesc('ganancia_bruta')->values();
+
         return view('reportes.index', compact(
             'tab',
             'fechaInicio',
@@ -696,7 +874,17 @@ class ReporteController extends Controller
             'ajustesHandheldCount',
             'ajustesWebCount',
             'ajustesLista',
-            'articuloAjuste'
+            'articuloAjuste',
+            // Beneficios & Rentabilidad
+            'beneficioVentasNeto',
+            'beneficioCostoNeto',
+            'beneficioGananciaBruta',
+            'beneficioMargenPct',
+            'beneficioPerdidaMermas',
+            'beneficioGananciaAjustada',
+            'rentabilidadProductos',
+            'rentabilidadProductosCol',
+            'rentabilidadFamilias'
         ));
     }
 
@@ -939,6 +1127,61 @@ class ReporteController extends Controller
                         $aj->motivo ?? ''
                     ]);
                 }
+            } elseif ($tipo === 'beneficios') {
+                fputcsv($handle, ['Producto / Descripción', 'Código / SKU', 'Familia', 'Cantidad Vendida', 'Unidad', 'Ventas Netas ($)', 'Costo Total ($)', 'Ganancia Bruta ($)', 'Margen (%)', 'Margen Unitario ($)']);
+
+                $ventasValidas = Venta::whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])
+                    ->whereNotIn('estado', ['devuelta'])
+                    ->with(['detalles.articulo.familia'])
+                    ->get();
+
+                $prodMap = [];
+                foreach ($ventasValidas as $v) {
+                    foreach ($v->detalles as $d) {
+                        $art = $d->articulo;
+                        if (!$art) continue;
+                        $artId = $art->id;
+                        $cant = (float) $d->cantidad;
+                        $vTot = (float) $d->subtotal;
+                        $cUnit = (float) ($art->precio_compra ?: $art->precio_sin_iva ?: 0);
+                        $cTot = $cant * $cUnit;
+
+                        if (!isset($prodMap[$artId])) {
+                            $prodMap[$artId] = [
+                                'articulo' => $art,
+                                'cant' => 0.0,
+                                'venta' => 0.0,
+                                'costo' => 0.0,
+                            ];
+                        }
+                        $prodMap[$artId]['cant'] += $cant;
+                        $prodMap[$artId]['venta'] += $vTot;
+                        $prodMap[$artId]['costo'] += $cTot;
+                    }
+                }
+
+                foreach ($prodMap as $item) {
+                    $art = $item['articulo'];
+                    $vTot = $item['venta'];
+                    $cTot = $item['costo'];
+                    $ganancia = round($vTot - $cTot, 2);
+                    $mPct = $vTot > 0 ? round(($ganancia / $vTot) * 100, 1) : 0.0;
+                    $mUnit = $item['cant'] > 0 ? round($ganancia / $item['cant'], 2) : 0.0;
+                    $uSym = ($art->tipo_articulo === 'unidad') ? 'UND' : 'LB';
+
+                    fputcsv($handle, [
+                        $art->descripcion,
+                        $art->codigo,
+                        $art->familia?->nombre ?? 'Sin Familia',
+                        number_format($item['cant'], ($art->tipo_articulo === 'unidad' ? 0 : 3), '.', ''),
+                        $uSym,
+                        number_format($vTot, 2, '.', ''),
+                        number_format($cTot, 2, '.', ''),
+                        number_format($ganancia, 2, '.', ''),
+                        number_format($mPct, 1, '.', '') . '%',
+                        number_format($mUnit, 2, '.', ''),
+                    ]);
+                }
             }
 
             fclose($handle);
@@ -1008,6 +1251,20 @@ class ReporteController extends Controller
                     ->groupBy('dia')
                     ->pluck('total', 'dia')
                     ->toArray();
+            } elseif ($tipoConsulta === 'beneficios') {
+                $vds = VentaDetalle::whereBetween('created_at', [$inicio, $fin])
+                    ->whereHas('venta', fn($q) => $q->whereNotIn('estado', ['devuelta']))
+                    ->with('articulo')
+                    ->get();
+                $raw = [];
+                foreach ($vds as $vd) {
+                    $d = (int) $vd->created_at->format('d');
+                    $vTot = (float) $vd->subtotal;
+                    $cUnit = (float) ($vd->articulo?->precio_compra ?: $vd->articulo?->precio_sin_iva ?: 0);
+                    $cTot = (float) $vd->cantidad * $cUnit;
+                    $ganancia = $vTot - $cTot;
+                    $raw[$d] = ($raw[$d] ?? 0.0) + $ganancia;
+                }
             } else {
                 $raw = Venta::whereBetween('created_at', [$inicio, $fin])
                     ->whereNotIn('estado', ['devuelta'])
@@ -1046,6 +1303,18 @@ class ReporteController extends Controller
                 if ($tipoConsulta === 'compras') {
                     $monto = (float) Compra::whereBetween('fecha_compra', [$dayCur->format('Y-m-d 00:00:00'), $dayCur->format('Y-m-d 23:59:59')])
                         ->sum('total');
+                } elseif ($tipoConsulta === 'beneficios') {
+                    $vds = VentaDetalle::whereBetween('created_at', [$dayCur->format('Y-m-d 00:00:00'), $dayCur->format('Y-m-d 23:59:59')])
+                        ->whereHas('venta', fn($q) => $q->whereNotIn('estado', ['devuelta']))
+                        ->with('articulo')
+                        ->get();
+                    $monto = 0.0;
+                    foreach ($vds as $vd) {
+                        $vTot = (float) $vd->subtotal;
+                        $cUnit = (float) ($vd->articulo?->precio_compra ?: $vd->articulo?->precio_sin_iva ?: 0);
+                        $cTot = (float) $vd->cantidad * $cUnit;
+                        $monto += ($vTot - $cTot);
+                    }
                 } else {
                     $monto = (float) Venta::whereBetween('created_at', [$dayCur->format('Y-m-d 00:00:00'), $dayCur->format('Y-m-d 23:59:59')])
                         ->whereNotIn('estado', ['devuelta'])
@@ -1075,6 +1344,20 @@ class ReporteController extends Controller
                     ->groupBy('mes')
                     ->pluck('total', 'mes')
                     ->toArray();
+            } elseif ($tipoConsulta === 'beneficios') {
+                $vds = VentaDetalle::whereBetween('created_at', [$inicioAno, $finAno])
+                    ->whereHas('venta', fn($q) => $q->whereNotIn('estado', ['devuelta']))
+                    ->with('articulo')
+                    ->get();
+                $raw = [];
+                foreach ($vds as $vd) {
+                    $m = (int) $vd->created_at->format('m');
+                    $vTot = (float) $vd->subtotal;
+                    $cUnit = (float) ($vd->articulo?->precio_compra ?: $vd->articulo?->precio_sin_iva ?: 0);
+                    $cTot = (float) $vd->cantidad * $cUnit;
+                    $ganancia = $vTot - $cTot;
+                    $raw[$m] = ($raw[$m] ?? 0.0) + $ganancia;
+                }
             } else {
                 $raw = Venta::whereBetween('created_at', [$inicioAno, $finAno])
                     ->whereNotIn('estado', ['devuelta'])
@@ -1169,6 +1452,8 @@ class ReporteController extends Controller
             $diffMonto = round($totalBase - $totalComp, 2);
             $diffPct = $totalComp > 0 ? round(($diffMonto / $totalComp) * 100, 1) : ($totalBase > 0 ? 100.0 : 0.0);
 
+            $labelPrefix = ($tipo === 'ventas' ? 'Ventas ' : ($tipo === 'compras' ? 'Compras ' : 'Beneficio '));
+
             return response()->json([
                 'success' => true,
                 'nivel' => 'mensual',
@@ -1183,7 +1468,7 @@ class ReporteController extends Controller
                 'hasComparison' => $hasComparison,
                 'isVentasVsCompras' => $isVentasVsCompras,
                 'labels' => $labels,
-                'labelBase' => ($tipo === 'ventas' ? 'Ventas ' : 'Compras ') . $mesesNombresMap[(int) $dateBase->format('n')] . ' ' . $dateBase->format('Y'),
+                'labelBase' => $labelPrefix . $mesesNombresMap[(int) $dateBase->format('n')] . ' ' . $dateBase->format('Y'),
                 'labelComparar' => $labelComp,
                 'dataBase' => $dataBase,
                 'dataComparar' => $hasComparison ? $dataComparar : [],
@@ -1232,6 +1517,7 @@ class ReporteController extends Controller
             $totalComp = $hasComparison && $resComp ? $resComp['total'] : 0;
             $diffMonto = round($totalBase - $totalComp, 2);
             $diffPct = $totalComp > 0 ? round(($diffMonto / $totalComp) * 100, 1) : ($totalBase > 0 ? 100.0 : 0.0);
+            $labelPrefix = ($tipo === 'ventas' ? 'Ventas ' : ($tipo === 'compras' ? 'Compras ' : 'Beneficio '));
 
             return response()->json([
                 'success' => true,
@@ -1248,7 +1534,7 @@ class ReporteController extends Controller
                 'hasComparison' => $hasComparison,
                 'isVentasVsCompras' => $isVentasVsCompras,
                 'labels' => $resBase['labels'],
-                'labelBase' => ($tipo === 'ventas' ? 'Ventas ' : 'Compras ') . $resBase['label'],
+                'labelBase' => $labelPrefix . $resBase['label'],
                 'labelComparar' => $labelComp,
                 'dataBase' => $resBase['data'],
                 'dataComparar' => $hasComparison && $resComp ? $resComp['data'] : [],
@@ -1288,6 +1574,7 @@ class ReporteController extends Controller
             $totalComp = $hasComparison && $resComp ? $resComp['total'] : 0;
             $diffMonto = round($totalBase - $totalComp, 2);
             $diffPct = $totalComp > 0 ? round(($diffMonto / $totalComp) * 100, 1) : ($totalBase > 0 ? 100.0 : 0.0);
+            $labelPrefix = ($tipo === 'ventas' ? 'Ventas ' : ($tipo === 'compras' ? 'Compras ' : 'Beneficio '));
 
             return response()->json([
                 'success' => true,
@@ -1302,7 +1589,7 @@ class ReporteController extends Controller
                 'hasComparison' => $hasComparison,
                 'isVentasVsCompras' => $isVentasVsCompras,
                 'labels' => $resBase['labels'],
-                'labelBase' => ($tipo === 'ventas' ? 'Ventas ' : 'Compras ') . 'Año ' . $anoBase,
+                'labelBase' => $labelPrefix . 'Año ' . $anoBase,
                 'labelComparar' => $labelComp,
                 'dataBase' => $resBase['data'],
                 'dataComparar' => $hasComparison && $resComp ? $resComp['data'] : [],
