@@ -805,7 +805,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // 2. Comprobar si hay coincidencia exacta de lote o código escaneado en Modo Dinámico (pistola directa)
         if (modoInventario === 'dinamico') {
             for (const art of articulos) {
-                if (art.lotes && art.lotes.length > 0) {
+                if (art.tipo_articulo !== 'unidad' && art.lotes && art.lotes.length > 0) {
                     const exactLot = art.lotes.find(l => 
                         (l.codigo_escaneado && l.codigo_escaneado === rawQuery) ||
                         (l.serie && l.serie === rawQuery) ||
@@ -820,7 +820,20 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // 3. Filtrar artículos por múltiples criterios
+        // 3. Comprobar coincidencia EXACTA por código de barras de producto simple (ej: salsa 750100012345 con pistola)
+        if (rawQuery.length >= 3) {
+            const exactSimpleArt = articulos.find(a => 
+                (a.tipo_articulo === 'unidad' || !a.lotes || a.lotes.length === 0) &&
+                (a.codigo === rawQuery || a.codigo_cliente === rawQuery || a.item === rawQuery)
+            );
+            if (exactSimpleArt) {
+                // Producto simple sin lotes escaneado directamente -> auto-agregar al envío
+                agregarProducto(exactSimpleArt.id, null, parsedWeight);
+                return;
+            }
+        }
+
+        // 4. Filtrar artículos por múltiples criterios
         filteredArticulos = articulos.filter(a => {
             const desc = normalizeText(a.descripcion);
             const codProv = normalizeText(a.codigo);
@@ -839,7 +852,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // En modo dinámico, buscar también si el query coincide con algún lote
             let matchesLote = false;
-            if (modoInventario === 'dinamico' && a.lotes && a.lotes.length > 0) {
+            if (modoInventario === 'dinamico' && a.tipo_articulo !== 'unidad' && a.lotes && a.lotes.length > 0) {
                 matchesLote = a.lotes.some(l => 
                     normalizeText(l.lote).includes(query) || 
                     normalizeText(l.serie).includes(query) ||
@@ -928,12 +941,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const art = articulos.find(a => a.id === articuloId);
         if (!art) return;
 
-        if (modoInventario === 'dinamico' && art.lotes && art.lotes.length > 0) {
+        if (modoInventario === 'dinamico' && art.tipo_articulo !== 'unidad' && art.lotes && art.lotes.length > 0) {
             // Abrir modal de selección de lotes
             abrirModalLotes(art);
             limpiarBuscador();
         } else {
-            // Modo Simple o sin lotes -> agregar directo
+            // Modo Simple o Producto Simple sin lotes (salsas, abarrotes) -> agregar directo al envío
             agregarProducto(art.id);
             limpiarBuscador();
         }
@@ -1166,9 +1179,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             } else if (e.key === 'Enter' && this.value.trim().length > 0) {
                 e.preventDefault();
-                ejecutarBusqueda();
-                if (filteredArticulos.length > 0) {
-                    seleccionarArticulo(filteredArticulos[0].id);
+                const rawVal = this.value.trim();
+                const directMatch = articulos.find(a => 
+                    a.codigo === rawVal || a.codigo_cliente === rawVal || a.item === rawVal
+                );
+                if (directMatch) {
+                    seleccionarArticulo(directMatch.id);
+                } else {
+                    ejecutarBusqueda();
+                    if (filteredArticulos.length > 0) {
+                        seleccionarArticulo(filteredArticulos[0].id);
+                    }
                 }
             }
         });
@@ -1188,12 +1209,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const esUnidad = art.tipo_articulo === 'unidad';
 
-        if (modoInventario === 'dinamico') {
-            // Manejo en Modo Dinámico por Lotes
+        if (modoInventario === 'dinamico' && !esUnidad && art.lotes && art.lotes.length > 0) {
+            // Manejo en Modo Dinámico por Lotes (artículos pesables con lotes)
             let lote = null;
-            if (compraDetalleId && art.lotes) {
+            if (compraDetalleId) {
                 lote = art.lotes.find(l => l.id === compraDetalleId);
-            } else if (art.lotes && art.lotes.length > 0) {
+            } else {
                 lote = art.lotes[0];
             }
 
@@ -1205,16 +1226,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (indexExistente !== -1) {
                 const prod = productosEnvio[indexExistente];
-                const inc = cantidadCustom ? cantidadCustom : (esUnidad ? 1 : 1.000);
-                if (prod.cantidad + inc <= prod.stock) {
-                    prod.cantidad += inc;
-                } else {
-                    prod.cantidad = prod.stock;
-                }
+                const inc = cantidadCustom ? cantidadCustom : 1.000;
+                prod.cantidad = Math.min(prod.stock, prod.cantidad + inc);
             } else {
                 const initialQty = cantidadCustom 
                     ? Math.min(cantidadCustom, stockDisp) 
-                    : (esUnidad ? 1 : Math.min(1.000, stockDisp));
+                    : Math.min(1.000, stockDisp);
 
                 productosEnvio.push({
                     articulo_id: art.id,
@@ -1232,18 +1249,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
         } else {
-            // Manejo en Modo Simple (Stock General)
+            // Manejo para Artículos Simples (Unidad / Salsas / sin lotes) o Modo Simple
             const stockDisp = parseFloat(art.stock);
             const indexExistente = productosEnvio.findIndex(p => p.articulo_id === art.id);
 
             if (indexExistente !== -1) {
                 const prod = productosEnvio[indexExistente];
                 const inc = cantidadCustom ? cantidadCustom : (esUnidad ? 1 : 1.000);
-                if (prod.cantidad + inc <= prod.stock) {
-                    prod.cantidad += inc;
-                } else {
-                    prod.cantidad = prod.stock;
-                }
+                prod.cantidad = Math.min(prod.stock, prod.cantidad + inc);
             } else {
                 const initialQty = cantidadCustom 
                     ? Math.min(cantidadCustom, stockDisp) 
@@ -1254,7 +1267,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     compra_detalle_id: null,
                     lote: null,
                     serie: null,
-                    fecha_vencimiento: null,
+                    fecha_vencimiento: 'S/V',
                     codigo: art.codigo || art.codigo_cliente || '',
                     codigo_cliente: art.codigo_cliente || '',
                     descripcion: art.descripcion,
@@ -1285,7 +1298,6 @@ document.addEventListener('DOMContentLoaded', function() {
         filaSin.style.display = 'none';
         resumen.style.display = '';
 
-        // Reconstruir filas
         tbody.innerHTML = '';
         let totalPeso = 0, totalUnd = 0, totalCosto = 0;
 
@@ -1297,6 +1309,7 @@ document.addEventListener('DOMContentLoaded', function() {
             totalCosto += subtotal;
 
             const tr = document.createElement('tr');
+            tr.id = `fila-prod-${idx}`;
             if (modoInventario === 'dinamico') {
                 tr.innerHTML = `
                     <td>${p.codigo || '—'}</td>
@@ -1312,10 +1325,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         <input type="number" value="${esUnidad ? parseInt(p.cantidad) : p.cantidad.toFixed(3)}"
                                min="${esUnidad ? 1 : 0.001}" max="${p.stock}" step="${esUnidad ? 1 : 0.001}"
                                class="input-modern" style="width: 110px; text-align: center; font-weight: 700;"
-                               onchange="actualizarCantidad(${idx}, this.value)">
+                               oninput="actualizarCantidad(${idx}, this.value, false)"
+                               onchange="actualizarCantidad(${idx}, this.value, true)">
                     </td>
                     <td>$${p.costo_unitario.toFixed(2)}</td>
-                    <td style="font-weight: 700; color: var(--text-main);">$${subtotal.toFixed(2)}</td>
+                    <td class="subtotal-cell" style="font-weight: 700; color: var(--text-main);">$${subtotal.toFixed(2)}</td>
                     <td style="text-align: center;"><button onclick="quitarProducto(${idx})" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.15rem; padding: 4px;" title="Quitar"><i class="fa-solid fa-circle-xmark"></i></button></td>
                 `;
             } else {
@@ -1328,10 +1342,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         <input type="number" value="${esUnidad ? parseInt(p.cantidad) : p.cantidad.toFixed(3)}"
                                min="${esUnidad ? 1 : 0.001}" max="${p.stock}" step="${esUnidad ? 1 : 0.001}"
                                class="input-modern" style="width: 110px; text-align: center; font-weight: 700;"
-                               onchange="actualizarCantidad(${idx}, this.value)">
+                               oninput="actualizarCantidad(${idx}, this.value, false)"
+                               onchange="actualizarCantidad(${idx}, this.value, true)">
                     </td>
                     <td>$${p.costo_unitario.toFixed(2)}</td>
-                    <td style="font-weight: 700; color: var(--text-main);">$${subtotal.toFixed(2)}</td>
+                    <td class="subtotal-cell" style="font-weight: 700; color: var(--text-main);">$${subtotal.toFixed(2)}</td>
                     <td style="text-align: center;"><button onclick="quitarProducto(${idx})" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.15rem; padding: 4px;" title="Quitar"><i class="fa-solid fa-circle-xmark"></i></button></td>
                 `;
             }
@@ -1343,8 +1358,9 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('totalCostoEnvio').textContent = '$' + totalCosto.toFixed(2);
     };
 
-    window.actualizarCantidad = function(idx, val) {
+    window.actualizarCantidad = function(idx, val, fullRebuild = false) {
         const p = productosEnvio[idx];
+        if (!p) return;
         let cantidad = parseFloat(val);
         if (isNaN(cantidad) || cantidad <= 0) cantidad = p.tipo_articulo === 'unidad' ? 1 : 0.001;
         if (cantidad > p.stock) {
@@ -1352,7 +1368,27 @@ document.addEventListener('DOMContentLoaded', function() {
             mostrarNotificacion('warning', `Cantidad ajustada al stock disponible máximo (${p.stock}).`);
         }
         p.cantidad = cantidad;
-        renderTablaEnvio();
+
+        if (fullRebuild) {
+            renderTablaEnvio();
+        } else {
+            // Actualización reactiva instantánea en DOM sin perder foco del input
+            const fila = document.getElementById(`fila-prod-${idx}`);
+            if (fila) {
+                const subtotalEl = fila.querySelector('.subtotal-cell');
+                if (subtotalEl) subtotalEl.textContent = '$' + (p.cantidad * p.costo_unitario).toFixed(2);
+            }
+            let totalPeso = 0, totalUnd = 0, totalCosto = 0;
+            productosEnvio.forEach(prod => {
+                const sub = prod.cantidad * prod.costo_unitario;
+                if (prod.tipo_articulo === 'unidad') totalUnd += parseInt(prod.cantidad);
+                else totalPeso += prod.cantidad;
+                totalCosto += sub;
+            });
+            document.getElementById('totalPesoEnvio').textContent = totalPeso.toFixed(3) + ' ' + unidadPeso;
+            document.getElementById('totalUnidadesEnvio').textContent = totalUnd;
+            document.getElementById('totalCostoEnvio').textContent = '$' + totalCosto.toFixed(2);
+        }
     };
 
     window.quitarProducto = function(idx) {

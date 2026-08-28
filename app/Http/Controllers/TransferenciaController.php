@@ -33,10 +33,17 @@ class TransferenciaController extends Controller
         $sucursales = Sucursal::orderBy('nombre')->get();
         $sucursalesDestino = $sucursalActual ? Sucursal::destinos() : collect();
 
-        // Lotes activos si el modo es dinámico
+        // Lotes activos si el modo es dinámico (solo aquellos con identificador de lote o serie real)
         $lotesActivos = collect();
         if ($modoInventario === 'dinamico') {
             $lotesActivos = CompraDetalle::where('cantidad_peso', '>', 0)
+                ->where(function ($q) {
+                    $q->where(function ($q2) {
+                        $q2->whereNotNull('lote')->where('lote', '!=', '');
+                    })->orWhere(function ($q2) {
+                        $q2->whereNotNull('serie')->where('serie', '!=', '');
+                    });
+                })
                 ->orderBy('fecha_vencimiento', 'asc')
                 ->orderBy('id', 'asc')
                 ->get()
@@ -51,7 +58,8 @@ class TransferenciaController extends Controller
             ->get()
             ->map(function ($a) use ($modoInventario, $lotesActivos) {
                 $misLotes = [];
-                if ($modoInventario === 'dinamico' && $lotesActivos->has($a->id)) {
+                // Solo si el modo es dinámico, el artículo NO es de tipo unidad simple y tiene lotes identificados
+                if ($modoInventario === 'dinamico' && $a->tipo_articulo !== 'unidad' && $lotesActivos->has($a->id)) {
                     $misLotes = $lotesActivos->get($a->id)->map(function ($l) {
                         return [
                             'id' => $l->id,
