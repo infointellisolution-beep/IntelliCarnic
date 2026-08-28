@@ -230,4 +230,41 @@ class TransferenciaSyncService
             'data' => $data,
         ];
     }
+
+    /**
+     * Consultar todas las transferencias alojadas en el buzón cloud para todas las sucursales.
+     */
+    public function consultarTodasEnNube(): array
+    {
+        if (!$this->isConfigured()) {
+            return ['success' => false, 'error' => 'Cloud sync no configurado.', 'transferencias' => []];
+        }
+
+        $sucursales = \App\Models\Sucursal::all();
+        $todas = [];
+        $seenFolios = [];
+
+        foreach ($sucursales as $sucursal) {
+            $res = $this->consultarPendientesNube($sucursal->codigo);
+            if ($res['success'] && !empty($res['transferencias'])) {
+                foreach ($res['transferencias'] as $trn) {
+                    if (!in_array($trn['folio'], $seenFolios)) {
+                        $seenFolios[] = $trn['folio'];
+                        // Añadir nombre de sucursal origen y destino para visualización clara
+                        $origenObj = $sucursales->firstWhere('codigo', $trn['sucursal_origen'] ?? '');
+                        $destinoObj = $sucursales->firstWhere('codigo', $trn['sucursal_destino'] ?? '');
+                        $trn['sucursal_origen_nombre'] = $origenObj ? $origenObj->nombre : ($trn['sucursal_origen'] ?? 'Origen');
+                        $trn['sucursal_destino_nombre'] = $destinoObj ? $destinoObj->nombre : ($trn['sucursal_destino'] ?? 'Destino');
+                        $todas[] = $trn;
+                    }
+                }
+            }
+        }
+
+        return [
+            'success' => true,
+            'count' => count($todas),
+            'transferencias' => $todas,
+        ];
+    }
 }

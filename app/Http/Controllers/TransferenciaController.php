@@ -18,27 +18,69 @@ use Illuminate\View\View;
 class TransferenciaController extends Controller
 {
     // ─────────────────────────────────────────────────────────
-    //  VISTA PRINCIPAL (Enviar Mercancía / Recepciones)
+    //  VISTA PRINCIPAL (Enviar Mercancía / Recepciones / Buzón Cloud)
     // ─────────────────────────────────────────────────────────
     public function index(Request $request): View
     {
         $tab = $request->get('tab', 'enviar');
-        if (!in_array($tab, ['enviar', 'recibir'])) {
+        if (!in_array($tab, ['enviar', 'recibir', 'nube'])) {
             $tab = 'enviar';
         }
         $settings = Setting::values();
+        $modoInventario = $settings['modo_inventario'] ?? 'dinamico';
+
         $sucursalActual = Sucursal::actual();
-        $sucursales = Sucursal::where('activo', true)->orderBy('nombre')->get();
-        $sucursalesDestino = Sucursal::destinos();
+        $sucursales = Sucursal::orderBy('nombre')->get();
+        $sucursalesDestino = $sucursalActual ? Sucursal::destinos() : collect();
+
+        // Lotes activos si el modo es dinámico
+        $lotesActivos = collect();
+        if ($modoInventario === 'dinamico') {
+            $lotesActivos = CompraDetalle::where('cantidad_peso', '>', 0)
+                ->orderBy('fecha_vencimiento', 'asc')
+                ->orderBy('id', 'asc')
+                ->get()
+                ->groupBy('articulo_id');
+        }
 
         // Artículos con stock > 0 para el formulario de envío
         $articulos = Articulo::with('familia')
             ->where('estado', '!=', 'inactivo')
             ->where('stock', '>', 0)
             ->orderBy('descripcion')
-            ->get();
+            ->get()
+            ->map(function ($a) use ($modoInventario, $lotesActivos) {
+                $misLotes = [];
+                if ($modoInventario === 'dinamico' && $lotesActivos->has($a->id)) {
+                    $misLotes = $lotesActivos->get($a->id)->map(function ($l) {
+                        return [
+                            'id' => $l->id,
+                            'lote' => (string) ($l->lote ?? ''),
+                            'serie' => (string) ($l->serie ?? ''),
+                            'codigo_escaneado' => (string) ($l->codigo_escaneado ?? ''),
+                            'fecha_vencimiento' => $l->fecha_vencimiento ? $l->fecha_vencimiento->format('Y-m-d') : null,
+                            'fecha_vencimiento_format' => $l->fecha_vencimiento ? $l->fecha_vencimiento->format('d/m/Y') : 'S/V',
+                            'cantidad_peso' => (float) $l->cantidad_peso,
+                            'costo_unitario' => (float) $l->costo_unitario,
+                        ];
+                    })->values()->all();
+                }
 
-        // Conteo de pendientes entrantes
+                return [
+                    'id' => $a->id,
+                    'codigo' => (string) ($a->codigo ?? ''),
+                    'codigo_cliente' => (string) ($a->codigo_cliente ?? ''),
+                    'item' => (string) ($a->item ?? ''),
+                    'descripcion' => (string) ($a->descripcion ?? ''),
+                    'tipo_articulo' => $a->tipo_articulo ?? 'pesable',
+                    'precio_compra' => (float) ($a->precio_compra ?: $a->precio_sin_iva ?: 0),
+                    'stock' => (float) $a->stock,
+                    'familia_nombre' => (string) ($a->familia?->nombre ?? ''),
+                    'lotes' => $misLotes,
+                ];
+            });
+
+        // Conteo de pendientes entrantes locales
         $pendientesCount = 0;
         if ($sucursalActual) {
             $pendientesCount = Transferencia::where('sucursal_destino_id', $sucursalActual->id)
@@ -46,14 +88,31 @@ class TransferenciaController extends Controller
                 ->count();
         }
 
+        // Datos para la pestaña de Buzón en la Nube
+        $transferenciasNube = [];
+        $cloudStatus = null;
+        $totalNubeCount = 0;
+        
+        $syncService = new TransferenciaSyncService();
+        if ($tab === 'nube') {
+            $cloudStatus = $syncService->testConexion();
+            $respNube = $syncService->consultarTodasEnNube();
+            $transferenciasNube = $respNube['transferencias'] ?? [];
+            $totalNubeCount = $respNube['count'] ?? 0;
+        }
+
         return view('transferencias.index', compact(
             'tab',
             'settings',
+            'modoInventario',
             'sucursalActual',
             'sucursales',
             'sucursalesDestino',
             'articulos',
-            'pendientesCount'
+            'pendientesCount',
+            'transferenciasNube',
+            'cloudStatus',
+            'totalNubeCount'
         ));
     }
 
@@ -218,6 +277,23 @@ class TransferenciaController extends Controller
         ]);
     }
 
+    /**
+     * API: Consultar todas las transferencias alojadas en el buzón cloud (para todas las sucursales).
+     */
+    public function apiConsultarTodasNube(): JsonResponse
+    {
+        $syncService = new TransferenciaSyncService();
+        $testConexion = $syncService->testConexion();
+        $todas = $syncService->consultarTodasEnNube();
+
+        return response()->json([
+            'success' => true,
+            'cloud_status' => $testConexion,
+            'count' => $todas['count'] ?? 0,
+            'transferencias' => $todas['transferencias'] ?? [],
+        ]);
+    }
+
     // ─────────────────────────────────────────────────────────
     //  IMPORTAR TRANSFERENCIA DESDE LA NUBE (a BD local)
     // ─────────────────────────────────────────────────────────
@@ -292,7 +368,26 @@ class TransferenciaController extends Controller
         }
 
         DB::transaction(function () use ($transferencia, $request) {
-            $transferencia->load('detalles');
+            $transferencia->load('detalles', 'sucursalOrigen');
+            $settings = Setting::values();
+            $modoInventario = $settings['modo_inventario'] ?? 'dinamico';
+
+            $compraTransferencia = null;
+            if ($modoInventario === 'dinamico') {
+                $compraTransferencia = \App\Models\Compra::firstOrCreate(
+                    ['numero_factura' => 'TRN-' . $transferencia->folio],
+                    [
+                        'proveedor_id' => null,
+                        'proveedor_nombre' => 'Transferencia: ' . ($transferencia->sucursalOrigen->nombre ?? 'Sucursal'),
+                        'fecha_compra' => now(),
+                        'subtotal' => $transferencia->costo_total,
+                        'iva' => 0,
+                        'total' => $transferencia->costo_total,
+                        'observaciones' => 'Entrada por Transferencia desde ' . ($transferencia->sucursalOrigen->nombre ?? 'Sucursal'),
+                        'user_id' => Auth::id(),
+                    ]
+                );
+            }
 
             foreach ($transferencia->detalles as $detalle) {
                 $cantidadRecibida = (float) ($request->input("cantidades.{$detalle->id}") ?? $detalle->cantidad_enviada);
@@ -320,6 +415,39 @@ class TransferenciaController extends Controller
                         $articulo->precio_compra = $detalle->costo_unitario;
                     }
                     $articulo->save();
+
+                    // Si el modo de inventario local es dinámico, registrar o actualizar el lote recibido
+                    if ($modoInventario === 'dinamico' && $compraTransferencia) {
+                        // Buscar si ya existe el lote exacto
+                        $loteExistente = CompraDetalle::where('articulo_id', $articulo->id)
+                            ->where('compra_id', $compraTransferencia->id)
+                            ->where(function($q) use ($detalle) {
+                                if ($detalle->lote) {
+                                    $q->where('lote', $detalle->lote);
+                                }
+                                if ($detalle->numero_lote) {
+                                    $q->where('serie', $detalle->numero_lote);
+                                }
+                            })
+                            ->first();
+
+                        if ($loteExistente) {
+                            $loteExistente->cantidad_peso = $loteExistente->cantidad_peso + $cantidadRecibida;
+                            $loteExistente->save();
+                        } else {
+                            CompraDetalle::create([
+                                'compra_id' => $compraTransferencia->id,
+                                'articulo_id' => $articulo->id,
+                                'codigo_escaneado' => $detalle->codigo,
+                                'lote' => $detalle->lote,
+                                'serie' => $detalle->numero_lote,
+                                'fecha_vencimiento' => $detalle->fecha_vencimiento_lote,
+                                'cantidad_peso' => $cantidadRecibida,
+                                'costo_unitario' => $detalle->costo_unitario,
+                                'subtotal' => round($cantidadRecibida * $detalle->costo_unitario, 2),
+                            ]);
+                        }
+                    }
                 }
             }
 

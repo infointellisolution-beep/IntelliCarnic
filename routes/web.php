@@ -70,6 +70,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/transferencias', [\App\Http\Controllers\TransferenciaController::class, 'store'])->name('transferencias.store');
     Route::post('/transferencias/importar-trn', [\App\Http\Controllers\TransferenciaController::class, 'importarTrn'])->name('transferencias.importar-trn');
     Route::get('/transferencias/api/sync-nube', [\App\Http\Controllers\TransferenciaController::class, 'apiSyncNube'])->name('transferencias.api.sync');
+    Route::get('/transferencias/api/consultar-todas-nube', [\App\Http\Controllers\TransferenciaController::class, 'apiConsultarTodasNube'])->name('transferencias.api.consultar-todas-nube');
     Route::post('/transferencias/api/importar-nube', [\App\Http\Controllers\TransferenciaController::class, 'importarDesdeNube'])->name('transferencias.api.importar-nube');
     Route::get('/transferencias/api/test-conexion', [\App\Http\Controllers\TransferenciaController::class, 'testConexionCloud'])->name('transferencias.api.test-conexion');
     Route::post('/transferencias/api/guardar-config-cloud', [\App\Http\Controllers\TransferenciaController::class, 'guardarConfigCloud'])->name('transferencias.api.guardar-config-cloud');
