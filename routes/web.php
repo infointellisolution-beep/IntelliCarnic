@@ -65,6 +65,25 @@ Route::middleware('auth')->group(function () {
     Route::post('/caja/cerrar', [\App\Http\Controllers\CajaController::class, 'cerrar'])->name('caja.cerrar');
     Route::get('/caja/ticket-cierre/{cajaSesion}', [\App\Http\Controllers\CajaController::class, 'ticketCierre'])->name('caja.ticketCierre');
 
+    // Transferencias Multisucursal
+    Route::get('/transferencias', [\App\Http\Controllers\TransferenciaController::class, 'index'])->name('transferencias.index');
+    Route::post('/transferencias', [\App\Http\Controllers\TransferenciaController::class, 'store'])->name('transferencias.store');
+    Route::post('/transferencias/importar-trn', [\App\Http\Controllers\TransferenciaController::class, 'importarTrn'])->name('transferencias.importar-trn');
+    Route::get('/transferencias/api/sync-nube', [\App\Http\Controllers\TransferenciaController::class, 'apiSyncNube'])->name('transferencias.api.sync');
+    Route::post('/transferencias/api/importar-nube', [\App\Http\Controllers\TransferenciaController::class, 'importarDesdeNube'])->name('transferencias.api.importar-nube');
+    Route::get('/transferencias/api/test-conexion', [\App\Http\Controllers\TransferenciaController::class, 'testConexionCloud'])->name('transferencias.api.test-conexion');
+    Route::post('/transferencias/api/guardar-config-cloud', [\App\Http\Controllers\TransferenciaController::class, 'guardarConfigCloud'])->name('transferencias.api.guardar-config-cloud');
+    Route::get('/transferencias/{transferencia}', [\App\Http\Controllers\TransferenciaController::class, 'show'])->name('transferencias.show');
+    Route::post('/transferencias/{transferencia}/recibir', [\App\Http\Controllers\TransferenciaController::class, 'recibir'])->name('transferencias.recibir');
+    Route::post('/transferencias/{transferencia}/cancelar', [\App\Http\Controllers\TransferenciaController::class, 'cancelar'])->name('transferencias.cancelar');
+    Route::get('/transferencias/{transferencia}/ticket', [\App\Http\Controllers\TransferenciaController::class, 'imprimirTicket'])->name('transferencias.ticket');
+    Route::get('/transferencias/{transferencia}/descargar-trn', [\App\Http\Controllers\TransferenciaController::class, 'descargarTrn'])->name('transferencias.descargar-trn');
+    // Sucursales
+    Route::post('/sucursales', [\App\Http\Controllers\TransferenciaController::class, 'storeSucursal'])->name('sucursales.store');
+    Route::put('/sucursales/{sucursal}', [\App\Http\Controllers\TransferenciaController::class, 'updateSucursal'])->name('sucursales.update');
+    Route::delete('/sucursales/{sucursal}', [\App\Http\Controllers\TransferenciaController::class, 'destroySucursal'])->name('sucursales.destroy');
+    Route::post('/sucursales/{sucursal}/marcar-actual', [\App\Http\Controllers\TransferenciaController::class, 'marcarSucursalActual'])->name('sucursales.marcar-actual');
+
     // Handheld Terminal (Zebra TC51)
     Route::get('/handheld', [\App\Http\Controllers\HandheldController::class, 'index'])->name('handheld.index');
     Route::get('/handheld/tpv', [\App\Http\Controllers\HandheldController::class, 'tpv'])->name('handheld.tpv');

@@ -21,6 +21,8 @@ class ConfiguracionController extends Controller
         return view('configuracion.index', [
             'settings' => Setting::values(),
             'users' => User::query()->orderBy('name', 'asc')->get(),
+            'sucursales' => \App\Models\Sucursal::orderBy('nombre', 'asc')->get(),
+            'sucursalActual' => \App\Models\Sucursal::actual(),
         ]);
     }
 

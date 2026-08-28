@@ -106,6 +106,18 @@
                         </a>
                     </li>
                     <li>
+                        <a href="{{ route('transferencias.index') }}" class="{{ request()->routeIs('transferencias.*') ? 'active' : '' }}" style="position: relative;">
+                            <i class="fa-solid fa-right-left"></i> Transferencias
+                            @php
+                                $sucActual = \App\Models\Sucursal::actual();
+                                $pendCount = $sucActual ? \App\Models\Transferencia::where('sucursal_destino_id', $sucActual->id)->where('estado', 'en_transito')->count() : 0;
+                            @endphp
+                            @if($pendCount > 0)
+                                <span style="background:#ef4444;color:#fff;border-radius:50%;font-size:0.65rem;font-weight:700;padding:2px 6px;margin-left:6px;">{{ $pendCount }}</span>
+                            @endif
+                        </a>
+                    </li>
+                    <li>
                         <a href="{{ route('proveedores.index') }}" class="{{ request()->routeIs('proveedores.*') ? 'active' : '' }}">
                             <i class="fa-solid fa-truck-field"></i> Proveedores
                         </a>
