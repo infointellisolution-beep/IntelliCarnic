@@ -18,11 +18,14 @@ use Illuminate\View\View;
 class TransferenciaController extends Controller
 {
     // ─────────────────────────────────────────────────────────
-    //  VISTA PRINCIPAL (4 Pestañas)
+    //  VISTA PRINCIPAL (Enviar Mercancía / Recepciones)
     // ─────────────────────────────────────────────────────────
     public function index(Request $request): View
     {
         $tab = $request->get('tab', 'enviar');
+        if (!in_array($tab, ['enviar', 'recibir'])) {
+            $tab = 'enviar';
+        }
         $settings = Setting::values();
         $sucursalActual = Sucursal::actual();
         $sucursales = Sucursal::where('activo', true)->orderBy('nombre')->get();
@@ -34,22 +37,6 @@ class TransferenciaController extends Controller
             ->where('stock', '>', 0)
             ->orderBy('descripcion')
             ->get();
-
-        // Historial de transferencias
-        $queryHistorial = Transferencia::with(['sucursalOrigen', 'sucursalDestino', 'usuario', 'usuarioRecibe'])
-            ->orderBy('created_at', 'desc');
-
-        if ($request->filled('filtro_estado')) {
-            $queryHistorial->where('estado', $request->input('filtro_estado'));
-        }
-        if ($request->filled('filtro_fecha_desde')) {
-            $queryHistorial->whereDate('fecha_envio', '>=', $request->input('filtro_fecha_desde'));
-        }
-        if ($request->filled('filtro_fecha_hasta')) {
-            $queryHistorial->whereDate('fecha_envio', '<=', $request->input('filtro_fecha_hasta'));
-        }
-
-        $historial = $queryHistorial->paginate(15)->withQueryString();
 
         // Conteo de pendientes entrantes
         $pendientesCount = 0;
@@ -66,7 +53,6 @@ class TransferenciaController extends Controller
             'sucursales',
             'sucursalesDestino',
             'articulos',
-            'historial',
             'pendientesCount'
         ));
     }

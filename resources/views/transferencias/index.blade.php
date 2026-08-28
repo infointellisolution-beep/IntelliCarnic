@@ -35,11 +35,6 @@
             <span style="background:#ef4444;color:#fff;border-radius:50%;font-size:0.65rem;font-weight:700;padding:2px 6px;margin-left:4px;">{{ $pendientesCount }}</span>
         @endif
     </a>
-    <a href="{{ route('transferencias.index', ['tab' => 'historial']) }}"
-       class="tab-btn {{ $tab === 'historial' ? 'active' : '' }}"
-       style="padding: 0.75rem 1.5rem; font-weight: 600; font-size: 0.9rem; color: {{ $tab === 'historial' ? 'var(--accent)' : 'var(--text-muted)' }}; border-bottom: 2px solid {{ $tab === 'historial' ? 'var(--accent)' : 'transparent' }}; text-decoration: none; transition: all 0.2s;">
-        <i class="fa-solid fa-clock-rotate-left"></i> Historial
-    </a>
 </div>
 
 {{-- ═══════════════════════════════════════════════════════════ --}}
@@ -253,113 +248,6 @@
 
     {{-- Contenedor para transferencias desde la nube (AJAX) --}}
     <div id="transferenciasNubeContainer"></div>
-</div>
-@endif
-
-{{-- ═══════════════════════════════════════════════════════════ --}}
-{{--  TAB 3: HISTORIAL                                         --}}
-{{-- ═══════════════════════════════════════════════════════════ --}}
-@if($tab === 'historial')
-<div id="panelHistorial">
-    {{-- Filtros --}}
-    <div class="card" style="margin-bottom: 1.5rem;">
-        <form method="GET" action="{{ route('transferencias.index') }}" style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
-            <input type="hidden" name="tab" value="historial">
-            <div>
-                <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.35rem; display: block;">Estado</label>
-                <select name="filtro_estado" class="input-modern">
-                    <option value="">Todos</option>
-                    <option value="en_transito" {{ request('filtro_estado') === 'en_transito' ? 'selected' : '' }}>🚚 En Tránsito</option>
-                    <option value="recibida" {{ request('filtro_estado') === 'recibida' ? 'selected' : '' }}>✅ Recibida</option>
-                    <option value="cancelada" {{ request('filtro_estado') === 'cancelada' ? 'selected' : '' }}>❌ Cancelada</option>
-                </select>
-            </div>
-            <div>
-                <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.35rem; display: block;">Desde</label>
-                <input type="date" name="filtro_fecha_desde" class="input-modern" value="{{ request('filtro_fecha_desde') }}">
-            </div>
-            <div>
-                <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.35rem; display: block;">Hasta</label>
-                <input type="date" name="filtro_fecha_hasta" class="input-modern" value="{{ request('filtro_fecha_hasta') }}">
-            </div>
-            <div style="display: flex; gap: 0.5rem;">
-                <button type="submit" class="btn-modern btn-secondary"><i class="fa-solid fa-filter"></i> Filtrar</button>
-                <a href="{{ route('transferencias.index', ['tab' => 'historial']) }}" class="btn-modern btn-secondary"><i class="fa-solid fa-rotate-left"></i></a>
-            </div>
-        </form>
-    </div>
-
-    {{-- Tabla de historial --}}
-    <div class="card">
-        <table class="modern-table">
-            <thead>
-                <tr>
-                    <th>Folio</th>
-                    <th>Origen</th>
-                    <th>Destino</th>
-                    <th>Fecha Envío</th>
-                    <th>Peso / Unidades</th>
-                    <th>Costo</th>
-                    <th>Estado</th>
-                    <th>Sync</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($historial as $trans)
-                <tr>
-                    <td><strong>{{ $trans->folio }}</strong></td>
-                    <td>{{ $trans->sucursalOrigen->nombre ?? '—' }}</td>
-                    <td>{{ $trans->sucursalDestino->nombre ?? '—' }}</td>
-                    <td>{{ $trans->fecha_envio ? $trans->fecha_envio->format('d/m/Y H:i') : '—' }}</td>
-                    <td>
-                        {{ number_format($trans->total_peso, 3) }} {{ strtoupper($settings['unidad_peso'] ?? 'LB') }}
-                        @if($trans->total_unidades > 0)
-                            <br><span style="font-size: 0.78rem; color: var(--text-muted);">+ {{ $trans->total_unidades }} UND</span>
-                        @endif
-                    </td>
-                    <td style="font-weight: 600;">${{ number_format($trans->costo_total, 2) }}</td>
-                    <td>{!! $trans->estado_badge !!}</td>
-                    <td>
-                        @if($trans->tipo_sincronizacion === 'cloud')
-                            <span style="color: #10b981;" title="Sincronizado por nube"><i class="fa-solid fa-cloud-arrow-up"></i></span>
-                        @else
-                            <span style="color: #f59e0b;" title="Manual / Archivo .TRN"><i class="fa-solid fa-file-export"></i></span>
-                        @endif
-                    </td>
-                    <td>
-                        <div style="display: flex; gap: 0.35rem;">
-                            <a href="{{ route('transferencias.ticket', $trans) }}" target="_blank" class="btn-modern btn-secondary" style="font-size: 0.75rem; padding: 4px 8px;" title="Imprimir Ticket">
-                                <i class="fa-solid fa-print"></i>
-                            </a>
-                            <a href="{{ route('transferencias.descargar-trn', $trans) }}" class="btn-modern btn-secondary" style="font-size: 0.75rem; padding: 4px 8px;" title="Descargar .TRN">
-                                <i class="fa-solid fa-download"></i>
-                            </a>
-                            @if($trans->estado === 'en_transito')
-                                <button onclick="cancelarTransferencia({{ $trans->id }}, '{{ $trans->folio }}')" class="btn-modern" style="font-size: 0.75rem; padding: 4px 8px; background: #fee2e2; color: #991b1b;" title="Cancelar">
-                                    <i class="fa-solid fa-ban"></i>
-                                </button>
-                            @endif
-                        </div>
-                    </td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="9" style="text-align: center; padding: 2rem; color: var(--text-muted);">
-                        <i class="fa-solid fa-clipboard-list" style="font-size: 1.5rem; display: block; margin-bottom: 0.5rem;"></i>
-                        No se encontraron transferencias con los filtros aplicados.
-                    </td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
-
-        @if($historial->hasPages())
-            <div style="margin-top: 1rem; display: flex; justify-content: center;">
-                {{ $historial->links() }}
-            </div>
-        @endif
-    </div>
 </div>
 @endif
 

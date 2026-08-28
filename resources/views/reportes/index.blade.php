@@ -62,6 +62,11 @@
        style="padding: 0.75rem 1.25rem; font-weight: 700; text-decoration: none; border-bottom: 3px solid {{ $tab === 'ajustes' ? 'var(--primary)' : 'transparent' }}; color: {{ $tab === 'ajustes' ? 'var(--primary)' : 'var(--text-muted)' }};">
         <i class="fa-solid fa-sliders"></i> Reporte de Ajustes
     </a>
+    <a href="{{ route('reportes.index', ['tab' => 'transferencias', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin, 'per_page' => $perPage]) }}" 
+       class="tab-item {{ $tab === 'transferencias' ? 'active' : '' }}" 
+       style="padding: 0.75rem 1.25rem; font-weight: 700; text-decoration: none; border-bottom: 3px solid {{ $tab === 'transferencias' ? '#6366f1' : 'transparent' }}; color: {{ $tab === 'transferencias' ? '#6366f1' : 'var(--text-muted)' }};">
+        <i class="fa-solid fa-right-left" style="color: #6366f1;"></i> Reporte de Transferencias
+    </a>
 </div>
 
 <!-- FILTROS DE BÚSQUEDA -->
@@ -208,6 +213,67 @@
                     <option value="todos" @selected(($filtroOrigen ?? 'todos') === 'todos')>Todos los orígenes</option>
                     <option value="handheld" @selected(($filtroOrigen ?? '') === 'handheld')>📱 Handheld</option>
                     <option value="web" @selected(($filtroOrigen ?? '') === 'web')>💻 Panel Web</option>
+                </select>
+            </div>
+
+            <div>
+                <button type="submit" class="btn-modern btn-primary" style="width: auto;">
+                    <i class="fa-solid fa-filter"></i> Filtrar
+                </button>
+            </div>
+        @elseif($tab === 'transferencias')
+            <!-- DATE RANGE PICKER TRIGGER -->
+            <div style="flex: 1; min-width: 220px;">
+                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">
+                    <i class="fa-solid fa-calendar-days"></i> Período
+                </label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <button type="button" id="btn-abrir-datepicker" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 1rem; border: 2px solid #6366f1; border-radius: 8px; background: rgba(99,102,241,0.05); color: #6366f1; font-weight: 700; font-size: 0.9rem; cursor: pointer; white-space: nowrap;">
+                        <i class="fa-solid fa-calendar-range"></i>
+                        <span id="label-rango-fecha">{{ \Carbon\Carbon::parse($fechaInicio)->format('d/m/Y') }} — {{ \Carbon\Carbon::parse($fechaFin)->format('d/m/Y') }}</span>
+                        <i class="fa-solid fa-chevron-down" style="margin-left: 0.25rem; font-size: 0.72rem;"></i>
+                    </button>
+                    <a href="{{ route('reportes.index', ['tab' => 'transferencias']) }}" title="Limpiar filtro de fecha" style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border-color); color: var(--text-muted); background: white; text-decoration: none; font-size: 0.9rem; flex-shrink: 0;" onmouseover="this.style.borderColor='#ef4444';this.style.color='#ef4444'" onmouseout="this.style.borderColor='var(--border-color)';this.style.color='var(--text-muted)'">
+                        <i class="fa-solid fa-xmark"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- FILTRO SUCURSAL -->
+            <div style="flex: 1; min-width: 190px;">
+                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">
+                    <i class="fa-solid fa-building"></i> Sucursal
+                </label>
+                <select name="sucursal_id" class="input-modern" onchange="document.getElementById('form-filtros-reporte').submit()">
+                    <option value="">-- Todas las Sucursales --</option>
+                    @foreach($sucursalesList as $s)
+                        <option value="{{ $s->id }}" @selected($sucursalId == $s->id)>{{ $s->nombre }} ({{ $s->codigo }})</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <!-- FILTRO DIRECCIÓN / FLUJO -->
+            <div style="flex: 1; min-width: 170px;">
+                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">
+                    <i class="fa-solid fa-arrows-turn-to-dots"></i> Flujo
+                </label>
+                <select name="tipo_flujo" class="input-modern" onchange="document.getElementById('form-filtros-reporte').submit()">
+                    <option value="todos" @selected(($tipoFlujo ?? 'todos') === 'todos')>Todos los movimientos</option>
+                    <option value="envios" @selected(($tipoFlujo ?? '') === 'envios')>📤 Solo Envíos (Salidas)</option>
+                    <option value="recepciones" @selected(($tipoFlujo ?? '') === 'recepciones')>📥 Solo Recepciones (Entradas)</option>
+                </select>
+            </div>
+
+            <!-- FILTRO ESTADO -->
+            <div style="flex: 1; min-width: 160px;">
+                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">
+                    <i class="fa-solid fa-circle-check"></i> Estado
+                </label>
+                <select name="estado_transferencia" class="input-modern" onchange="document.getElementById('form-filtros-reporte').submit()">
+                    <option value="todos" @selected(($estadoTransferencia ?? 'todos') === 'todos')>Todos los Estados</option>
+                    <option value="recibida" @selected(($estadoTransferencia ?? '') === 'recibida')>✅ Recibidas</option>
+                    <option value="en_transito" @selected(($estadoTransferencia ?? '') === 'en_transito')>🚚 En Tránsito</option>
+                    <option value="cancelada" @selected(($estadoTransferencia ?? '') === 'cancelada')>❌ Canceladas</option>
                 </select>
             </div>
 
@@ -2759,6 +2825,333 @@
     </div>
 @endif
 
+<!-- PESTAÑA 10: REPORTE DE TRANSFERENCIAS MULTISUCURSAL -->
+@if($tab === 'transferencias')
+    <!-- Tarjetas KPI Transferencias -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+        <div class="card" style="padding: 1.25rem;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Total Transferencias</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: #6366f1; margin-top: 0.25rem;">{{ $totalTransCount }}</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+                <span style="color: #10b981; font-weight: 600;">{{ $transRecibidasCount }} recibidas</span> | 
+                <span style="color: #6366f1; font-weight: 600;">{{ $transEnTransitoCount }} en tránsito</span>
+                @if($transCanceladasCount > 0)
+                    | <span style="color: #ef4444; font-weight: 600;">{{ $transCanceladasCount }} canc.</span>
+                @endif
+            </div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Volumen en Peso</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: #0284c7; margin-top: 0.25rem;">
+                {{ number_format($totalTransPeso, 2) }} <span style="font-size: 1rem; font-weight: 700; color: var(--text-muted);">{{ strtoupper($unidadPeso) }}</span>
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Cortes y pesables transferidos</div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Total Unidades</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: #ea580c; margin-top: 0.25rem;">
+                {{ number_format($totalTransUnidades, 0) }} <span style="font-size: 1rem; font-weight: 700; color: var(--text-muted);">UND</span>
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Artículos unitarios trasladados</div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Costo Valorizado Total</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: #10b981; margin-top: 0.25rem;">${{ number_format($totalTransCosto, 2) }}</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Valor de costo de inventario movilizado</div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Efectividad de Entrega</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: #8b5cf6; margin-top: 0.25rem;">{{ $transTasaEfectividad }}%</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+                {{ $transRecibidasCount }} de {{ $totalTransCount }} completadas
+            </div>
+        </div>
+    </div>
+
+    <!-- SECCIÓN DE 2 COLUMNAS: TOP PRODUCTOS Y MATRIZ DE RUTAS -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
+        <!-- Columna 1: Top Productos Más Transferidos -->
+        <div class="card" style="padding: 1.25rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+                <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fa-solid fa-cubes" style="color: #6366f1;"></i> Top Productos Transferidos
+                </h3>
+                <div style="display: flex; align-items: center; gap: 0.4rem;">
+                    <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted);">Categoría:</label>
+                    <select onchange="filtrarTopTransferenciasPorCategoria(this.value)" class="input-modern" style="padding: 0.25rem 0.6rem; font-size: 0.82rem; font-weight: 700; width: auto; background: white;">
+                        <option value="todas">-- Todas las Familias --</option>
+                        @foreach($familias as $fam)
+                            <option value="{{ $fam->id }}">{{ $fam->nombre }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 0.65rem;">
+                @forelse($topArticulosTransferidos as $idx => $artT)
+                    @php
+                        $rank = $idx + 1;
+                        $badgeStyle = $rank == 1 ? 'background: #fef3c7; color: #b45309; font-weight: 800;' : ($rank == 2 ? 'background: #f1f5f9; color: #475569; font-weight: 800;' : ($rank == 3 ? 'background: #ffedd5; color: #c2410c; font-weight: 800;' : 'font-weight: 700;'));
+                        $rankIcon = $rank == 1 ? '🥇 1' : ($rank == 2 ? '🥈 2' : ($rank == 3 ? '🥉 3' : $rank));
+                        $uSym = ($artT['tipo_articulo'] === 'unidad') ? 'UND' : strtoupper($unidadPeso);
+                    @endphp
+                    <div class="fila-top-transferencia" data-familia-id="{{ $artT['familia_id'] }}" style="display: flex; align-items: center; justify-content: space-between; padding: 0.65rem 0.85rem; border-radius: 8px; border: 1px solid var(--border-color); background: white; transition: background 0.15s;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; min-width: 0; flex: 1;">
+                            <span class="badge js-top-rank-trn {{ $rank > 3 ? 'badge-info' : '' }}" style="{{ $badgeStyle }} font-size: 0.75rem; min-width: 32px; text-align: center;">
+                                {{ $rankIcon }}
+                            </span>
+                            <div style="min-width: 0; flex: 1;">
+                                <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    {{ $artT['descripcion'] }}
+                                </div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; gap: 0.5rem; align-items: center;">
+                                    <span><i class="fa-solid fa-tag"></i> {{ $artT['familia_nombre'] }}</span>
+                                    <span>•</span>
+                                    <span>{{ $artT['total_envios'] }} envío(s)</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="text-align: right; white-space: nowrap; padding-left: 0.75rem;">
+                            <div style="font-weight: 800; font-size: 0.95rem; color: #6366f1;">
+                                {{ number_format($artT['total_cantidad'], ($artT['tipo_articulo'] === 'unidad' ? 0 : 2)) }} {{ $uSym }}
+                            </div>
+                            <div style="font-size: 0.78rem; font-weight: 700; color: #10b981;">
+                                ${{ number_format($artT['total_costo'], 2) }}
+                            </div>
+                        </div>
+                    </div>
+                @empty
+                    <div style="text-align: center; color: var(--text-muted); padding: 2rem 1rem;">
+                        <i class="fa-solid fa-right-left" style="font-size: 2rem; color: #cbd5e1; margin-bottom: 0.5rem; display: block;"></i>
+                        No hay productos transferidos en este período.
+                    </div>
+                @endforelse
+            </div>
+        </div>
+
+        <!-- Columna 2: Matriz de Rutas y Flujos entre Sucursales -->
+        <div class="card" style="padding: 1.25rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+                <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fa-solid fa-route" style="color: #6366f1;"></i> Matriz de Flujos entre Sucursales
+                </h3>
+                <span class="badge badge-info" style="font-weight: 700; font-size: 0.75rem;">
+                    {{ count($flujoSucursales) }} Ruta(s)
+                </span>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                @forelse($flujoSucursales as $flujo)
+                    @php
+                        $porcentaje = $totalFlujoCostoGeneral > 0 ? round(($flujo->suma_costo / $totalFlujoCostoGeneral) * 100, 1) : 0;
+                    @endphp
+                    <div style="border: 1px solid var(--border-color); border-radius: 8px; padding: 0.85rem; background: white;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                            <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main); display: flex; align-items: center; gap: 0.4rem;">
+                                <span style="color: #64748b;">{{ $flujo->sucursalOrigen->nombre ?? 'Origen' }}</span>
+                                <i class="fa-solid fa-arrow-right" style="color: #6366f1; font-size: 0.8rem;"></i>
+                                <span style="color: #1e293b; font-weight: 800;">{{ $flujo->sucursalDestino->nombre ?? 'Destino' }}</span>
+                            </div>
+                            <span class="badge" style="background: rgba(99,102,241,0.1); color: #6366f1; font-weight: 800; font-size: 0.75rem;">
+                                {{ $flujo->total_transferencias }} transferencias
+                            </span>
+                        </div>
+
+                        <!-- Barra de progreso -->
+                        <div style="background: #f1f5f9; border-radius: 6px; height: 8px; overflow: hidden; margin-bottom: 0.5rem;">
+                            <div style="background: linear-gradient(90deg, #6366f1, #8b5cf6); height: 100%; width: {{ max(4, $porcentaje) }}%; border-radius: 6px;"></div>
+                        </div>
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: var(--text-muted);">
+                            <div>
+                                <span>Peso: <b style="color: var(--text-main);">{{ number_format($flujo->suma_peso, 2) }} {{ strtoupper($unidadPeso) }}</b></span>
+                                <span style="margin: 0 4px;">•</span>
+                                <span>Unidades: <b style="color: var(--text-main);">{{ number_format($flujo->suma_unidades) }} UND</b></span>
+                            </div>
+                            <div>
+                                <span style="font-weight: 800; color: #10b981; font-size: 0.85rem;">${{ number_format($flujo->suma_costo, 2) }}</span>
+                                <span style="color: var(--text-muted); font-size: 0.75rem;">({{ $porcentaje }}%)</span>
+                            </div>
+                        </div>
+                    </div>
+                @empty
+                    <div style="text-align: center; color: var(--text-muted); padding: 2rem 1rem;">
+                        <i class="fa-solid fa-route" style="font-size: 2rem; color: #cbd5e1; margin-bottom: 0.5rem; display: block;"></i>
+                        No hay rutas de transferencias registradas en este período.
+                    </div>
+                @endforelse
+            </div>
+        </div>
+    </div>
+
+    <!-- TABLA DE DETALLE DE TRANSFERENCIAS -->
+    <div class="card" style="padding: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+            <div>
+                <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fa-solid fa-list-check" style="color: #6366f1;"></i> Registro de Transferencias Multisucursal
+                </h3>
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">
+                    Historial de traslados de mercancía entre tiendas físicas con trazabilidad y costos
+                </div>
+            </div>
+
+            <!-- Botones de Acción (Exportar CSV) -->
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <a href="{{ route('reportes.exportar', ['tipo' => 'transferencias', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin, 'sucursal_id' => $sucursalId, 'tipo_flujo' => $tipoFlujo, 'estado_transferencia' => $estadoTransferencia]) }}" 
+                   class="btn-modern btn-success" style="padding: 0.45rem 0.9rem; font-size: 0.85rem; font-weight: 700; gap: 0.4rem; display: inline-flex; align-items: center; text-decoration: none;">
+                    <i class="fa-solid fa-file-excel"></i> Exportar a CSV
+                </a>
+            </div>
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table class="modern-table" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th>Folio</th>
+                        <th>Fecha Envío</th>
+                        <th>Sucursal Origen</th>
+                        <th>Sucursal Destino</th>
+                        <th>Responsable</th>
+                        <th style="text-align: right;">Volumen</th>
+                        <th style="text-align: right;">Costo Total</th>
+                        <th style="text-align: center;">Sync</th>
+                        <th style="text-align: center;">Estado</th>
+                        <th style="text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($transferenciasLista as $trn)
+                        <tr>
+                            <td style="font-weight: 800; font-family: monospace; font-size: 0.88rem; color: #6366f1;">
+                                {{ $trn->folio }}
+                            </td>
+                            <td style="font-size: 0.85rem; color: var(--text-muted); white-space: nowrap;">
+                                {{ $trn->fecha_envio ? $trn->fecha_envio->format('d/m/Y H:i') : $trn->created_at->format('d/m/Y H:i') }}
+                            </td>
+                            <td>
+                                <div style="font-weight: 700; font-size: 0.88rem; color: var(--text-main);">
+                                    {{ $trn->sucursalOrigen->nombre ?? 'N/A' }}
+                                </div>
+                                <div style="font-size: 0.72rem; color: var(--text-muted); font-family: monospace;">
+                                    {{ $trn->sucursalOrigen->codigo ?? '' }}
+                                </div>
+                            </td>
+                            <td>
+                                <div style="font-weight: 700; font-size: 0.88rem; color: var(--text-main);">
+                                    {{ $trn->sucursalDestino->nombre ?? 'N/A' }}
+                                </div>
+                                <div style="font-size: 0.72rem; color: var(--text-muted); font-family: monospace;">
+                                    {{ $trn->sucursalDestino->codigo ?? '' }}
+                                </div>
+                            </td>
+                            <td>
+                                <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">
+                                    {{ $trn->usuario->name ?? 'Sistema' }}
+                                </div>
+                                @if($trn->usuarioRecibe)
+                                    <div style="font-size: 0.72rem; color: #10b981;">
+                                        <i class="fa-solid fa-check"></i> Recibió: {{ $trn->usuarioRecibe->name }}
+                                    </div>
+                                @endif
+                            </td>
+                            <td style="text-align: right; white-space: nowrap;">
+                                @if($trn->total_peso > 0)
+                                    <div style="font-weight: 800; font-size: 0.9rem; color: #0284c7;">
+                                        {{ number_format($trn->total_peso, 2) }} {{ strtoupper($unidadPeso) }}
+                                    </div>
+                                @endif
+                                @if($trn->total_unidades > 0)
+                                    <div style="font-size: 0.8rem; font-weight: 700; color: #ea580c;">
+                                        {{ number_format($trn->total_unidades) }} UND
+                                    </div>
+                                @endif
+                                @if($trn->total_peso <= 0 && $trn->total_unidades <= 0)
+                                    <span style="color: var(--text-muted); font-size: 0.8rem;">0.00</span>
+                                @endif
+                            </td>
+                            <td style="text-align: right; font-weight: 800; color: #10b981; font-size: 0.95rem; white-space: nowrap;">
+                                ${{ number_format($trn->costo_total, 2) }}
+                            </td>
+                            <td style="text-align: center;">
+                                @if($trn->tipo_sincronizacion === 'cloud')
+                                    <span class="badge" style="background: rgba(99,102,241,0.1); color: #6366f1; font-size: 0.72rem; font-weight: 700;">
+                                        <i class="fa-solid fa-cloud"></i> Nube
+                                    </span>
+                                @else
+                                    <span class="badge" style="background: #f1f5f9; color: #475569; font-size: 0.72rem; font-weight: 700;">
+                                        <i class="fa-solid fa-file-code"></i> Manual
+                                    </span>
+                                @endif
+                            </td>
+                            <td style="text-align: center;">
+                                @if($trn->estado === 'recibida')
+                                    <span class="badge badge-success" style="font-size: 0.75rem; font-weight: 700;">
+                                        <i class="fa-solid fa-circle-check"></i> Recibida
+                                    </span>
+                                @elseif($trn->estado === 'en_transito')
+                                    <span class="badge badge-warning" style="font-size: 0.75rem; font-weight: 700;">
+                                        <i class="fa-solid fa-truck-fast"></i> En Tránsito
+                                    </span>
+                                @elseif($trn->estado === 'cancelada')
+                                    <span class="badge badge-danger" style="font-size: 0.75rem; font-weight: 700;">
+                                        <i class="fa-solid fa-ban"></i> Cancelada
+                                    </span>
+                                @endif
+                            </td>
+                            <td style="text-align: center; white-space: nowrap;">
+                                <div style="display: inline-flex; gap: 0.35rem;">
+                                    <button type="button" class="btn-modern btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.78rem;" title="Ver Desglose de Productos" onclick='verDetalleTransferenciaModal(@json($trn))'>
+                                        <i class="fa-solid fa-eye"></i>
+                                    </button>
+                                    <a href="{{ route('transferencias.ticket', $trn->id) }}" target="_blank" class="btn-modern btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.78rem; text-decoration: none;" title="Imprimir Manifiesto Térmico">
+                                        <i class="fa-solid fa-print"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="10" style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
+                                <div style="font-size: 2rem; margin-bottom: 0.5rem; color: #cbd5e1;">
+                                    <i class="fa-solid fa-right-left"></i>
+                                </div>
+                                <div style="font-weight: 700; font-size: 1rem;">No hay transferencias registradas en este período</div>
+                                <div style="font-size: 0.85rem; margin-top: 0.25rem;">
+                                    Ajusta los filtros de fecha o sucursal para consultar los movimientos.
+                                </div>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+            <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">
+                <span>Mostrar:</span>
+                <select onchange="cambiarPaginacion(this.value)" class="input-modern" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.85rem; font-weight: 700; background: white;">
+                    <option value="10" @selected($perPage == 10)>10 por página</option>
+                    <option value="15" @selected($perPage == 15)>15 por página</option>
+                    <option value="25" @selected($perPage == 25)>25 por página</option>
+                    <option value="50" @selected($perPage == 50)>50 por página</option>
+                    <option value="100" @selected($perPage == 100)>100 por página</option>
+                    <option value="99999" @selected($perPage >= 99999)>Todos los registros</option>
+                </select>
+                <span>(Total: {{ $transferenciasLista->total() }} transferencias)</span>
+            </div>
+            <div>
+                {{ $transferenciasLista->appends(['tab' => 'transferencias', 'fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin, 'sucursal_id' => $sucursalId, 'tipo_flujo' => $tipoFlujo, 'estado_transferencia' => $estadoTransferencia])->links() }}
+            </div>
+        </div>
+    </div>
+@endif
+
 <!-- MODAL DOCUMENTO DE VENTA (TICKET TÉRMICO IDÉNTICO AL TPV) -->
 <div id="modal-documento-venta" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); z-index: 999; align-items: center; justify-content: center; padding: 1rem;">
     <div style="background: white; border-radius: 14px; max-width: 480px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); border: 1px solid var(--border-color); overflow: hidden;">
@@ -3748,51 +4141,14 @@
         // 6. Selector de Comparar Contra
         const selComp = document.getElementById(`select-comparar-${tipo}`);
         if (selComp) {
-            let compHtml = '';
-            if (st.nivel === 'mensual') {
-                compHtml += `<option value="auto">Mes Anterior (Automático)</option>`;
-                compHtml += `<option value="mismo_ano_anterior">Mismo Mes del Año Anterior</option>`;
-                if (tipo !== 'beneficios') {
-                    compHtml += `<option value="ventas_vs_compras">${tipo === 'ventas' ? 'Ventas vs Compras (Costos)' : 'Compras vs Ventas'}</option>`;
+            if (data.opcionesComparar && data.opcionesComparar.length > 0) {
+                const currentVal = selComp.value;
+                selComp.innerHTML = data.opcionesComparar.map(opt => `<option value="${opt.value}">${opt.label}</option>`).join('');
+                if (currentVal && Array.from(selComp.options).some(o => o.value === currentVal)) {
+                    selComp.value = currentVal;
+                } else if (data.compararSeleccionado) {
+                    selComp.value = data.compararSeleccionado;
                 }
-                compHtml += `<option value="ninguno">Sin Comparación (Solo este mes)</option>`;
-                if (data.mesesDisponibles && data.mesesDisponibles.length > 0) {
-                    compHtml += `<optgroup label="Comparar con Mes Específico">`;
-                    data.mesesDisponibles.forEach(m => {
-                        if (m.value !== data.mesBase) {
-                            compHtml += `<option value="${m.value}">${m.label}</option>`;
-                        }
-                    });
-                    compHtml += `</optgroup>`;
-                }
-                selComp.innerHTML = compHtml;
-                selComp.value = st.mesComparar;
-            } else if (st.nivel === 'semanal') {
-                compHtml += `<option value="auto">Semana Anterior (Inmediata)</option>`;
-                compHtml += `<option value="mes_anterior">Misma Semana del Mes Anterior</option>`;
-                if (tipo !== 'beneficios') {
-                    compHtml += `<option value="ventas_vs_compras">${tipo === 'ventas' ? 'Ventas vs Compras (Costos)' : 'Compras vs Ventas'}</option>`;
-                }
-                compHtml += `<option value="ninguna">Sin Comparación</option>`;
-                selComp.innerHTML = compHtml;
-                selComp.value = st.semanaComparar;
-            } else if (st.nivel === 'anual') {
-                compHtml += `<option value="auto">Año Anterior (Automático)</option>`;
-                if (tipo !== 'beneficios') {
-                    compHtml += `<option value="ventas_vs_compras">${tipo === 'ventas' ? 'Ventas vs Compras (12 Meses)' : 'Compras vs Ventas (12 Meses)'}</option>`;
-                }
-                compHtml += `<option value="ninguno">Sin Comparación</option>`;
-                if (data.anosDisponibles && data.anosDisponibles.length > 0) {
-                    compHtml += `<optgroup label="Comparar con Año Específico">`;
-                    data.anosDisponibles.forEach(a => {
-                        if (String(a) !== String(data.anoBase)) {
-                            compHtml += `<option value="${a}">Año ${a}</option>`;
-                        }
-                    });
-                    compHtml += `</optgroup>`;
-                }
-                selComp.innerHTML = compHtml;
-                selComp.value = st.anoComparar;
             }
         }
 
@@ -4039,6 +4395,131 @@
         });
     }
 
+    function filtrarTopTransferenciasPorCategoria(famId) {
+        let count = 1;
+        document.querySelectorAll('.fila-top-transferencia').forEach(row => {
+            const rowFamId = row.dataset.familiaId;
+            if (famId === 'todas' || rowFamId == famId) {
+                row.style.display = 'flex';
+                const badgeRank = row.querySelector('.js-top-rank-trn');
+                if (badgeRank) {
+                    if (count === 1) {
+                        badgeRank.outerHTML = `<span class="badge js-top-rank-trn" style="background: #fef3c7; color: #b45309; font-weight: 800; font-size: 0.75rem; min-width: 32px; text-align: center;">🥇 1</span>`;
+                    } else if (count === 2) {
+                        badgeRank.outerHTML = `<span class="badge js-top-rank-trn" style="background: #f1f5f9; color: #475569; font-weight: 800; font-size: 0.75rem; min-width: 32px; text-align: center;">🥈 2</span>`;
+                    } else if (count === 3) {
+                        badgeRank.outerHTML = `<span class="badge js-top-rank-trn" style="background: #ffedd5; color: #c2410c; font-weight: 800; font-size: 0.75rem; min-width: 32px; text-align: center;">🥉 3</span>`;
+                    } else {
+                        badgeRank.outerHTML = `<span class="badge badge-info js-top-rank-trn" style="font-weight: 700; font-size: 0.75rem; min-width: 32px; text-align: center;">${count}</span>`;
+                    }
+                }
+                count++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    function verDetalleTransferenciaModal(trn) {
+        const modal = document.getElementById('modal-detalle-transferencia');
+        if (!modal) return;
+
+        document.getElementById('modal-trn-folio').innerText = `Transferencia ${trn.folio}`;
+        const orig = trn.sucursal_origen ? trn.sucursal_origen.nombre : 'Origen';
+        const dest = trn.sucursal_destino ? trn.sucursal_destino.nombre : 'Destino';
+        document.getElementById('modal-trn-ruta').innerText = `${orig} ➔ ${dest} | Fecha: ${trn.fecha_envio || trn.created_at || ''}`;
+        
+        const printBtn = document.getElementById('modal-trn-btn-print');
+        if (printBtn) {
+            printBtn.href = `/transferencias/${trn.id}/ticket`;
+        }
+
+        let html = `
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.85rem;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Estado Actual</div>
+                    <div style="font-weight: 800; font-size: 1rem; color: #6366f1; margin-top: 0.2rem; text-transform: uppercase;">${trn.estado || 'N/A'}</div>
+                </div>
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.85rem;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Enviado Por</div>
+                    <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main); margin-top: 0.2rem;">${trn.usuario ? trn.usuario.name : 'Sistema'}</div>
+                </div>
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.85rem;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Recibido Por</div>
+                    <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main); margin-top: 0.2rem;">${trn.usuario_recibe ? trn.usuario_recibe.name : 'Pendiente'}</div>
+                </div>
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.85rem;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Costo Total</div>
+                    <div style="font-weight: 800; font-size: 1.1rem; color: #10b981; margin-top: 0.2rem;">$${parseFloat(trn.costo_total || 0).toFixed(2)}</div>
+                </div>
+            </div>
+
+            <h4 style="font-size: 0.95rem; font-weight: 800; margin-bottom: 0.75rem; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fa-solid fa-boxes-stacked" style="color: #6366f1;"></i> Desglose de Artículos y Lotes
+            </h4>
+            <div style="overflow-x: auto; border: 1px solid var(--border-color); border-radius: 10px; margin-bottom: 1rem;">
+                <table class="table-modern" style="width: 100%; margin: 0; min-width: 600px;">
+                    <thead>
+                        <tr style="background: #f8fafc;">
+                            <th style="padding: 0.75rem 1rem;">Producto</th>
+                            <th style="padding: 0.75rem 1rem;">Lote / Vencimiento</th>
+                            <th style="padding: 0.75rem 1rem; text-align: right;">Cant. Enviada</th>
+                            <th style="padding: 0.75rem 1rem; text-align: right;">Costo Unit.</th>
+                            <th style="padding: 0.75rem 1rem; text-align: right;">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        if (trn.detalles && trn.detalles.length > 0) {
+            trn.detalles.forEach(d => {
+                const desc = d.descripcion || (d.articulo ? d.articulo.descripcion : 'Producto');
+                const sku = d.codigo || (d.articulo ? d.articulo.codigo : '-');
+                const lote = d.lote || d.numero_lote || '-';
+                const venc = d.fecha_vencimiento_lote ? d.fecha_vencimiento_lote.substring(0, 10) : '-';
+                const cant = parseFloat(d.cantidad_enviada || 0);
+                const u = d.unidad_medida ? d.unidad_medida.toUpperCase() : (d.tipo_articulo === 'unidad' ? 'UND' : 'LB');
+                const costo = parseFloat(d.costo_unitario || 0).toFixed(2);
+                const sub = parseFloat(d.subtotal_costo || 0).toFixed(2);
+
+                html += `
+                    <tr>
+                        <td style="padding: 0.75rem 1rem;">
+                            <div style="font-weight: 700; color: var(--text-main);">${desc}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">SKU: ${sku}</div>
+                        </td>
+                        <td style="padding: 0.75rem 1rem; font-size: 0.82rem;">
+                            <div>Lote: <b>${lote}</b></div>
+                            <div style="color: var(--text-muted); font-size: 0.75rem;">Venc: ${venc}</div>
+                        </td>
+                        <td style="padding: 0.75rem 1rem; text-align: right; font-weight: 800; color: #6366f1;">
+                            ${cant.toFixed(d.tipo_articulo === 'unidad' ? 0 : 2)} ${u}
+                        </td>
+                        <td style="padding: 0.75rem 1rem; text-align: right;">$${costo}</td>
+                        <td style="padding: 0.75rem 1rem; text-align: right; font-weight: 800; color: #10b981;">$${sub}</td>
+                    </tr>
+                `;
+            });
+        } else {
+            html += `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Sin detalles registrados.</td></tr>`;
+        }
+
+        html += `
+                    </tbody>
+                </table>
+            </div>
+            ${trn.notas ? `<div style="background: #f8fafc; border-radius: 8px; padding: 0.75rem; font-size: 0.85rem; color: var(--text-muted);"><b>Notas:</b> ${trn.notas}</div>` : ''}
+        `;
+
+        document.getElementById('modal-trn-body').innerHTML = html;
+        modal.style.display = 'flex';
+    }
+
+    function cerrarModalTransferencia() {
+        const modal = document.getElementById('modal-detalle-transferencia');
+        if (modal) modal.style.display = 'none';
+    }
+
     // Inicializar al cargar el DOM
     document.addEventListener('DOMContentLoaded', function() {
         @if($tab === 'ventas')
@@ -4053,6 +4534,35 @@
 @endpush
 
 @push('modals')
+<!-- MODAL DETALLE DE TRANSFERENCIA -->
+<div id="modal-detalle-transferencia" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center; padding: 1rem;">
+    <div style="background: white; border-radius: 14px; max-width: 850px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); border: 1px solid var(--border-color); overflow: hidden;">
+        <div style="padding: 1.25rem 1.75rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <div style="background: rgba(99, 102, 241, 0.15); color: #6366f1; width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                    <i class="fa-solid fa-right-left"></i>
+                </div>
+                <div>
+                    <h2 style="font-size: 1.2rem; font-weight: 800; color: #4338ca; margin: 0;" id="modal-trn-folio">Transferencia #</h2>
+                    <div style="font-size: 0.85rem; color: var(--text-muted);" id="modal-trn-ruta"></div>
+                </div>
+            </div>
+            <button type="button" onclick="cerrarModalTransferencia()" style="background: none; border: none; font-size: 1.4rem; color: var(--text-muted); cursor: pointer;">&times;</button>
+        </div>
+
+        <div style="padding: 1.5rem; overflow-y: auto; flex: 1;" id="modal-trn-body">
+            <!-- Dinámico JS -->
+        </div>
+
+        <div style="padding: 1rem 1.75rem; border-top: 1px solid var(--border-color); background: #f8fafc; display: flex; justify-content: space-between; align-items: center;">
+            <a id="modal-trn-btn-print" href="#" target="_blank" class="btn-modern btn-primary" style="background: #6366f1; border-color: #6366f1; text-decoration: none;">
+                <i class="fa-solid fa-print"></i> Imprimir Manifiesto
+            </a>
+            <button type="button" class="btn-modern btn-secondary" onclick="cerrarModalTransferencia()">Cerrar</button>
+        </div>
+    </div>
+</div>
+
 <!-- MODAL COMPROBANTE DE ABONO (TICKET 80mm) -->
 <div id="modalComprobanteAbono" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center; padding: 1rem;">
     <div style="background: white; border-radius: 12px; width: 380px; max-width: 95%; display: flex; flex-direction: column; max-height: 90vh; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3); overflow: hidden;">

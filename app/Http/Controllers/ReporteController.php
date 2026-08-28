@@ -10,6 +10,9 @@ use App\Models\Devolucion;
 use App\Models\DevolucionDetalle;
 use App\Models\Familia;
 use App\Models\Setting;
+use App\Models\Sucursal;
+use App\Models\Transferencia;
+use App\Models\TransferenciaDetalle;
 use App\Models\Venta;
 use App\Models\VentaDetalle;
 use Carbon\Carbon;
@@ -786,6 +789,111 @@ class ReporteController extends Controller
             ];
         })->sortByDesc('ganancia_bruta')->values();
 
+        // 9. Datos para Reporte de Transferencias Multisucursal
+        $sucursalesList = Sucursal::where('activo', true)->orderBy('nombre', 'asc')->get();
+        $sucursalId = $request->get('sucursal_id');
+        $tipoFlujo = $request->get('tipo_flujo', 'todos'); // todos, envios, recepciones
+        $estadoTransferencia = $request->get('estado_transferencia', 'todos'); // todos, en_transito, recibida, cancelada
+
+        $transQuery = Transferencia::query()
+            ->whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']);
+
+        if ($sucursalId) {
+            if ($tipoFlujo === 'envios') {
+                $transQuery->where('sucursal_origen_id', $sucursalId);
+            } elseif ($tipoFlujo === 'recepciones') {
+                $transQuery->where('sucursal_destino_id', $sucursalId);
+            } else {
+                $transQuery->where(function ($q) use ($sucursalId) {
+                    $q->where('sucursal_origen_id', $sucursalId)
+                      ->orWhere('sucursal_destino_id', $sucursalId);
+                });
+            }
+        }
+
+        if ($estadoTransferencia !== 'todos') {
+            $transQuery->where('estado', $estadoTransferencia);
+        }
+
+        $totalTransCount = (clone $transQuery)->count();
+        $totalTransPeso = (float) (clone $transQuery)->sum('total_peso');
+        $totalTransUnidades = (int) (clone $transQuery)->sum('total_unidades');
+        $totalTransCosto = (float) (clone $transQuery)->sum('costo_total');
+        $transRecibidasCount = (clone $transQuery)->where('estado', 'recibida')->count();
+        $transEnTransitoCount = (clone $transQuery)->where('estado', 'en_transito')->count();
+        $transCanceladasCount = (clone $transQuery)->where('estado', 'cancelada')->count();
+        $transTasaEfectividad = $totalTransCount > 0 ? round(($transRecibidasCount / $totalTransCount) * 100, 1) : 100;
+
+        // Top Productos Más Transferidos
+        $topArticulosTransferidos = TransferenciaDetalle::whereHas('transferencia', function ($q) use ($fechaInicio, $fechaFin, $sucursalId, $tipoFlujo, $estadoTransferencia) {
+            $q->whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']);
+            if ($sucursalId) {
+                if ($tipoFlujo === 'envios') {
+                    $q->where('sucursal_origen_id', $sucursalId);
+                } elseif ($tipoFlujo === 'recepciones') {
+                    $q->where('sucursal_destino_id', $sucursalId);
+                } else {
+                    $q->where(function ($sub) use ($sucursalId) {
+                        $sub->where('sucursal_origen_id', $sucursalId)->orWhere('sucursal_destino_id', $sucursalId);
+                    });
+                }
+            }
+            if ($estadoTransferencia !== 'todos') {
+                $q->where('estado', $estadoTransferencia);
+            }
+        })
+            ->select(
+                'articulo_id',
+                'descripcion',
+                'tipo_articulo',
+                'unidad_medida',
+                DB::raw('SUM(cantidad_enviada) as total_cantidad'),
+                DB::raw('SUM(subtotal_costo) as total_costo'),
+                DB::raw('COUNT(DISTINCT transferencia_id) as total_envios')
+            )
+            ->with(['articulo.familia'])
+            ->groupBy('articulo_id', 'descripcion', 'tipo_articulo', 'unidad_medida')
+            ->orderByDesc('total_cantidad')
+            ->take(15)
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'articulo_id' => $item->articulo_id,
+                    'descripcion' => $item->descripcion,
+                    'tipo_articulo' => $item->tipo_articulo,
+                    'unidad_medida' => $item->unidad_medida,
+                    'familia_id' => $item->articulo?->familia_id ?? 0,
+                    'familia_nombre' => $item->articulo?->familia?->nombre ?? 'Sin Familia',
+                    'total_cantidad' => (float) $item->total_cantidad,
+                    'total_costo' => (float) $item->total_costo,
+                    'total_envios' => (int) $item->total_envios,
+                ];
+            });
+
+        // Flujo y Matriz de Rutas entre Sucursales
+        $flujoSucursales = Transferencia::whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])
+            ->select(
+                'sucursal_origen_id',
+                'sucursal_destino_id',
+                DB::raw('COUNT(*) as total_transferencias'),
+                DB::raw('SUM(total_peso) as suma_peso'),
+                DB::raw('SUM(total_unidades) as suma_unidades'),
+                DB::raw('SUM(costo_total) as suma_costo')
+            )
+            ->with(['sucursalOrigen', 'sucursalDestino'])
+            ->groupBy('sucursal_origen_id', 'sucursal_destino_id')
+            ->orderByDesc('suma_costo')
+            ->get();
+
+        $totalFlujoCostoGeneral = (float) $flujoSucursales->sum('suma_costo');
+
+        // Listado Paginado de Transferencias
+        $transferenciasLista = (clone $transQuery)
+            ->with(['sucursalOrigen', 'sucursalDestino', 'usuario', 'usuarioRecibe', 'detalles.articulo'])
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage, ['*'], 'page_transferencias')
+            ->withQueryString();
+
         return view('reportes.index', compact(
             'tab',
             'fechaInicio',
@@ -884,7 +992,24 @@ class ReporteController extends Controller
             'beneficioGananciaAjustada',
             'rentabilidadProductos',
             'rentabilidadProductosCol',
-            'rentabilidadFamilias'
+            'rentabilidadFamilias',
+            // Transferencias
+            'sucursalesList',
+            'sucursalId',
+            'tipoFlujo',
+            'estadoTransferencia',
+            'totalTransCount',
+            'totalTransPeso',
+            'totalTransUnidades',
+            'totalTransCosto',
+            'transRecibidasCount',
+            'transEnTransitoCount',
+            'transCanceladasCount',
+            'transTasaEfectividad',
+            'topArticulosTransferidos',
+            'flujoSucursales',
+            'totalFlujoCostoGeneral',
+            'transferenciasLista'
         ));
     }
 
@@ -1182,6 +1307,65 @@ class ReporteController extends Controller
                         number_format($mUnit, 2, '.', ''),
                     ]);
                 }
+            } elseif ($tipo === 'transferencias') {
+                fputcsv($handle, [
+                    'Folio',
+                    'Fecha Envío',
+                    'Sucursal Origen',
+                    'Sucursal Destino',
+                    'Usuario Emisor',
+                    'Usuario Receptor',
+                    'Estado',
+                    'Tipo Sincronización',
+                    'Total Peso (LB)',
+                    'Total Unidades',
+                    'Costo Total ($)',
+                    'Fecha Recepción',
+                    'Notas'
+                ]);
+
+                $query = Transferencia::with(['sucursalOrigen', 'sucursalDestino', 'usuario', 'usuarioRecibe'])
+                    ->whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']);
+
+                $sucId = $request->get('sucursal_id');
+                $flujo = $request->get('tipo_flujo', 'todos');
+                $est = $request->get('estado_transferencia', 'todos');
+
+                if ($sucId) {
+                    if ($flujo === 'envios') {
+                        $query->where('sucursal_origen_id', $sucId);
+                    } elseif ($flujo === 'recepciones') {
+                        $query->where('sucursal_destino_id', $sucId);
+                    } else {
+                        $query->where(function ($q) use ($sucId) {
+                            $q->where('sucursal_origen_id', $sucId)->orWhere('sucursal_destino_id', $sucId);
+                        });
+                    }
+                }
+
+                if ($est !== 'todos') {
+                    $query->where('estado', $est);
+                }
+
+                $query->orderBy('created_at', 'desc')->chunk(100, function ($transferencias) use ($handle) {
+                    foreach ($transferencias as $t) {
+                        fputcsv($handle, [
+                            $t->folio,
+                            $t->fecha_envio ? $t->fecha_envio->format('Y-m-d H:i') : $t->created_at->format('Y-m-d H:i'),
+                            $t->sucursalOrigen->nombre ?? 'N/A',
+                            $t->sucursalDestino->nombre ?? 'N/A',
+                            $t->usuario->name ?? 'N/A',
+                            $t->usuarioRecibe->name ?? 'N/A',
+                            strtoupper($t->estado),
+                            $t->tipo_sincronizacion === 'cloud' ? 'NUBE' : 'MANUAL (.TRN)',
+                            number_format((float) $t->total_peso, 3, '.', ''),
+                            $t->total_unidades,
+                            number_format((float) $t->costo_total, 2, '.', ''),
+                            $t->fecha_recepcion ? $t->fecha_recepcion->format('Y-m-d H:i') : 'PENDIENTE',
+                            $t->notas ?? '',
+                        ]);
+                    }
+                });
             }
 
             fclose($handle);
@@ -1219,9 +1403,11 @@ class ReporteController extends Controller
         $maxVentaDate = Venta::max('created_at') ?: now()->format('Y-m-d');
         $minCompraDate = Compra::min('fecha_compra') ?: now()->format('Y-m-d');
         $maxCompraDate = Compra::max('fecha_compra') ?: now()->format('Y-m-d');
+        $minTransDate = Transferencia::min('created_at') ?: now()->format('Y-m-d');
+        $maxTransDate = Transferencia::max('created_at') ?: now()->format('Y-m-d');
 
-        $minDateGlobal = Carbon::parse(min($minVentaDate, $minCompraDate))->startOfMonth();
-        $maxDateGlobal = Carbon::parse(max($maxVentaDate, $maxCompraDate, now()->format('Y-m-d')))->startOfMonth();
+        $minDateGlobal = Carbon::parse(min($minVentaDate, $minCompraDate, $minTransDate))->startOfMonth();
+        $maxDateGlobal = Carbon::parse(max($maxVentaDate, $maxCompraDate, $maxTransDate, now()->format('Y-m-d')))->startOfMonth();
 
         $mesesDisponibles = [];
         $cursorMonth = $maxDateGlobal->copy();
@@ -1248,6 +1434,13 @@ class ReporteController extends Controller
             if ($tipoConsulta === 'compras') {
                 $raw = Compra::whereBetween('fecha_compra', [$inicio, $fin])
                     ->selectRaw("CAST(strftime('%d', fecha_compra) AS INTEGER) as dia, SUM(total) as total")
+                    ->groupBy('dia')
+                    ->pluck('total', 'dia')
+                    ->toArray();
+            } elseif ($tipoConsulta === 'transferencias') {
+                $raw = Transferencia::whereBetween('created_at', [$inicio, $fin])
+                    ->where('estado', '!=', 'cancelada')
+                    ->selectRaw("CAST(strftime('%d', created_at) AS INTEGER) as dia, SUM(costo_total) as total")
                     ->groupBy('dia')
                     ->pluck('total', 'dia')
                     ->toArray();
@@ -1303,6 +1496,10 @@ class ReporteController extends Controller
                 if ($tipoConsulta === 'compras') {
                     $monto = (float) Compra::whereBetween('fecha_compra', [$dayCur->format('Y-m-d 00:00:00'), $dayCur->format('Y-m-d 23:59:59')])
                         ->sum('total');
+                } elseif ($tipoConsulta === 'transferencias') {
+                    $monto = (float) Transferencia::whereBetween('created_at', [$dayCur->format('Y-m-d 00:00:00'), $dayCur->format('Y-m-d 23:59:59')])
+                        ->where('estado', '!=', 'cancelada')
+                        ->sum('costo_total');
                 } elseif ($tipoConsulta === 'beneficios') {
                     $vds = VentaDetalle::whereBetween('created_at', [$dayCur->format('Y-m-d 00:00:00'), $dayCur->format('Y-m-d 23:59:59')])
                         ->whereHas('venta', fn($q) => $q->whereNotIn('estado', ['devuelta']))
@@ -1341,6 +1538,13 @@ class ReporteController extends Controller
             if ($tipoConsulta === 'compras') {
                 $raw = Compra::whereBetween('fecha_compra', [$inicioAno, $finAno])
                     ->selectRaw("CAST(strftime('%m', fecha_compra) AS INTEGER) as mes, SUM(total) as total")
+                    ->groupBy('mes')
+                    ->pluck('total', 'mes')
+                    ->toArray();
+            } elseif ($tipoConsulta === 'transferencias') {
+                $raw = Transferencia::whereBetween('created_at', [$inicioAno, $finAno])
+                    ->where('estado', '!=', 'cancelada')
+                    ->selectRaw("CAST(strftime('%m', created_at) AS INTEGER) as mes, SUM(costo_total) as total")
                     ->groupBy('mes')
                     ->pluck('total', 'mes')
                     ->toArray();
@@ -1452,7 +1656,7 @@ class ReporteController extends Controller
             $diffMonto = round($totalBase - $totalComp, 2);
             $diffPct = $totalComp > 0 ? round(($diffMonto / $totalComp) * 100, 1) : ($totalBase > 0 ? 100.0 : 0.0);
 
-            $labelPrefix = ($tipo === 'ventas' ? 'Ventas ' : ($tipo === 'compras' ? 'Compras ' : 'Beneficio '));
+            $labelPrefix = ($tipo === 'ventas' ? 'Ventas ' : ($tipo === 'compras' ? 'Compras ' : ($tipo === 'transferencias' ? 'Transferencias ' : 'Beneficio ')));
 
             return response()->json([
                 'success' => true,
@@ -1517,7 +1721,7 @@ class ReporteController extends Controller
             $totalComp = $hasComparison && $resComp ? $resComp['total'] : 0;
             $diffMonto = round($totalBase - $totalComp, 2);
             $diffPct = $totalComp > 0 ? round(($diffMonto / $totalComp) * 100, 1) : ($totalBase > 0 ? 100.0 : 0.0);
-            $labelPrefix = ($tipo === 'ventas' ? 'Ventas ' : ($tipo === 'compras' ? 'Compras ' : 'Beneficio '));
+            $labelPrefix = ($tipo === 'ventas' ? 'Ventas ' : ($tipo === 'compras' ? 'Compras ' : ($tipo === 'transferencias' ? 'Transferencias ' : 'Beneficio ')));
 
             return response()->json([
                 'success' => true,
@@ -1574,7 +1778,7 @@ class ReporteController extends Controller
             $totalComp = $hasComparison && $resComp ? $resComp['total'] : 0;
             $diffMonto = round($totalBase - $totalComp, 2);
             $diffPct = $totalComp > 0 ? round(($diffMonto / $totalComp) * 100, 1) : ($totalBase > 0 ? 100.0 : 0.0);
-            $labelPrefix = ($tipo === 'ventas' ? 'Ventas ' : ($tipo === 'compras' ? 'Compras ' : 'Beneficio '));
+            $labelPrefix = ($tipo === 'ventas' ? 'Ventas ' : ($tipo === 'compras' ? 'Compras ' : ($tipo === 'transferencias' ? 'Transferencias ' : 'Beneficio ')));
 
             return response()->json([
                 'success' => true,
