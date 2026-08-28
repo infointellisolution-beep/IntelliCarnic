@@ -190,6 +190,11 @@ class CajaController extends Controller
                 ->withErrors(['caja' => $error]);
         }
 
+        // Ejecutar respaldo automático si está configurado para ejecutarse en cierre de caja
+        try {
+            (new \App\Services\DatabaseBackupService())->checkAndRunAutomaticBackup('cierre_caja');
+        } catch (\Throwable $e) {}
+
         return redirect()
             ->route('caja.index')
             ->with('status', $statusMsg)

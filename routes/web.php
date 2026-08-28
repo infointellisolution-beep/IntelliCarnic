@@ -31,6 +31,15 @@ Route::middleware('auth')->group(function () {
     Route::post('/configuracion/sistema/github', [ConfiguracionController::class, 'updateGithub'])->name('configuracion.sistema.github');
     Route::post('/configuracion/sistema/actualizar', [ConfiguracionController::class, 'actualizarSistema'])->name('configuracion.sistema.actualizar');
 
+    // Base de Datos (Respaldos y Restauración)
+    Route::post('/configuracion/base-datos/backup', [ConfiguracionController::class, 'backupGenerar'])->name('configuracion.database.backup');
+    Route::post('/configuracion/base-datos/subir', [ConfiguracionController::class, 'backupSubir'])->name('configuracion.database.upload');
+    Route::post('/configuracion/base-datos/config-auto', [ConfiguracionController::class, 'updateBackupAutoConfig'])->name('configuracion.database.configAuto');
+    Route::get('/configuracion/base-datos/descargar/{filename}', [ConfiguracionController::class, 'backupDescargar'])->name('configuracion.database.download');
+    Route::delete('/configuracion/base-datos/eliminar/{filename}', [ConfiguracionController::class, 'backupEliminar'])->name('configuracion.database.delete');
+    Route::post('/configuracion/base-datos/restaurar', [ConfiguracionController::class, 'databaseRestaurar'])->name('configuracion.database.restore');
+    Route::post('/configuracion/base-datos/resetear', [ConfiguracionController::class, 'databaseResetear'])->name('configuracion.database.reset');
+
     Route::get('/vender/normal', [\App\Http\Controllers\VenderController::class, 'normal'])->name('vender.normal');
     Route::get('/vender/tactil', [\App\Http\Controllers\VenderController::class, 'tactil'])->name('vender.tactil');
     Route::post('/vender/cobrar', [\App\Http\Controllers\VenderController::class, 'cobrar'])->name('vender.cobrar');

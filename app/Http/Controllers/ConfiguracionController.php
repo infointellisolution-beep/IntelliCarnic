@@ -18,11 +18,20 @@ class ConfiguracionController extends Controller
 
     public function index(): View
     {
+        $backupService = new \App\Services\DatabaseBackupService();
+        // Verificar si corresponde generar respaldo automático según la programación
+        try {
+            $backupService->checkAndRunAutomaticBackup('scheduled');
+        } catch (\Throwable $e) {}
+
         return view('configuracion.index', [
             'settings' => Setting::values(),
             'users' => User::query()->orderBy('name', 'asc')->get(),
             'sucursales' => \App\Models\Sucursal::orderBy('nombre', 'asc')->get(),
             'sucursalActual' => \App\Models\Sucursal::actual(),
+            'backups' => $backupService->listBackups(),
+            'dbStats' => $backupService->getDatabaseStats(),
+            'reminderStatus' => $backupService->getBackupReminderStatus(),
         ]);
     }
 
@@ -281,5 +290,216 @@ class ConfiguracionController extends Controller
     private function isProtectedAdmin(User $user): bool
     {
         return strtolower($user->email) === self::PROTECTED_ADMIN_EMAIL;
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  BASE DE DATOS (Respaldos y Restauración Segura)
+    // ─────────────────────────────────────────────────────────
+
+    /**
+     * Generar un nuevo respaldo de la base de datos.
+     */
+    public function backupGenerar(Request $request)
+    {
+        $backupService = new \App\Services\DatabaseBackupService();
+        $result = $backupService->createBackup();
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json($result);
+        }
+
+        if ($result['success']) {
+            return redirect()
+                ->route('configuracion.index', ['tab' => 'base_datos'])
+                ->with('status', "Copia de seguridad {$result['filename']} ({$result['size']}) creada exitosamente.");
+        }
+
+        return redirect()
+            ->route('configuracion.index', ['tab' => 'base_datos'])
+            ->withErrors(['backup' => 'No se pudo generar la copia de seguridad.']);
+    }
+
+    /**
+     * Subir y almacenar un archivo de respaldo .sql en el servidor.
+     */
+    public function backupSubir(Request $request)
+    {
+        $request->validate([
+            'archivo_sql' => ['required', 'file', 'max:51200'], // hasta 50MB
+        ]);
+
+        $file = $request->file('archivo_sql');
+        $ext = strtolower($file->getClientOriginalExtension());
+        if ($ext !== 'sql') {
+            return redirect()
+                ->route('configuracion.index', ['tab' => 'base_datos'])
+                ->withErrors(['upload' => 'El archivo debe tener extensión .sql']);
+        }
+
+        $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+        $cleanName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $originalName);
+        $filename = "import_{$cleanName}_" . date('Y-m-d_H-i-s') . ".sql";
+
+        $file->move(storage_path('app/backups'), $filename);
+
+        return redirect()
+            ->route('configuracion.index', ['tab' => 'base_datos'])
+            ->with('status', "Archivo de respaldo '{$filename}' subido y guardado exitosamente en la biblioteca de copias.");
+    }
+
+    /**
+     * Descargar un archivo de respaldo específico.
+     */
+    public function backupDescargar(string $filename)
+    {
+        $backupService = new \App\Services\DatabaseBackupService();
+        $path = $backupService->getBackupPath($filename);
+
+        if (!$path) {
+            abort(404, 'El archivo de respaldo solicitado no existe.');
+        }
+
+        return response()->download($path, basename($path), [
+            'Content-Type' => 'application/sql',
+        ]);
+    }
+
+    /**
+     * Eliminar un archivo de respaldo del servidor.
+     */
+    public function backupEliminar(Request $request, string $filename)
+    {
+        $backupService = new \App\Services\DatabaseBackupService();
+        $deleted = $backupService->deleteBackup($filename);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => $deleted,
+                'message' => $deleted ? "Respaldo {$filename} eliminado." : 'No se pudo eliminar el respaldo.',
+            ]);
+        }
+
+        return redirect()
+            ->route('configuracion.index', ['tab' => 'base_datos'])
+            ->with('status', "Respaldo {$filename} eliminado.");
+    }
+
+    /**
+     * Restaurar la base de datos desde un archivo SQL subido o existente con candado de seguridad.
+     */
+    public function databaseRestaurar(Request $request)
+    {
+        $request->validate([
+            'confirmacion' => ['required', 'string'],
+            'tipo_origen' => ['required', 'in:subir,existente'],
+            'archivo_sql' => ['required_if:tipo_origen,subir', 'nullable', 'file', 'max:51200'], // hasta 50MB
+            'backup_existente' => ['required_if:tipo_origen,existente', 'nullable', 'string'],
+        ]);
+
+        // Validación estricta de seguridad: Palabra de confirmación
+        if (trim(strtoupper($request->input('confirmacion'))) !== 'RESTAURAR') {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Código de confirmación incorrecto. Debe escribir exactamente la palabra RESTAURAR.',
+                ], 422);
+            }
+            return redirect()
+                ->route('configuracion.index', ['tab' => 'base_datos'])
+                ->withErrors(['confirmacion' => 'Debe escribir exactamente RESTAURAR para autorizar la operación.']);
+        }
+
+        $backupService = new \App\Services\DatabaseBackupService();
+
+        if ($request->input('tipo_origen') === 'subir') {
+            if (!$request->hasFile('archivo_sql')) {
+                return response()->json(['success' => false, 'error' => 'No se seleccionó ningún archivo SQL.'], 422);
+            }
+            $result = $backupService->restoreFromUploadedFile($request->file('archivo_sql'));
+        } else {
+            $filename = $request->input('backup_existente');
+            $path = $backupService->getBackupPath($filename);
+            if (!$path) {
+                return response()->json(['success' => false, 'error' => 'El archivo de respaldo seleccionado no existe.'], 404);
+            }
+            $content = file_get_contents($path);
+            $result = $backupService->restoreFromSql($content);
+        }
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json($result);
+        }
+
+        if ($result['success']) {
+            return redirect()
+                ->route('configuracion.index', ['tab' => 'base_datos'])
+                ->with('status', $result['message']);
+        }
+
+        return redirect()
+            ->route('configuracion.index', ['tab' => 'base_datos'])
+            ->withErrors(['restore' => $result['error'] ?? 'Error al restaurar la base de datos.']);
+    }
+
+    /**
+     * Resetear la base de datos a 0 (Limpiar catálogo y operaciones) con candado de seguridad 'RESETEAR'.
+     */
+    public function databaseResetear(Request $request)
+    {
+        $request->validate([
+            'confirmacion' => ['required', 'string'],
+        ]);
+
+        // Validación estricta de seguridad: Palabra de confirmación
+        if (trim(strtoupper($request->input('confirmacion'))) !== 'RESETEAR') {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Código de confirmación incorrecto. Debe escribir exactamente la palabra RESETEAR.',
+                ], 422);
+            }
+            return redirect()
+                ->route('configuracion.index', ['tab' => 'base_datos'])
+                ->withErrors(['confirmacion' => 'Debe escribir exactamente RESETEAR para autorizar el reseteo.']);
+        }
+
+        $backupService = new \App\Services\DatabaseBackupService();
+        $result = $backupService->resetDatabaseToZero();
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json($result);
+        }
+
+        if ($result['success']) {
+            return redirect()
+                ->route('configuracion.index', ['tab' => 'base_datos'])
+                ->with('status', $result['message']);
+        }
+
+        return redirect()
+            ->route('configuracion.index', ['tab' => 'base_datos'])
+            ->withErrors(['reset' => $result['error'] ?? 'Error al resetear la base de datos.']);
+    }
+
+    /**
+     * Guardar configuración de programación y recordatorios de respaldos automáticos.
+     */
+    public function updateBackupAutoConfig(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'backup_auto_enabled' => ['nullable', 'boolean'],
+            'backup_frecuencia' => ['required', 'in:semanal,quincenal,mensual,cierre_caja,diario,cada_3_dias'],
+            'backup_recordatorio_dias' => ['required', 'integer', 'min:1', 'max:60'],
+            'backup_retencion_dias' => ['required', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        Setting::setValue('backup_auto_enabled', $request->boolean('backup_auto_enabled') ? '1' : '0');
+        Setting::setValue('backup_frecuencia', $data['backup_frecuencia']);
+        Setting::setValue('backup_recordatorio_dias', $data['backup_recordatorio_dias']);
+        Setting::setValue('backup_retencion_dias', $data['backup_retencion_dias']);
+
+        return redirect()
+            ->route('configuracion.index', ['tab' => 'base_datos'])
+            ->with('status', 'Configuración de respaldos automáticos y recordatorios guardada correctamente.');
     }
 }
