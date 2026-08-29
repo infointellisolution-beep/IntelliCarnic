@@ -24,6 +24,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/configuracion/empresa', [ConfiguracionController::class, 'updateEmpresa'])->name('configuracion.empresa.update');
     Route::post('/configuracion/usuarios', [ConfiguracionController::class, 'storeUser'])->name('configuracion.users.store');
     Route::put('/configuracion/usuarios/{user}', [ConfiguracionController::class, 'updateUser'])->name('configuracion.users.update');
+    Route::post('/configuracion/usuarios/{user}/permisos', [ConfiguracionController::class, 'updateUserPermissions'])->name('configuracion.users.permissions');
     Route::delete('/configuracion/usuarios/{user}', [ConfiguracionController::class, 'destroyUser'])->name('configuracion.users.destroy');
     
     // Sistema

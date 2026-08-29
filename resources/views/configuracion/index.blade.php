@@ -331,116 +331,459 @@
         </div>
     </div>
 @elseif($activeTab === 'users')
-@php
-    $userModal = $users->firstWhere('id', (int) old('user_id'));
-    $userModalAction = $userModal ? route('configuracion.users.update', $userModal) : route('configuracion.users.store');
-    $userModalMethod = $userModal ? 'PUT' : '';
-@endphp
-    <div class="config-grid config-grid-users">
+    @php
+        $totalUsers = $users->count();
+        $adminCount = $users->filter(fn($u) => $u->isAdministrator())->count();
+        $encargadoCount = $users->filter(fn($u) => $u->role === 'encargado')->count();
+        $vendedorCount = $users->filter(fn($u) => $u->role === 'vendedor' || empty($u->role))->count();
+    @endphp
+
+    {{-- Métricas de Usuarios y Roles --}}
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+        <div class="card" style="padding: 1.25rem; display: flex; align-items: center; gap: 1rem; background: #ffffff;">
+            <div style="width: 48px; height: 48px; border-radius: 12px; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
+                <i class="fa-solid fa-users"></i>
+            </div>
+            <div>
+                <div style="font-size: 0.78rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Total Usuarios</div>
+                <div style="font-size: 1.3rem; font-weight: 800; color: var(--text-main);">{{ $totalUsers }} cuentas</div>
+            </div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; display: flex; align-items: center; gap: 1rem; background: #ffffff;">
+            <div style="width: 48px; height: 48px; border-radius: 12px; background: #f3e8ff; color: #7e22ce; display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
+                <i class="fa-solid fa-crown"></i>
+            </div>
+            <div>
+                <div style="font-size: 0.78rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Administradores</div>
+                <div style="font-size: 1.3rem; font-weight: 800; color: #7e22ce;">{{ $adminCount }} (Acceso Total)</div>
+            </div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; display: flex; align-items: center; gap: 1rem; background: #ffffff;">
+            <div style="width: 48px; height: 48px; border-radius: 12px; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
+                <i class="fa-solid fa-user-tie"></i>
+            </div>
+            <div>
+                <div style="font-size: 0.78rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Encargados</div>
+                <div style="font-size: 1.3rem; font-weight: 800; color: #0284c7;">{{ $encargadoCount }} cuentas</div>
+            </div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; display: flex; align-items: center; gap: 1rem; background: #ffffff;">
+            <div style="width: 48px; height: 48px; border-radius: 12px; background: #f0fdf4; color: #16a34a; display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
+                <i class="fa-solid fa-user-tag"></i>
+            </div>
+            <div>
+                <div style="font-size: 0.78rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Vendedores</div>
+                <div style="font-size: 1.3rem; font-weight: 800; color: #16a34a;">{{ $vendedorCount }} cuentas</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="config-grid config-grid-users" style="gap: 1.5rem;">
+        {{-- Card: Formulario de Creación de Usuario --}}
         <form class="card" action="{{ route('configuracion.users.store') }}" method="POST">
             @csrf
-            <div class="hero-kicker"><i class="fa-solid fa-user-plus"></i> Usuarios</div>
-            <h2 class="hero-title" style="font-size: 1.5rem; margin-top: 0.25rem;">Crear usuario</h2>
+            <div class="hero-kicker"><i class="fa-solid fa-user-plus"></i> Gestión de Cuentas</div>
+            <h2 class="hero-title" style="font-size: 1.35rem; margin-top: 0.25rem;">Crear Nuevo Usuario</h2>
 
             <div class="form-grid" style="margin-top: 1.25rem;">
                 <div class="input-group">
-                    <label>Nombre</label>
-                    <input type="text" class="input-modern" name="name" required>
+                    <label style="font-weight: 700; font-size: 0.88rem;">Nombre Completo</label>
+                    <input type="text" class="input-modern" name="name" placeholder="Ej: Juan Pérez" required>
                 </div>
                 <div class="input-group">
-                    <label>Email</label>
-                    <input type="email" class="input-modern" name="email" required>
+                    <label style="font-weight: 700; font-size: 0.88rem;">Correo Electrónico</label>
+                    <input type="email" class="input-modern" name="email" placeholder="juan@gmail.com" required>
                 </div>
                 <div class="input-group">
-                    <label>Contraseña</label>
-                    <input type="password" class="input-modern" name="password" required>
+                    <label style="font-weight: 700; font-size: 0.88rem;"><i class="fa-solid fa-shield-halved" style="color: var(--primary);"></i> Rol de Usuario</label>
+                    <select name="role" class="input-modern" required style="font-weight: 600;">
+                        <option value="vendedor">🏷️ Vendedor / Cajero (Operativo)</option>
+                        <option value="encargado">👔 Encargado / Supervisor</option>
+                        <option value="administrador">👑 Administrador (Acceso Total)</option>
+                    </select>
                 </div>
                 <div class="input-group">
-                    <label>Confirmar contraseña</label>
-                    <input type="password" class="input-modern" name="password_confirmation" required>
+                    <label style="font-weight: 700; font-size: 0.88rem;"><i class="fa-solid fa-building" style="color: var(--accent);"></i> Sucursal de Creación</label>
+                    <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.65rem 0.85rem; font-size: 0.88rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+                        <span style="display: flex; align-items: center; gap: 6px;">
+                            <i class="fa-solid fa-location-dot" style="color: #0284c7;"></i>
+                            {{ $sucursalActual ? $sucursalActual->nombre : 'Sucursal Matriz Centro' }}
+                        </span>
+                        <span style="background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 800;">
+                            {{ $sucursalActual ? $sucursalActual->codigo : 'LOCAL' }}
+                        </span>
+                    </div>
+                    <input type="hidden" name="sucursal_id" value="{{ $sucursalActual ? $sucursalActual->id : '' }}">
+                    <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 2px;">El usuario se registrará exclusivamente para operar en esta sucursal.</small>
+                </div>
+                <div class="input-group">
+                    <label style="font-weight: 700; font-size: 0.88rem;">Contraseña</label>
+                    <input type="password" class="input-modern" name="password" placeholder="Mínimo 8 caracteres" required>
+                </div>
+                <div class="input-group">
+                    <label style="font-weight: 700; font-size: 0.88rem;">Confirmar Contraseña</label>
+                    <input type="password" class="input-modern" name="password_confirmation" placeholder="Repite la contraseña" required>
                 </div>
             </div>
 
-            <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
-                <button type="submit" class="btn-modern btn-accent" style="width: auto;">Guardar usuario</button>
+            <div style="display: flex; justify-content: flex-end; margin-top: 1.25rem;">
+                <button type="submit" class="btn-modern btn-accent" style="width: auto;">
+                    <i class="fa-solid fa-user-plus"></i> Guardar Nuevo Usuario
+                </button>
             </div>
         </form>
 
+        {{-- Card: Lista de Usuarios Registrados --}}
         <div class="card">
-            <div class="hero-kicker"><i class="fa-solid fa-users"></i> Usuarios registrados</div>
-            <div class="familias-grid" style="margin-top: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                <div>
+                    <div class="hero-kicker"><i class="fa-solid fa-users"></i> Directorio</div>
+                    <h2 class="hero-title" style="font-size: 1.35rem; margin-top: 0.25rem;">Usuarios y Permisos Activos</h2>
+                </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 0.85rem;">
                 @forelse($users as $user)
-                    @php $isProtectedAdmin = strtolower($user->email) === 'admin@gmail.com'; @endphp
-                    <div class="familia-card">
-                        <div class="familia-card-head">
-                            <div>
-                                <div class="familia-card-title">{{ $user->name }}</div>
-                                <div class="familia-card-desc" style="margin-top: 0.35rem;">{{ $user->email }}</div>
+                    @php
+                        $isProtectedAdmin = strtolower($user->email) === 'admin@gmail.com';
+                        $badge = $user->getRoleBadgeStyle();
+                        $effectivePermsCount = count($user->getEffectivePermissions());
+                        $allPermsCount = 0;
+                        foreach($allModules as $mod) { $allPermsCount += count($mod['permissions']); }
+                    @endphp
+                    <div style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.1rem; background: var(--surface-bg); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; transition: transform 0.15s ease, box-shadow 0.15s ease;">
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            {{-- Avatar --}}
+                            <div style="width: 48px; height: 48px; border-radius: 50%; background: {{ $badge['bg'] }}; color: {{ $badge['color'] }}; border: 2px solid {{ $badge['border'] }}; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.15rem;">
+                                {{ strtoupper(substr($user->name, 0, 2)) }}
                             </div>
-                            <span class="familia-card-badge">{{ $isProtectedAdmin ? 'Administrador' : 'ID '.$user->id }}</span>
+                            <div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                                    <strong style="font-size: 1.05rem; color: var(--text-main);">{{ $user->name }}</strong>
+                                    <span style="background: {{ $badge['bg'] }}; color: {{ $badge['color'] }}; border: 1px solid {{ $badge['border'] }}; padding: 2px 8px; border-radius: 12px; font-size: 0.76rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
+                                        <i class="{{ $badge['icon'] }}"></i> {{ $user->getRoleName() }}
+                                    </span>
+                                    @if(!$user->is_active)
+                                        <span style="background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 700;">Inactivo</span>
+                                    @endif
+                                </div>
+                                <div style="font-size: 0.83rem; color: var(--text-muted); margin-top: 0.2rem;">
+                                    <i class="fa-solid fa-envelope" style="margin-right: 4px;"></i> {{ $user->email }}
+                                    @if($user->sucursal)
+                                        <span style="margin-left: 8px; color: var(--accent); font-weight: 600;">
+                                            <i class="fa-solid fa-building"></i> {{ $user->sucursal->nombre }} ({{ $user->sucursal->codigo }})
+                                        </span>
+                                    @endif
+                                </div>
+                                <div style="font-size: 0.78rem; color: #64748b; margin-top: 0.25rem;">
+                                    <i class="fa-solid fa-shield-halved" style="color: var(--primary);"></i>
+                                    @if($user->isAdministrator())
+                                        <strong>Acceso Total ({{ $allPermsCount }}/{{ $allPermsCount }} permisos)</strong>
+                                    @else
+                                        <span>{{ $effectivePermsCount }} de {{ $allPermsCount }} permisos habilitados</span>
+                                    @endif
+                                </div>
+                            </div>
                         </div>
-                        <div class="familia-card-desc">Credenciales activas para acceso al sistema.</div>
-                        <div class="flex-gap" style="justify-content: flex-end; margin-top: 0.85rem; gap: 0.5rem;">
-                            <button type="button" class="btn-modern btn-secondary js-user-edit" style="width: auto;" data-user='@json($user)'>Editar</button>
+
+                        {{-- Botones de Acción --}}
+                        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                            <button type="button" onclick="abrirModalDetalleUsuario({{ json_encode($user) }}, {{ $user->sucursal ? json_encode($user->sucursal) : 'null' }}, {{ json_encode($user->getEffectivePermissions()) }}, {{ $user->isAdministrator() ? 'true' : 'false' }})" class="btn-modern btn-secondary" style="font-size: 0.82rem; padding: 6px 12px; color: #0284c7; border-color: #bae6fd;" title="Ver información completa y perfil del usuario">
+                                <i class="fa-solid fa-eye"></i> Detalle
+                            </button>
+
+                            @if(!$user->isAdministrator())
+                                <button type="button" onclick="abrirModalPermisos({{ $user->id }}, '{{ addslashes($user->name) }}', '{{ $user->role }}', {{ json_encode($user->getEffectivePermissions()) }}, false)" class="btn-modern btn-secondary" style="font-size: 0.82rem; padding: 6px 12px; color: #2563eb; border-color: #93c5fd;" title="Gestionar permisos por módulo">
+                                    <i class="fa-solid fa-shield-halved"></i> Permisos
+                                </button>
+                            @else
+                                <span style="font-size: 0.78rem; font-weight: 700; color: #7e22ce; background: #f3e8ff; border: 1px solid #d8b4fe; padding: 5px 10px; border-radius: 8px; display: inline-flex; align-items: center; gap: 5px;">
+                                    <i class="fa-solid fa-crown"></i> Acceso Total
+                                </span>
+                            @endif
+
+                            <button type="button" onclick="abrirModalEditarUsuario({{ json_encode($user) }})" class="btn-modern btn-secondary" style="font-size: 0.82rem; padding: 6px 12px;" title="Editar datos del usuario">
+                                <i class="fa-solid fa-pen-to-square"></i> Editar
+                            </button>
+
                             @if(! $isProtectedAdmin)
-                                <form action="{{ route('configuracion.users.destroy', $user) }}" method="POST" onsubmit="return confirm('¿Eliminar este usuario?');" style="margin: 0;">
+                                <form action="{{ route('configuracion.users.destroy', $user) }}" method="POST" onsubmit="return confirm('¿Eliminar permanentemente la cuenta de {{ $user->name }}?');" style="margin: 0;">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="btn-modern btn-secondary" style="width: auto; color: var(--danger);">Eliminar</button>
+                                    <button type="submit" class="btn-modern" style="font-size: 0.82rem; padding: 6px 10px; background: #fee2e2; color: #991b1b;" title="Eliminar usuario">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
                                 </form>
                             @endif
                         </div>
                     </div>
                 @empty
-                    <div class="stock-empty">Todavía no hay usuarios registrados.</div>
+                    <div class="stock-empty">No hay usuarios registrados.</div>
                 @endforelse
             </div>
         </div>
     </div>
 
-    <div class="modal-overlay" id="user-modal" aria-hidden="true" @if($userModal) data-open="true" @endif>
-        <div class="modal-backdrop js-user-modal-close" role="presentation"></div>
-        <div class="modal-dialog modal-dialog-details" role="dialog" aria-modal="true" aria-labelledby="user-modal-title">
-            <div class="modal-header">
-                <div>
-                    <div class="hero-kicker"><i class="fa-solid fa-user-pen"></i> Usuarios</div>
-                    <h2 class="hero-title" id="user-modal-title" style="font-size: 1.5rem; margin-top: 0.25rem;">Editar usuario</h2>
+    {{-- MODAL DE MATRIZ DE PERMISOS (Estilo Panel Modular con Búsqueda y Selección) --}}
+    <div id="modalMatrizPermisos" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.8); z-index: 99999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+        <div class="card" style="width: 95%; max-width: 1280px; max-height: 92vh; margin: 1rem; display: flex; flex-direction: column; padding: 0; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+            
+            {{-- Encabezado del Modal --}}
+            <div style="padding: 1.25rem 1.5rem; background: #0f172a; color: #ffffff; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid #334155;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div style="width: 44px; height: 44px; border-radius: 50%; background: #1e293b; color: #38bdf8; display: flex; align-items: center; justify-content: center; font-size: 1.3rem;">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <h3 style="margin: 0; font-size: 1.3rem; color: #ffffff;" id="permisosModalUserName">Gestión de Permisos</h3>
+                            <span id="permisosModalUserRoleBadge" style="background: #334155; color: #94a3b8; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: 700;"></span>
+                        </div>
+                        <span style="font-size: 0.82rem; color: #94a3b8;">Asigna y personaliza las funciones a las que este usuario tiene acceso por módulo.</span>
+                    </div>
                 </div>
-                <button type="button" class="modal-close js-user-modal-close" aria-label="Cerrar modal">&times;</button>
+
+                <div style="display: flex; gap: 0.75rem; align-items: center;">
+                    <button type="button" onclick="guardarPermisosModal()" id="btnGuardarPermisosTop" class="btn-modern btn-accent" style="width: auto; background: #0284c7; border-color: #0284c7; font-weight: 700; padding: 8px 18px;">
+                        <i class="fa-solid fa-floppy-disk"></i> ACTUALIZAR PERMISOS
+                    </button>
+                    <button type="button" onclick="cerrarModalPermisos()" style="background: none; border: none; color: #94a3b8; font-size: 1.5rem; cursor: pointer; padding: 4px 8px; line-height: 1;">&times;</button>
+                </div>
             </div>
 
-            <form id="user-modal-form" action="{{ $userModalAction }}" method="POST" class="modal-form">
-                @csrf
-                <input type="hidden" name="user_id" id="user-modal-id" value="{{ old('user_id', $userModal->id ?? '') }}">
-                <input type="hidden" name="_method" id="user-modal-method" value="{{ $userModalMethod }}">
+            {{-- Barra de Herramientas y Plantillas Rápidas --}}
+            <div style="background: #f8fafc; padding: 0.75rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                    <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 800; text-transform: uppercase;">Plantillas Rápidas:</span>
+                    <button type="button" onclick="aplicarPlantillaPermisos('vendedor')" class="btn-modern" style="font-size: 0.76rem; padding: 5px 12px; background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; font-weight: 700;">
+                        <i class="fa-solid fa-user-tag"></i> Perfil Vendedor
+                    </button>
+                    <button type="button" onclick="aplicarPlantillaPermisos('encargado')" class="btn-modern" style="font-size: 0.76rem; padding: 5px 12px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-weight: 700;">
+                        <i class="fa-solid fa-user-tie"></i> Perfil Encargado
+                    </button>
+                    <button type="button" onclick="marcarTodosLosPermisos(true)" class="btn-modern" style="font-size: 0.76rem; padding: 5px 12px; background: #ffffff; color: var(--text-main); border: 1px solid var(--border-color); font-weight: 600;">
+                        <i class="fa-solid fa-square-check" style="color: var(--primary);"></i> Marcar Todo
+                    </button>
+                    <button type="button" onclick="marcarTodosLosPermisos(false)" class="btn-modern" style="font-size: 0.76rem; padding: 5px 12px; background: #ffffff; color: var(--text-main); border: 1px solid var(--border-color); font-weight: 600;">
+                        <i class="fa-solid fa-square" style="color: var(--text-muted);"></i> Desmarcar Todo
+                    </button>
+                </div>
+                <div id="permisosContadorSeleccionados" style="font-size: 0.85rem; color: #0284c7; font-weight: 800;">
+                    0 permisos seleccionados
+                </div>
+            </div>
 
-                <div class="modal-body">
-                    <div class="form-grid">
-                        <div class="input-group">
-                            <label>Nombre</label>
-                            <input type="text" class="input-modern" name="name" id="user-modal-name" value="{{ old('name', $userModal->name ?? '') }}" required>
+            {{-- Aviso si es Administrador --}}
+            <div id="permisosAdminNotice" style="display: none; background: #fef3c7; color: #92400e; padding: 0.85rem 1.5rem; font-size: 0.88rem; border-bottom: 1px solid #fde68a;">
+                <i class="fa-solid fa-crown" style="margin-right: 6px;"></i>
+                <strong>Usuario Administrador:</strong> Este usuario posee acceso total a todos los módulos y opciones por defecto. No requiere configuración manual de permisos.
+            </div>
+
+            {{-- CUADRÍCULA MODULAR DE PERMISOS (Cuerpo Blanco / Claro) --}}
+            <div style="flex: 1; overflow-y: auto; padding: 1.25rem 1.5rem; background: #f1f5f9;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem;" id="gridModulosPermisos">
+                    @foreach($allModules as $modKey => $modulo)
+                    <div class="modulo-permiso-card" data-module="{{ $modKey }}" style="background: #ffffff; border: 1px solid var(--border-color); border-radius: var(--radius-md); box-shadow: 0 1px 3px rgba(0,0,0,0.05); overflow: hidden; display: flex; flex-direction: column;">
+                        {{-- Cabecera del Módulo --}}
+                        <div style="background: #f8fafc; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                            <label style="color: var(--text-main); font-weight: 800; font-size: 0.85rem; text-transform: uppercase; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; margin: 0;">
+                                <input type="checkbox" class="modulo-master-check" data-module="{{ $modKey }}" onchange="toggleModuloPermisos('{{ $modKey }}', this.checked)" style="accent-color: #0284c7; width: 16px; height: 16px;">
+                                <span><i class="{{ $modulo['icon'] }}" style="color: #0284c7; margin-right: 2px;"></i> {{ $modulo['name'] }}</span>
+                            </label>
+                            <span class="modulo-count-badge" id="count_{{ $modKey }}" style="background: #e2e8f0; color: #334155; font-size: 0.72rem; padding: 1px 6px; border-radius: 8px; font-weight: 700;">
+                                0/{{ count($modulo['permissions']) }}
+                            </span>
                         </div>
-                        <div class="input-group">
-                            <label>Email</label>
-                            <input type="email" class="input-modern" name="email" id="user-modal-email" value="{{ old('email', $userModal->email ?? '') }}" required>
+
+                        {{-- Input Buscador en vivo para esta columna --}}
+                        <div style="padding: 0.5rem 0.75rem; background: #ffffff; border-bottom: 1px solid #f1f5f9;">
+                            <div style="position: relative;">
+                                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 8px; top: 8px; color: #94a3b8; font-size: 0.75rem;"></i>
+                                <input type="text" placeholder="BUSCAR" oninput="filtrarPermisosColumna('{{ $modKey }}', this.value)" style="width: 100%; background: #f8fafc; border: 1px solid var(--border-color); border-radius: 4px; padding: 4px 8px 4px 26px; color: var(--text-main); font-size: 0.78rem; outline: none;">
+                            </div>
                         </div>
-                        <div class="input-group">
-                            <label>Contraseña</label>
-                            <input type="password" class="input-modern" name="password" id="user-modal-password" placeholder="Deja vacío para conservarla">
+
+                        {{-- Lista de Permisos del Módulo --}}
+                        <div class="permisos-lista-scroll" id="lista_{{ $modKey }}" style="padding: 0.75rem 1rem; display: flex; flex-direction: column; gap: 0.6rem; max-height: 280px; overflow-y: auto; background: #ffffff;">
+                            @foreach($modulo['permissions'] as $permKey => $permName)
+                            <label class="permiso-item-row" data-perm-name="{{ strtolower($permName) }}" data-perm-key="{{ $permKey }}" style="display: flex; align-items: flex-start; gap: 0.5rem; color: #334155; font-size: 0.82rem; cursor: pointer; user-select: none; line-height: 1.35; margin: 0; padding: 2px 0;">
+                                <input type="checkbox" name="permissions[]" value="{{ $permKey }}" class="permiso-checkbox perm-mod-{{ $modKey }}" onchange="actualizarContadoresPermisos()" style="accent-color: #0284c7; width: 15px; height: 15px; margin-top: 2px;">
+                                <span>{{ $permName }}</span>
+                            </label>
+                            @endforeach
                         </div>
-                        <div class="input-group">
-                            <label>Confirmar contraseña</label>
-                            <input type="password" class="input-modern" name="password_confirmation" id="user-modal-password-confirmation" placeholder="Repite la nueva contraseña">
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+
+            {{-- Pie del Modal --}}
+            <div style="padding: 1rem 1.5rem; background: #ffffff; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+                <div style="font-size: 0.82rem; color: var(--text-muted);">
+                    Los cambios surtirán efecto de inmediato en las próximas acciones y navegación del usuario.
+                </div>
+                <div style="display: flex; gap: 0.75rem;">
+                    <button type="button" onclick="cerrarModalPermisos()" class="btn-modern btn-secondary" style="width: auto;">
+                        Cancelar
+                    </button>
+                    <button type="button" onclick="guardarPermisosModal()" id="btnGuardarPermisosBottom" class="btn-modern btn-accent" style="width: auto; background: #0284c7; border-color: #0284c7; font-weight: 700;">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar Permisos
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- MODAL DE DETALLE COMPLETO DEL USUARIO --}}
+    <div id="modalDetalleUsuario" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.8); z-index: 99999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+        <div class="card" style="width: 100%; max-width: 760px; max-height: 90vh; margin: 1rem; display: flex; flex-direction: column; padding: 0; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+            
+            {{-- Encabezado del Detalle --}}
+            <div style="padding: 1.25rem 1.5rem; background: #0f172a; color: #ffffff; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div id="detalleUserAvatar" style="width: 48px; height: 48px; border-radius: 50%; background: #1e293b; color: #38bdf8; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; font-weight: 800; border: 2px solid #38bdf8;">
+                        US
+                    </div>
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                            <h3 id="detalleUserName" style="margin: 0; font-size: 1.3rem; color: #ffffff;">Usuario</h3>
+                            <span id="detalleUserRoleBadge" style="padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: 700;"></span>
+                        </div>
+                        <span id="detalleUserEmail" style="font-size: 0.85rem; color: #94a3b8;">email@example.com</span>
+                    </div>
+                </div>
+                <button type="button" onclick="cerrarModalDetalleUsuario()" style="background: none; border: none; color: #94a3b8; font-size: 1.5rem; cursor: pointer; padding: 4px 8px; line-height: 1;">&times;</button>
+            </div>
+
+            {{-- Cuerpo del Detalle --}}
+            <div style="flex: 1; overflow-y: auto; padding: 1.5rem; background: var(--surface-bg); display: flex; flex-direction: column; gap: 1.25rem;">
+                
+                {{-- Tarjeta de Información General --}}
+                <div style="background: #ffffff; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem;">
+                    <div style="font-size: 0.8rem; font-weight: 800; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.85rem; display: flex; align-items: center; gap: 6px;">
+                        <i class="fa-solid fa-id-card" style="color: var(--primary);"></i> Información de la Cuenta
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                        <div>
+                            <span style="font-size: 0.78rem; color: var(--text-muted); display: block;">Sucursal Asignada:</span>
+                            <strong id="detalleUserSucursal" style="font-size: 0.95rem; color: var(--text-main);">Principal</strong>
+                        </div>
+                        <div>
+                            <span style="font-size: 0.78rem; color: var(--text-muted); display: block;">Estado de la Cuenta:</span>
+                            <span id="detalleUserEstado" style="font-size: 0.9rem; font-weight: 700;">Activo</span>
+                        </div>
+                        <div>
+                            <span style="font-size: 0.78rem; color: var(--text-muted); display: block;">Fecha de Registro:</span>
+                            <strong id="detalleUserCreatedAt" style="font-size: 0.9rem; color: var(--text-main);">-</strong>
+                        </div>
+                        <div>
+                            <span style="font-size: 0.78rem; color: var(--text-muted); display: block;">Nivel de Acceso:</span>
+                            <strong id="detalleUserAccessLevel" style="font-size: 0.9rem; color: var(--text-main);">-</strong>
                         </div>
                     </div>
                 </div>
 
-                <div class="modal-footer">
-                    <div style="color: var(--text-muted); font-size: 0.9rem;">La contraseña solo cambia si escribes una nueva.</div>
-                    <div class="flex-gap" style="width: auto;">
-                        <button type="button" class="btn-modern btn-secondary js-user-modal-close" style="width: auto;">Cancelar</button>
-                        <button type="submit" class="btn-modern btn-accent" style="width: auto;">Guardar usuario</button>
+                {{-- Tarjeta de Resumen de Permisos --}}
+                <div style="background: #ffffff; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem;">
+                        <div style="font-size: 0.8rem; font-weight: 800; text-transform: uppercase; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
+                            <i class="fa-solid fa-shield-halved" style="color: var(--accent);"></i> Permisos y Módulos Habilitados
+                        </div>
+                        <span id="detallePermsCountBadge" style="font-size: 0.78rem; font-weight: 700; background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 10px;">
+                            0 permisos activos
+                        </span>
                     </div>
+
+                    <div id="detalleAdminNotice" style="display: none; background: #fef3c7; border: 1px solid #fde68a; border-radius: var(--radius-md); padding: 1rem; color: #92400e; font-size: 0.9rem;">
+                        <i class="fa-solid fa-crown" style="font-size: 1.2rem; margin-right: 6px;"></i>
+                        <strong>Control Total Permanente:</strong> Al ser Administrador, este usuario tiene acceso ilimitado a todas las funciones, ventas, compras, caja, transferencias, respaldos y configuraciones sin restricciones.
+                    </div>
+
+                    <div id="detallePermisosModulosList" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        {{-- Se llena dinámicamente con JS --}}
+                    </div>
+                </div>
+            </div>
+
+            {{-- Pie del Detalle --}}
+            <div style="padding: 1rem 1.5rem; background: #ffffff; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+                <button type="button" onclick="cerrarModalDetalleUsuario()" class="btn-modern btn-secondary" style="width: auto;">
+                    Cerrar
+                </button>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button type="button" id="btnDetalleAccionPermisos" onclick="irAPermisosDesdeDetalle()" class="btn-modern btn-secondary" style="width: auto; color: #2563eb; border-color: #93c5fd;">
+                        <i class="fa-solid fa-shield-halved"></i> Configurar Permisos
+                    </button>
+                    <button type="button" id="btnDetalleAccionEditar" onclick="irAEditarDesdeDetalle()" class="btn-modern btn-accent" style="width: auto;">
+                        <i class="fa-solid fa-pen-to-square"></i> Editar Usuario
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- MODAL DE EDICIÓN DE USUARIO --}}
+    <div id="modalEditarUsuario" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.75); z-index: 99999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+        <div class="card" style="width: 100%; max-width: 550px; margin: 1rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
+                <div>
+                    <div class="hero-kicker"><i class="fa-solid fa-user-pen"></i> Editar Cuenta</div>
+                    <h3 style="margin: 0.2rem 0 0 0; font-size: 1.3rem;">Editar Usuario</h3>
+                </div>
+                <button type="button" onclick="cerrarModalEditarUsuario()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+            </div>
+
+            <form id="formEditarUsuario" method="POST" action="">
+                @csrf
+                @method('PUT')
+                <div class="form-grid" style="gap: 1rem;">
+                    <div class="input-group">
+                        <label style="font-weight: 700; font-size: 0.85rem;">Nombre</label>
+                        <input type="text" class="input-modern" name="name" id="editUserName" required>
+                    </div>
+                    <div class="input-group">
+                        <label style="font-weight: 700; font-size: 0.85rem;">Email</label>
+                        <input type="email" class="input-modern" name="email" id="editUserEmail" required>
+                    </div>
+                    <div class="input-group">
+                        <label style="font-weight: 700; font-size: 0.85rem;">Rol</label>
+                        <select name="role" id="editUserRole" class="input-modern" required>
+                            <option value="vendedor">🏷️ Vendedor / Cajero</option>
+                            <option value="encargado">👔 Encargado / Supervisor</option>
+                            <option value="administrador">👑 Administrador</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label style="font-weight: 700; font-size: 0.85rem;">Sucursal</label>
+                        <select name="sucursal_id" id="editUserSucursal" class="input-modern">
+                            <option value="">-- Sin sucursal fija --</option>
+                            @foreach($sucursales as $suc)
+                                <option value="{{ $suc->id }}">{{ $suc->nombre }} ({{ $suc->codigo }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label style="font-weight: 700; font-size: 0.85rem;">Nueva Contraseña (Opcional)</label>
+                        <input type="password" class="input-modern" name="password" placeholder="Dejar vacío para conservar actual">
+                    </div>
+                    <div class="input-group">
+                        <label style="font-weight: 700; font-size: 0.85rem;">Confirmar Nueva Contraseña</label>
+                        <input type="password" class="input-modern" name="password_confirmation" placeholder="Repetir nueva contraseña">
+                    </div>
+                    <div style="grid-column: 1 / -1;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="checkbox" name="is_active" id="editUserActive" value="1" checked style="width: 17px; height: 17px; accent-color: var(--primary);">
+                            <span style="font-size: 0.85rem; font-weight: 700;">Usuario Activo (Permite iniciar sesión)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                    <button type="button" onclick="cerrarModalEditarUsuario()" class="btn-modern btn-secondary" style="width: auto;">Cancelar</button>
+                    <button type="submit" class="btn-modern btn-accent" style="width: auto;">Guardar Cambios</button>
                 </div>
             </form>
         </div>
@@ -1194,6 +1537,365 @@
             div.style.color = '#991b1b';
             div.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Error: ' + err.message;
         });
+    }
+</script>
+@endif
+
+@if($activeTab === 'users')
+<script>
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+    let currentUserIdPermisos = null;
+    let currentUserIsAdmin = false;
+    const defaultVendedorPerms = @json(\App\Models\User::getDefaultPermissionsForRole('vendedor'));
+    const defaultEncargadoPerms = @json(\App\Models\User::getDefaultPermissionsForRole('encargado'));
+
+    function abrirModalPermisos(userId, userName, userRole, permissions, isAdmin) {
+        currentUserIdPermisos = userId;
+        currentUserIsAdmin = isAdmin;
+
+        document.getElementById('permisosModalUserName').textContent = 'Permisos de ' + userName;
+        const roleBadge = document.getElementById('permisosModalUserRoleBadge');
+        roleBadge.textContent = userRole.toUpperCase();
+
+        const adminNotice = document.getElementById('permisosAdminNotice');
+        const grid = document.getElementById('gridModulosPermisos');
+
+        // Desmarcar todo inicialmente
+        document.querySelectorAll('.permiso-checkbox').forEach(cb => cb.checked = false);
+
+        if (isAdmin) {
+            adminNotice.style.display = 'block';
+            document.querySelectorAll('.permiso-checkbox').forEach(cb => {
+                cb.checked = true;
+                cb.disabled = true;
+            });
+            document.querySelectorAll('.modulo-master-check').forEach(cb => {
+                cb.checked = true;
+                cb.disabled = true;
+            });
+        } else {
+            adminNotice.style.display = 'none';
+            document.querySelectorAll('.permiso-checkbox').forEach(cb => cb.disabled = false);
+            document.querySelectorAll('.modulo-master-check').forEach(cb => cb.disabled = false);
+
+            if (Array.isArray(permissions)) {
+                permissions.forEach(p => {
+                    const cb = document.querySelector(`.permiso-checkbox[value="${p}"]`);
+                    if (cb) cb.checked = true;
+                });
+            }
+        }
+
+        actualizarContadoresPermisos();
+        document.getElementById('modalMatrizPermisos').style.display = 'flex';
+    }
+
+    function cerrarModalPermisos() {
+        document.getElementById('modalMatrizPermisos').style.display = 'none';
+    }
+
+    function toggleModuloPermisos(modKey, isChecked) {
+        if (currentUserIsAdmin) return;
+        document.querySelectorAll(`.perm-mod-${modKey}`).forEach(cb => {
+            // Solo marcar si el elemento no está oculto por filtro
+            const row = cb.closest('.permiso-item-row');
+            if (row && row.style.display !== 'none') {
+                cb.checked = isChecked;
+            } else if (!row) {
+                cb.checked = isChecked;
+            }
+        });
+        actualizarContadoresPermisos();
+    }
+
+    function filtrarPermisosColumna(modKey, query) {
+        const q = query.trim().toLowerCase();
+        const rows = document.querySelectorAll(`#lista_${modKey} .permiso-item-row`);
+        rows.forEach(row => {
+            const name = row.getAttribute('data-perm-name') || '';
+            const key = row.getAttribute('data-perm-key') || '';
+            if (name.includes(q) || key.includes(q)) {
+                row.style.display = 'flex';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    function aplicarPlantillaPermisos(tipo) {
+        if (currentUserIsAdmin) return;
+        const targetPerms = (tipo === 'encargado') ? defaultEncargadoPerms : defaultVendedorPerms;
+        document.querySelectorAll('.permiso-checkbox').forEach(cb => {
+            cb.checked = targetPerms.includes(cb.value);
+        });
+        actualizarContadoresPermisos();
+    }
+
+    function marcarTodosLosPermisos(checkAll) {
+        if (currentUserIsAdmin) return;
+        document.querySelectorAll('.permiso-checkbox').forEach(cb => {
+            cb.checked = checkAll;
+        });
+        actualizarContadoresPermisos();
+    }
+
+    function actualizarContadoresPermisos() {
+        let totalCheckedGlobal = 0;
+        document.querySelectorAll('.modulo-permiso-card').forEach(card => {
+            const modKey = card.getAttribute('data-module');
+            const checkboxes = card.querySelectorAll('.permiso-checkbox');
+            const totalMod = checkboxes.length;
+            let checkedMod = 0;
+
+            checkboxes.forEach(cb => {
+                if (cb.checked) {
+                    checkedMod++;
+                    totalCheckedGlobal++;
+                }
+            });
+
+            const countBadge = document.getElementById(`count_${modKey}`);
+            if (countBadge) {
+                countBadge.textContent = `${checkedMod}/${totalMod}`;
+            }
+
+            const masterCheck = card.querySelector('.modulo-master-check');
+            if (masterCheck) {
+                masterCheck.checked = (checkedMod === totalMod && totalMod > 0);
+                masterCheck.indeterminate = (checkedMod > 0 && checkedMod < totalMod);
+            }
+        });
+
+        const totalEl = document.getElementById('permisosContadorSeleccionados');
+        if (totalEl) {
+            totalEl.textContent = `${totalCheckedGlobal} permisos seleccionados`;
+        }
+    }
+
+    function guardarPermisosModal() {
+        if (!currentUserIdPermisos) return;
+
+        if (currentUserIsAdmin) {
+            alert('El Administrador posee todos los permisos automáticamente.');
+            cerrarModalPermisos();
+            return;
+        }
+
+        const selected = [];
+        document.querySelectorAll('.permiso-checkbox:checked').forEach(cb => {
+            selected.push(cb.value);
+        });
+
+        const btnTop = document.getElementById('btnGuardarPermisosTop');
+        const btnBottom = document.getElementById('btnGuardarPermisosBottom');
+        btnTop.disabled = true;
+        btnBottom.disabled = true;
+        btnTop.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando...';
+
+        fetch(`/configuracion/usuarios/${currentUserIdPermisos}/permisos`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({
+                permissions: selected,
+            }),
+        })
+        .then(r => r.json())
+        .then(data => {
+            btnTop.disabled = false;
+            btnBottom.disabled = false;
+            btnTop.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> ACTUALIZAR PERMISOS';
+            if (data.success) {
+                alert('✅ ' + data.message);
+                location.reload();
+            } else {
+                alert('❌ Error al guardar permisos: ' + (data.error || 'Error desconocido'));
+            }
+        })
+        .catch(err => {
+            btnTop.disabled = false;
+            btnBottom.disabled = false;
+            btnTop.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> ACTUALIZAR PERMISOS';
+            alert('❌ Error de comunicación: ' + err.message);
+        });
+    }
+
+    function abrirModalEditarUsuario(user) {
+        document.getElementById('formEditarUsuario').action = `/configuracion/usuarios/${user.id}`;
+        document.getElementById('editUserName').value = user.name || '';
+        document.getElementById('editUserEmail').value = user.email || '';
+        document.getElementById('editUserRole').value = user.role || 'vendedor';
+        document.getElementById('editUserSucursal').value = user.sucursal_id || '';
+        document.getElementById('editUserActive').checked = (user.is_active !== false && user.is_active !== 0);
+
+        // Si es admin protegido, deshabilitar cambio de rol y desactivación
+        const isProtectedAdmin = (user.email && user.email.toLowerCase() === 'admin@gmail.com');
+        document.getElementById('editUserRole').disabled = isProtectedAdmin;
+        document.getElementById('editUserActive').disabled = isProtectedAdmin;
+
+        document.getElementById('modalEditarUsuario').style.display = 'flex';
+    }
+
+    function cerrarModalEditarUsuario() {
+        document.getElementById('modalEditarUsuario').style.display = 'none';
+    }
+
+    // ─── Modal de Detalle de Usuario ───
+    let selectedUserForDetail = null;
+    let selectedUserSucursal = null;
+    let selectedUserPerms = [];
+    let selectedUserIsAdmin = false;
+    const allSystemModules = @json($allModules);
+
+    function abrirModalDetalleUsuario(user, sucursal, permissions, isAdmin) {
+        selectedUserForDetail = user;
+        selectedUserSucursal = sucursal;
+        selectedUserPerms = Array.isArray(permissions) ? permissions : [];
+        selectedUserIsAdmin = isAdmin;
+
+        // Nombre, Avatar, Email
+        document.getElementById('detalleUserName').textContent = user.name || 'Usuario';
+        document.getElementById('detalleUserEmail').textContent = user.email || '';
+        document.getElementById('detalleUserAvatar').textContent = (user.name || 'US').substring(0, 2).toUpperCase();
+
+        // Badge Rol
+        const badgeEl = document.getElementById('detalleUserRoleBadge');
+        const role = user.role || 'vendedor';
+        let roleLabel = 'Vendedor';
+        let roleBg = '#f0fdf4';
+        let roleColor = '#15803d';
+
+        if (isAdmin || role === 'administrador') {
+            roleLabel = '👑 Administrador';
+            roleBg = '#f3e8ff';
+            roleColor = '#7e22ce';
+        } else if (role === 'encargado') {
+            roleLabel = '👔 Encargado';
+            roleBg = '#eff6ff';
+            roleColor = '#1d4ed8';
+        } else {
+            roleLabel = '🏷️ Vendedor';
+        }
+        badgeEl.textContent = roleLabel;
+        badgeEl.style.background = roleBg;
+        badgeEl.style.color = roleColor;
+
+        // Sucursal
+        const sucursalEl = document.getElementById('detalleUserSucursal');
+        if (sucursal) {
+            sucursalEl.innerHTML = `<i class="fa-solid fa-building" style="color: #0284c7; margin-right: 4px;"></i> ${sucursal.nombre} <span style="background: #e0f2fe; color: #0369a1; padding: 1px 6px; border-radius: 6px; font-size: 0.72rem; font-weight: 800; margin-left: 4px;">${sucursal.codigo}</span>`;
+        } else {
+            sucursalEl.innerHTML = `<span style="color: var(--text-muted);">Sin sucursal fija</span>`;
+        }
+
+        // Estado
+        const estadoEl = document.getElementById('detalleUserEstado');
+        if (user.is_active !== false && user.is_active !== 0) {
+            estadoEl.innerHTML = `<span style="color: #16a34a; background: #dcfce7; padding: 2px 8px; border-radius: 8px;"><i class="fa-solid fa-circle-check"></i> Activo</span>`;
+        } else {
+            estadoEl.innerHTML = `<span style="color: #dc2626; background: #fee2e2; padding: 2px 8px; border-radius: 8px;"><i class="fa-solid fa-circle-xmark"></i> Inactivo</span>`;
+        }
+
+        // Fecha de Registro
+        const fechaEl = document.getElementById('detalleUserCreatedAt');
+        if (user.created_at) {
+            const d = new Date(user.created_at);
+            fechaEl.textContent = isNaN(d.getTime()) ? user.created_at : d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        } else {
+            fechaEl.textContent = 'No registrada';
+        }
+
+        // Nivel de acceso
+        const nivelEl = document.getElementById('detalleUserAccessLevel');
+        if (isAdmin) {
+            nivelEl.innerHTML = `<span style="color: #7e22ce; font-weight: 800;">Acceso Total Irrestricto</span>`;
+        } else if (role === 'encargado') {
+            nivelEl.innerHTML = `<span style="color: #1d4ed8; font-weight: 700;">Supervisor / Gestión de Tienda</span>`;
+        } else {
+            nivelEl.innerHTML = `<span style="color: #15803d; font-weight: 700;">Operativo / Caja y Ventas</span>`;
+        }
+
+        // Resumen de Permisos
+        const adminNotice = document.getElementById('detalleAdminNotice');
+        const listContainer = document.getElementById('detallePermisosModulosList');
+        const badgePermsCount = document.getElementById('detallePermsCountBadge');
+        const btnPermisosAction = document.getElementById('btnDetalleAccionPermisos');
+
+        listContainer.innerHTML = '';
+
+        if (isAdmin) {
+            adminNotice.style.display = 'block';
+            badgePermsCount.textContent = 'Acceso al 100% de funciones';
+            badgePermsCount.style.background = '#f3e8ff';
+            badgePermsCount.style.color = '#7e22ce';
+            btnPermisosAction.style.display = 'none';
+        } else {
+            adminNotice.style.display = 'none';
+            btnPermisosAction.style.display = 'inline-flex';
+            badgePermsCount.style.background = '#e0f2fe';
+            badgePermsCount.style.color = '#0369a1';
+            badgePermsCount.textContent = `${selectedUserPerms.length} permisos habilitados`;
+
+            // Construir desglose modular
+            for (const [modKey, modData] of Object.entries(allSystemModules)) {
+                const activeInMod = [];
+                for (const [pKey, pLabel] of Object.entries(modData.permissions)) {
+                    if (selectedUserPerms.includes(pKey)) {
+                        activeInMod.push(pLabel);
+                    }
+                }
+
+                const modCard = document.createElement('div');
+                modCard.style.cssText = 'border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.75rem 1rem; background: #f8fafc;';
+
+                if (activeInMod.length > 0) {
+                    modCard.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <strong style="font-size: 0.85rem; color: var(--text-main);"><i class="${modData.icon}" style="color: var(--primary); margin-right: 4px;"></i> ${modData.name}</strong>
+                            <span style="background: #dcfce7; color: #166534; font-size: 0.72rem; font-weight: 700; padding: 1px 6px; border-radius: 6px;">${activeInMod.length} activos</span>
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.35rem;">
+                            ${activeInMod.map(item => `<span style="background: #ffffff; border: 1px solid #cbd5e1; color: #354562; font-size: 0.73rem; padding: 2px 7px; border-radius: 6px;"><i class="fa-solid fa-check" style="color: #16a34a; font-size: 0.65rem; margin-right: 3px;"></i>${item}</span>`).join('')}
+                        </div>
+                    `;
+                } else {
+                    modCard.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.85rem; color: #94a3b8;"><i class="${modData.icon}" style="margin-right: 4px;"></i> ${modData.name}</span>
+                            <span style="background: #fee2e2; color: #991b1b; font-size: 0.72rem; font-weight: 700; padding: 1px 6px; border-radius: 6px;">Sin acceso</span>
+                        </div>
+                    `;
+                }
+                listContainer.appendChild(modCard);
+            }
+        }
+
+        document.getElementById('modalDetalleUsuario').style.display = 'flex';
+    }
+
+    function cerrarModalDetalleUsuario() {
+        document.getElementById('modalDetalleUsuario').style.display = 'none';
+    }
+
+    function irAPermisosDesdeDetalle() {
+        if (!selectedUserForDetail) return;
+        cerrarModalDetalleUsuario();
+        abrirModalPermisos(
+            selectedUserForDetail.id,
+            selectedUserForDetail.name,
+            selectedUserForDetail.role || 'vendedor',
+            selectedUserPerms,
+            selectedUserIsAdmin
+        );
+    }
+
+    function irAEditarDesdeDetalle() {
+        if (!selectedUserForDetail) return;
+        cerrarModalDetalleUsuario();
+        abrirModalEditarUsuario(selectedUserForDetail);
     }
 </script>
 @endif

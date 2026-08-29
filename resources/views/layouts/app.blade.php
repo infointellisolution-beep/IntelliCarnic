@@ -20,15 +20,27 @@
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 
     @auth
-    <!-- Auto-Detección Automática de Dispositivos Móviles y Terminales Handheld (Zebra) -->
+    <!-- Detección Dinámica de Pantalla Móvil y Redirección a Handheld -->
     <script>
         (function() {
             function checkMobileScreen() {
-                const isMobileScreen = window.innerWidth <= 768;
-                const isMobileUA = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Zebra|TC51|TC56|TC57|TC52/i.test(navigator.userAgent);
                 const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('desktop') === '1') {
+                    sessionStorage.setItem('force_desktop', '1');
+                    sessionStorage.removeItem('force_handheld');
+                } else if (urlParams.get('desktop') === '0') {
+                    sessionStorage.removeItem('force_desktop');
+                }
+
+                if (urlParams.get('handheld') === '1') {
+                    sessionStorage.setItem('force_handheld', '1');
+                    sessionStorage.removeItem('force_desktop');
+                }
+
+                const isMobileScreen = window.innerWidth <= 768;
+                const forceDesktop = sessionStorage.getItem('force_desktop') === '1' || urlParams.get('desktop') === '1';
                 
-                if ((isMobileScreen || isMobileUA) && urlParams.get('desktop') !== '1') {
+                if (isMobileScreen && !forceDesktop) {
                     const path = window.location.pathname;
                     if (!path.startsWith('/handheld') && !path.startsWith('/vender/ticket') && !path.startsWith('/clientes/abono') && !path.startsWith('/caja/ticket-cierre') && !path.startsWith('/login') && !path.startsWith('/dev')) {
                         if (path.startsWith('/compras')) {
@@ -43,7 +55,6 @@
             }
 
             checkMobileScreen();
-            window.addEventListener('resize', checkMobileScreen);
         })();
     </script>
     @endauth
@@ -59,6 +70,7 @@
                 $appSettings = \App\Models\Setting::values();
                 $empresaNombre = !empty($appSettings['empresa_nombre']) ? $appSettings['empresa_nombre'] : 'IntelliCarnic';
                 $empresaLogo = !empty($appSettings['empresa_logo']) ? asset('storage/'.$appSettings['empresa_logo']) : null;
+                $authUser = auth()->user();
             @endphp
             <nav class="sidebar">
                 <div class="sidebar-header">
@@ -75,36 +87,55 @@
                     </div>
                 </div>
                 <ul class="nav-links">
+                    @if(!$authUser || $authUser->hasPermission('dashboard.ver'))
                     <li>
                         <a href="{{ route('dashboard.index') }}" class="{{ request()->routeIs('dashboard.*') ? 'active' : '' }}">
                             <i class="fa-solid fa-chart-line"></i> Dashboard
                         </a>
                     </li>
+                    @endif
+
+                    @if(!$authUser || $authUser->hasModuleAccess('articulos'))
                     <li>
                         <a href="{{ route('articulos.index') }}" class="{{ request()->routeIs('articulos.*') ? 'active' : '' }}">
                             <i class="fa-solid fa-box"></i> Artículos
                         </a>
                     </li>
+                    @endif
+
+                    @if(!$authUser || $authUser->hasPermission('ventas.crear_normal'))
                     <li>
                         <a href="{{ route('vender.normal') }}" class="{{ request()->routeIs('vender.normal') ? 'active' : '' }}">
                             <i class="fa-solid fa-desktop"></i> Venta Normal
                         </a>
                     </li>
+                    @endif
+
+                    @if(!$authUser || $authUser->hasPermission('ventas.crear_tactil'))
                     <li>
                         <a href="{{ route('vender.tactil') }}" class="{{ request()->routeIs('vender.tactil') ? 'active' : '' }}">
                             <i class="fa-solid fa-hand-pointer"></i> TPV Táctil
                         </a>
                     </li>
+                    @endif
+
+                    @if(!$authUser || $authUser->hasModuleAccess('caja'))
                     <li>
                         <a href="{{ route('caja.index') }}" class="{{ request()->routeIs('caja.*') ? 'active' : '' }}">
                             <i class="fa-solid fa-cash-register"></i> Control de Caja
                         </a>
                     </li>
+                    @endif
+
+                    @if(!$authUser || $authUser->hasPermission('compras.ver') || $authUser->hasPermission('compras.crear'))
                     <li>
                         <a href="{{ route('compras.index') }}" class="{{ request()->routeIs('compras.*') ? 'active' : '' }}">
                             <i class="fa-solid fa-truck-ramp-box"></i> Compras
                         </a>
                     </li>
+                    @endif
+
+                    @if(!$authUser || $authUser->hasModuleAccess('transferencias'))
                     <li>
                         <a href="{{ route('transferencias.index') }}" class="{{ request()->routeIs('transferencias.*') ? 'active' : '' }}" style="position: relative;">
                             <i class="fa-solid fa-right-left"></i> Transferencias
@@ -117,22 +148,34 @@
                             @endif
                         </a>
                     </li>
+                    @endif
+
+                    @if(!$authUser || $authUser->hasPermission('proveedores.ver'))
                     <li>
                         <a href="{{ route('proveedores.index') }}" class="{{ request()->routeIs('proveedores.*') ? 'active' : '' }}">
                             <i class="fa-solid fa-truck-field"></i> Proveedores
                         </a>
                     </li>
+                    @endif
+
+                    @if(!$authUser || $authUser->hasModuleAccess('clientes'))
                     <li>
                         <a href="{{ route('clientes.index') }}" class="{{ request()->routeIs('clientes.*') ? 'active' : '' }}">
                             <i class="fa-solid fa-users"></i> Clientes
                         </a>
                     </li>
+                    @endif
+
+                    @if(!$authUser || $authUser->hasModuleAccess('reportes'))
                     <li>
                         <a href="{{ route('reportes.index') }}" class="{{ request()->routeIs('reportes.*') ? 'active' : '' }}">
                             <i class="fa-solid fa-chart-pie"></i> Reportes
                         </a>
                     </li>
+                    @endif
                 </ul>
+
+                @if(!$authUser || $authUser->hasModuleAccess('configuracion'))
                 <ul class="nav-links" style="margin-top: auto;">
                     <li>
                         <a href="{{ route('configuracion.index') }}" class="{{ request()->routeIs('configuracion.*') ? 'active' : '' }}">
@@ -140,13 +183,15 @@
                         </a>
                     </li>
                 </ul>
+                @endif
+
                 <div class="sidebar-footer">
                     <div class="sidebar-status">Entorno de trabajo</div>
                     <div class="sidebar-user-card">
-                        <div class="avatar">D</div>
+                        <div class="avatar">{{ strtoupper(substr($authUser->name ?? 'U', 0, 1)) }}</div>
                         <div>
-                            <div class="sidebar-user-name">Usuario</div>
-                            <div class="sidebar-user-role">Administrador</div>
+                            <div class="sidebar-user-name">{{ $authUser->name ?? 'Usuario' }}</div>
+                            <div class="sidebar-user-role">{{ $authUser ? $authUser->getRoleName() : 'Invitado' }}</div>
                         </div>
                     </div>
                 </div>
@@ -156,8 +201,8 @@
             <main class="main-content">
                 <!-- Top Bar -->
                 <header class="top-bar">
-                    <div style="display: flex; align-items: center; gap: 1rem;">
-                        <button id="sidebarToggle" style="background: none; border: none; font-size: 1.25rem; color: var(--text-main); cursor: pointer;">
+                    <div style="display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 0;">
+                        <button id="sidebarToggle" style="background: none; border: none; font-size: 1.25rem; color: var(--text-main); cursor: pointer; flex-shrink: 0;">
                             <i class="fa-solid fa-bars"></i>
                         </button>
                         @hasSection('header-actions')
@@ -166,9 +211,67 @@
                             </div>
                         @endif
                     </div>
-                    <div class="user-profile">
-                        <span>{{ auth()->user()->name ?? 'Usuario' }}</span>
-                        <div class="avatar">{{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}</div>
+                    {{-- Perfil de Usuario con Menú Desplegable Interactivo (Siempre a la derecha) --}}
+                    <div class="user-dropdown-container" style="position: relative; margin-left: auto; flex-shrink: 0;">
+                        <button type="button" id="btnUserMenuToggle" onclick="toggleUserDropdown(event)" style="background: none; border: none; padding: 4px 6px; border-radius: var(--radius-md); cursor: pointer; display: flex; align-items: center; gap: 0.6rem; transition: background 0.15s ease;" onmouseover="this.style.background='rgba(0,0,0,0.04)'" onmouseout="this.style.background='transparent'">
+                            <div style="text-align: right;">
+                                <div style="font-weight: 700; font-size: 0.88rem; color: var(--text-main); line-height: 1.2;">{{ $authUser->name ?? 'Usuario' }}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
+                                    <span>{{ $authUser ? $authUser->getRoleName() : '' }}</span>
+                                    <i class="fa-solid fa-chevron-down" style="font-size: 0.65rem;"></i>
+                                </div>
+                            </div>
+                            @php
+                                $badge = $authUser ? $authUser->getRoleBadgeStyle() : ['bg' => '#f1f5f9', 'color' => '#475569', 'border' => '#cbd5e1'];
+                            @endphp
+                            <div class="avatar" style="width: 36px; height: 36px; min-width: 36px; background: {{ $badge['bg'] }}; color: {{ $badge['color'] }}; border: 2px solid {{ $badge['border'] }}; font-weight: 800; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-sizing: border-box;">
+                                {{ strtoupper(substr($authUser->name ?? 'U', 0, 1)) }}
+                            </div>
+                        </button>
+
+                        {{-- Menú Desplegable --}}
+                        <div id="userDropdownMenu" style="display: none; position: absolute; right: 0; top: calc(100% + 8px); width: 260px; max-width: calc(100vw - 2rem); background: #ffffff; border: 1px solid var(--border-color); border-radius: var(--radius-md); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1); z-index: 9999; overflow: hidden;">
+                            {{-- Cabecera del Usuario --}}
+                            <div style="padding: 1rem; background: #f8fafc; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 0.75rem;">
+                                <div class="avatar" style="width: 40px; height: 40px; min-width: 40px; background: {{ $badge['bg'] }}; color: {{ $badge['color'] }}; border: 1.5px solid {{ $badge['border'] }}; font-weight: 800; font-size: 1rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                    {{ strtoupper(substr($authUser->name ?? 'U', 0, 2)) }}
+                                </div>
+                                <div style="overflow: hidden; text-align: left;">
+                                    <div style="font-weight: 800; font-size: 0.9rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ $authUser->name ?? 'Usuario' }}</div>
+                                    <div style="font-size: 0.76rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ $authUser->email ?? '' }}</div>
+                                    <span style="display: inline-block; margin-top: 4px; background: {{ $badge['bg'] }}; color: {{ $badge['color'] }}; padding: 1px 6px; border-radius: 6px; font-size: 0.7rem; font-weight: 700;">
+                                        {{ $authUser ? $authUser->getRoleName() : '' }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {{-- Enlaces del Menú --}}
+                            <div style="padding: 0.5rem;">
+                                <a href="{{ route('configuracion.index', ['tab' => 'users']) }}" style="display: flex; align-items: center; gap: 0.65rem; padding: 0.6rem 0.75rem; border-radius: var(--radius-sm); color: var(--text-main); text-decoration: none; font-size: 0.85rem; font-weight: 600; transition: background 0.15s ease;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+                                    <i class="fa-solid fa-users-gear" style="color: #2563eb; width: 18px; text-align: center;"></i>
+                                    <span>Gestión de Usuarios</span>
+                                </a>
+                                <a href="{{ route('configuracion.index', ['tab' => 'general']) }}" style="display: flex; align-items: center; gap: 0.65rem; padding: 0.6rem 0.75rem; border-radius: var(--radius-sm); color: var(--text-main); text-decoration: none; font-size: 0.85rem; font-weight: 600; transition: background 0.15s ease;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+                                    <i class="fa-solid fa-sliders" style="color: #475569; width: 18px; text-align: center;"></i>
+                                    <span>Configuración General</span>
+                                </a>
+                                <a href="{{ route('handheld.index', ['handheld' => 1]) }}" onclick="sessionStorage.setItem('force_handheld', '1'); sessionStorage.removeItem('force_desktop');" style="display: flex; align-items: center; gap: 0.65rem; padding: 0.6rem 0.75rem; border-radius: var(--radius-sm); color: var(--text-main); text-decoration: none; font-size: 0.85rem; font-weight: 600; transition: background 0.15s ease;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+                                    <i class="fa-solid fa-mobile-screen-button" style="color: #d97706; width: 18px; text-align: center;"></i>
+                                    <span>Terminal Handheld</span>
+                                </a>
+                            </div>
+
+                            {{-- Botón Cerrar Sesión --}}
+                            <div style="border-top: 1px solid var(--border-color); padding: 0.5rem; background: #fff;">
+                                <form action="{{ route('logout') }}" method="POST" onsubmit="sessionStorage.removeItem('force_desktop'); sessionStorage.removeItem('force_handheld');" style="margin: 0;">
+                                    @csrf
+                                    <button type="submit" style="width: 100%; display: flex; align-items: center; gap: 0.65rem; padding: 0.6rem 0.75rem; border-radius: var(--radius-sm); border: none; background: none; color: #dc2626; font-size: 0.85rem; font-weight: 700; cursor: pointer; text-align: left; transition: background 0.15s ease;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='transparent'">
+                                        <i class="fa-solid fa-arrow-right-from-bracket" style="width: 18px; text-align: center;"></i>
+                                        <span>Cerrar Sesión</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
                     </div>
                 </header>
 
@@ -209,6 +312,23 @@
                 };
             }
         })();
+
+        // Menú desplegable interactivo del perfil de usuario
+        function toggleUserDropdown(event) {
+            event.stopPropagation();
+            const menu = document.getElementById('userDropdownMenu');
+            if (menu) {
+                menu.style.display = (menu.style.display === 'none' || !menu.style.display) ? 'block' : 'none';
+            }
+        }
+
+        document.addEventListener('click', function(event) {
+            const container = document.querySelector('.user-dropdown-container');
+            const menu = document.getElementById('userDropdownMenu');
+            if (container && menu && !container.contains(event.target)) {
+                menu.style.display = 'none';
+            }
+        });
     </script>
     
     @stack('scripts')

@@ -24,14 +24,17 @@ class ConfiguracionController extends Controller
             $backupService->checkAndRunAutomaticBackup('scheduled');
         } catch (\Throwable $e) {}
 
+        $users = User::query()->with('sucursal')->orderBy('name', 'asc')->get();
+
         return view('configuracion.index', [
             'settings' => Setting::values(),
-            'users' => User::query()->orderBy('name', 'asc')->get(),
+            'users' => $users,
             'sucursales' => \App\Models\Sucursal::orderBy('nombre', 'asc')->get(),
             'sucursalActual' => \App\Models\Sucursal::actual(),
             'backups' => $backupService->listBackups(),
             'dbStats' => $backupService->getDatabaseStats(),
             'reminderStatus' => $backupService->getBackupReminderStatus(),
+            'allModules' => User::getAllModulesAndPermissions(),
         ]);
     }
 
@@ -104,18 +107,29 @@ class ConfiguracionController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'role' => ['required', 'in:administrador,encargado,vendedor'],
+            'sucursal_id' => ['nullable', 'exists:sucursales,id'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
+
+        $sucursalActual = \App\Models\Sucursal::actual();
+        $sucursalId = !empty($data['sucursal_id']) ? $data['sucursal_id'] : ($sucursalActual ? $sucursalActual->id : null);
+        $defaultPermissions = User::getDefaultPermissionsForRole($data['role']);
 
         User::query()->create([
             'name' => $data['name'],
             'email' => $data['email'],
+            'role' => $data['role'],
+            'sucursal_id' => $sucursalId,
+            'permissions' => $defaultPermissions,
+            'is_active' => true,
             'password' => Hash::make($data['password']),
         ]);
 
+        $sucursalNombre = $sucursalActual ? " en {$sucursalActual->nombre}" : '';
         return redirect()
-            ->route('configuracion.index')
-            ->with('status', 'Usuario creado correctamente.');
+            ->route('configuracion.index', ['tab' => 'users'])
+            ->with('status', "Usuario '{$data['name']}' registrado exitosamente con rol de " . ucfirst($data['role']) . "{$sucursalNombre}.");
     }
 
     public function updateUser(Request $request, User $user): RedirectResponse
@@ -123,11 +137,30 @@ class ConfiguracionController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'role' => ['required', 'in:administrador,encargado,vendedor'],
+            'sucursal_id' => ['nullable', 'exists:sucursales,id'],
+            'is_active' => ['nullable', 'boolean'],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
         ]);
 
         $user->name = $data['name'];
         $user->email = $data['email'];
+        $user->sucursal_id = $data['sucursal_id'] ?? null;
+
+        // El usuario admin principal protegido siempre mantiene rol administrador y activo
+        if ($this->isProtectedAdmin($user)) {
+            $user->role = User::ROLE_ADMIN;
+            $user->is_active = true;
+        } else {
+            $prevRole = $user->role;
+            $user->role = $data['role'];
+            $user->is_active = $request->boolean('is_active', true);
+
+            // Si cambió de rol y no tenía permisos personalizados, actualizar plantilla de permisos
+            if ($prevRole !== $data['role'] && empty($user->permissions)) {
+                $user->permissions = User::getDefaultPermissionsForRole($data['role']);
+            }
+        }
 
         if (! empty($data['password'])) {
             $user->password = Hash::make($data['password']);
@@ -138,6 +171,41 @@ class ConfiguracionController extends Controller
         return redirect()
             ->route('configuracion.index', ['tab' => 'users'])
             ->with('status', 'Usuario actualizado correctamente.');
+    }
+
+    public function updateUserPermissions(Request $request, User $user)
+    {
+        if ($user->isAdministrator()) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'El rol Administrador tiene acceso total a todos los módulos y funciones por defecto.',
+                ]);
+            }
+            return redirect()
+                ->route('configuracion.index', ['tab' => 'users'])
+                ->with('status', 'El Administrador tiene acceso total por defecto.');
+        }
+
+        $permissions = $request->input('permissions', []);
+        if (!is_array($permissions)) {
+            $permissions = [];
+        }
+
+        $user->permissions = array_values(array_unique($permissions));
+        $user->save();
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Permisos de '{$user->name}' actualizados correctamente (" . count($user->permissions) . " permisos activos).",
+                'permissions' => $user->permissions,
+            ]);
+        }
+
+        return redirect()
+            ->route('configuracion.index', ['tab' => 'users'])
+            ->with('status', "Permisos de '{$user->name}' actualizados correctamente.");
     }
 
     public function destroyUser(User $user): RedirectResponse

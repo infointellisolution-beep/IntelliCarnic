@@ -150,7 +150,7 @@
             <div>
                 <div class="stat-label">Stock a Granel</div>
                 <div class="stat-value" style="font-size: 1.6rem; color: #10b981;">
-                    {{ number_format($articulos->where('tipo_articulo', '!=', 'unidad')->sum('stock'), 3) }} 
+                    {{ number_format($articulos->filter(fn($a) => $a->isPesable())->sum('stock'), 3) }} 
                     <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">{{ strtoupper($settings['unidad_peso'] ?? 'lb') }}</span>
                 </div>
             </div>
@@ -163,7 +163,7 @@
             <div>
                 <div class="stat-label">Stock en Unidades</div>
                 <div class="stat-value" style="font-size: 1.6rem; color: #ea580c;">
-                    {{ number_format($articulos->where('tipo_articulo', 'unidad')->sum('stock'), 0) }} 
+                    {{ number_format($articulos->filter(fn($a) => $a->isUnidad())->sum('stock'), 0) }} 
                     <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">UND</span>
                 </div>
             </div>

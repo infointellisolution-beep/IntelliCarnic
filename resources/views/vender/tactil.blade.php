@@ -52,7 +52,7 @@
             <!-- Grilla de Artículos -->
             <div class="tactil-grid" style="flex: 1; padding-left: 0.5rem;">
                 @foreach($articulos as $articulo)
-                <button class="btn-tactil" style="min-height: 90px; height: auto; padding: 0.25rem; position: relative;" data-familia-id="{{ $articulo->familia_id }}" data-codigo="{{ $articulo->codigo }}" data-codigo-cliente="{{ $articulo->codigo_cliente }}" onclick='openScaleModal({!! json_encode($articulo) !!})'>
+                <button class="btn-tactil" style="min-height: 90px; height: auto; padding: 0.25rem; position: relative;" data-familia-id="{{ $articulo->familia_id }}" data-codigo="{{ $articulo->codigo }}" data-codigo-cliente="{{ $articulo->codigo_cliente }}" onclick='handleTactilArticuloClick({!! json_encode($articulo) !!})'>
                     @if($articulo->imagen)
                         <div style="height: 40px; display: flex; align-items: center; justify-content: center; margin-bottom: 0.25rem;">
                             <img src="{{ asset('storage/' . $articulo->imagen) }}" alt="{{ $articulo->descripcion }}" style="max-height: 100%; max-width: 100%; border-radius: 4px; object-fit: contain;">
@@ -72,7 +72,7 @@
                     <div style="color: var(--text-muted); margin-top: 0.25rem; font-weight: 700;">${{ number_format($articulo->pvp, 2) }}</div>
                     @if($articulo->stock !== null && $articulo->stock !== '')
                         <div id="tactil-stock-{{ $articulo->id }}" style="font-size: 0.8rem; color: #10b981; margin-top: 0.25rem; font-weight: 600;">
-                            Stock: {{ floatval($articulo->stock) }} {{ strtoupper($settings['unidad_peso'] ?? 'kg') }}
+                            Stock: {{ $articulo->tipo_articulo === 'unidad' ? number_format((float) $articulo->stock, 0) . ' UND' : floatval($articulo->stock) . ' ' . strtoupper($settings['unidad_peso'] ?? 'kg') }}
                         </div>
                     @endif
                 </button>

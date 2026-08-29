@@ -288,8 +288,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (exactMatch) {
                         e.target.value = '';
                         filterTactilCatalog();
-                        // Abrimos el modal de báscula para que confirmen cantidad/peso
-                        openScaleModal(exactMatch);
+                        if (exactMatch.tipo_articulo === 'unidad') {
+                            addToCart(exactMatch, 1);
+                        } else {
+                            openScaleModal(exactMatch);
+                        }
                     }
                 }
             }
@@ -348,12 +351,17 @@ function renderSearchResults(query) {
         const isSelected = index === selectedSearchIndex;
         const bgClass = isSelected ? 'background: #fef08a;' : '';
         
+        const isUnidad = (art.tipo_articulo === 'unidad');
+        const unitSymbol = isUnidad ? 'UND' : (windowSettings.unidad_peso || 'kg').toUpperCase();
+        const availableStock = getAvailableStock(art.id, art.stock);
+        const formattedStock = isUnidad ? parseInt(availableStock) : availableStock;
+        
         html += `
             <tr style="border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background 0.2s; ${bgClass}" onclick="selectSearchResult(${index})">
                 <td style="padding: 0.5rem 0.75rem;">${art.codigo || '-'}</td>
                 <td style="padding: 0.5rem 0.75rem; font-weight: 500;">
                     ${art.descripcion}
-                    ${(art.stock !== null && art.stock !== '') ? `<div style="font-size: 0.8rem; color: ${(getAvailableStock(art.id, art.stock) <= 0 ? '#ef4444' : '#10b981')}; font-weight: 600;">Stock: ${getAvailableStock(art.id, art.stock)} ${(windowSettings.unidad_peso || 'kg').toUpperCase()}</div>` : ''}
+                    ${(art.stock !== null && art.stock !== '') ? `<div style="font-size: 0.8rem; color: ${(availableStock <= 0 ? '#ef4444' : '#10b981')}; font-weight: 600;">Stock: ${formattedStock} ${unitSymbol}</div>` : ''}
                 </td>
                 <td style="padding: 0.5rem 0.75rem; text-align: right; color: var(--primary); font-weight: 600;">$${parseFloat(art.pvp).toFixed(2)}</td>
                 <td style="padding: 0.25rem 0.75rem;">
@@ -577,23 +585,46 @@ function getEffectivePrice(articulo) {
 let scaleArticle = null;
 let scaleBarcodeScanned = null;
 
+function handleTactilArticuloClick(articulo) {
+    if (Array.isArray(windowArticulos) && articulo && articulo.id) {
+        const fresh = windowArticulos.find(a => a.id == articulo.id);
+        if (fresh) articulo = fresh;
+    }
+    
+    // Si el artículo es por unidad (no pesable/granel), se agrega directamente 1 unidad
+    if (articulo.tipo_articulo === 'unidad') {
+        addToCart(articulo, 1);
+    } else {
+        // Si es pesable/granel, abrir el modal de báscula digital
+        openScaleModal(articulo);
+    }
+}
+
 function openScaleModal(articulo, initialWeight = '', rawBarcode = '') {
     if (Array.isArray(windowArticulos) && articulo && articulo.id) {
         const fresh = windowArticulos.find(a => a.id == articulo.id);
         if (fresh) articulo = fresh;
     }
+    
+    // Si por alguna razón se invoca para un artículo por unidad, agregar directamente
+    if (articulo.tipo_articulo === 'unidad') {
+        addToCart(articulo, 1, rawBarcode);
+        return;
+    }
+
     scaleArticle = articulo;
     scaleBarcodeScanned = rawBarcode;
     const effective = getEffectivePrice(articulo);
+    const unitSymbol = (windowSettings.unidad_peso || 'kg').toUpperCase();
     
     document.getElementById('scaleArticleName').innerText = articulo.descripcion;
-    document.getElementById('scaleArticlePrice').innerText = '$' + effective.pvp.toFixed(2) + ' / ' + (windowSettings.unidad_peso || 'kg').toUpperCase();
+    document.getElementById('scaleArticlePrice').innerText = '$' + effective.pvp.toFixed(2) + ' / ' + unitSymbol;
     
     const stockEl = document.getElementById('scaleArticleStock');
     if (stockEl) {
         if (articulo.stock !== null && articulo.stock !== undefined && articulo.stock !== '') {
             const available = getAvailableStock(articulo.id, articulo.stock);
-            stockEl.innerText = `Stock: ${available} ${(windowSettings.unidad_peso || 'kg').toUpperCase()}`;
+            stockEl.innerText = `Stock: ${available} ${unitSymbol}`;
             stockEl.style.color = available <= 0 ? '#ef4444' : '#10b981';
             stockEl.style.display = 'block';
         } else {
@@ -1102,8 +1133,11 @@ async function confirmCheckout() {
 
                     const el = document.getElementById(`tactil-stock-${art.id}`);
                     if (el) {
-                        const unit = (windowSettings.unidad_peso || 'LB').toUpperCase();
-                        el.innerText = `Stock: ${art.stock} ${unit}`;
+                        const found = Array.isArray(windowArticulos) ? windowArticulos.find(a => a.id == art.id) : null;
+                        const isUnidad = (art.tipo_articulo === 'unidad' || (found && found.tipo_articulo === 'unidad'));
+                        const unit = isUnidad ? 'UND' : (windowSettings.unidad_peso || 'LB').toUpperCase();
+                        const formattedStock = isUnidad ? parseInt(art.stock) : art.stock;
+                        el.innerText = `Stock: ${formattedStock} ${unit}`;
                     }
                 });
             }
@@ -1309,7 +1343,7 @@ function getAvailableStock(articuloId, initialStock) {
 }
 
 function updateVisualStockDisplays() {
-    const unidad = windowSettings && windowSettings.unidad_peso ? windowSettings.unidad_peso.toUpperCase() : 'KG';
+    const defaultPesoUnit = windowSettings && windowSettings.unidad_peso ? windowSettings.unidad_peso.toUpperCase() : 'LB';
     
     // Update Tactil Cards
     if (window.windowArticulos) {
@@ -1318,7 +1352,10 @@ function updateVisualStockDisplays() {
                 const available = getAvailableStock(art.id, art.stock);
                 const elTactil = document.getElementById(`tactil-stock-${art.id}`);
                 if (elTactil) {
-                    elTactil.innerText = `Stock: ${available} ${unidad}`;
+                    const isUnidad = (art.tipo_articulo === 'unidad');
+                    const unitLabel = isUnidad ? 'UND' : defaultPesoUnit;
+                    const formatted = isUnidad ? parseInt(available) : available;
+                    elTactil.innerText = `Stock: ${formatted} ${unitLabel}`;
                     elTactil.style.color = available <= 0 ? '#ef4444' : '#10b981';
                 }
             }
@@ -1330,14 +1367,17 @@ function updateVisualStockDisplays() {
         const stockEl = document.getElementById('scaleArticleStock');
         if (stockEl && scaleArticle.stock !== null && scaleArticle.stock !== '') {
             const available = getAvailableStock(scaleArticle.id, scaleArticle.stock);
-            stockEl.innerText = `Stock: ${available} ${unidad}`;
+            const isUnidad = (scaleArticle.tipo_articulo === 'unidad');
+            const unitLabel = isUnidad ? 'UND' : defaultPesoUnit;
+            const formatted = isUnidad ? parseInt(available) : available;
+            stockEl.innerText = `Stock: ${formatted} ${unitLabel}`;
             stockEl.style.color = available <= 0 ? '#ef4444' : '#10b981';
         }
     }
     
     // Update Normal Search Results if active
     const searchInput = document.getElementById('search-articulo');
-    if (searchInput && tbodyNormal && document.getElementById('search-results-body')) {
+    if (searchInput && document.getElementById('search-results-body')) {
         // Just re-render search results to update stock
         renderSearchResults(searchInput.value);
     }
@@ -1855,8 +1895,10 @@ async function ejecutarProcesarDevolucion() {
                     }
                     const el = document.getElementById(`tactil-stock-${art.id}`);
                     if (el) {
-                        const unit = (windowSettings && windowSettings.unidad_peso ? windowSettings.unidad_peso : 'kg').toUpperCase();
-                        el.innerText = `Stock: ${art.stock} ${unit}`;
+                        const isUnidad = (art.tipo_articulo === 'unidad' || (found && found.tipo_articulo === 'unidad'));
+                        const unit = isUnidad ? 'UND' : (windowSettings && windowSettings.unidad_peso ? windowSettings.unidad_peso : 'LB').toUpperCase();
+                        const formattedStock = isUnidad ? parseInt(art.stock) : art.stock;
+                        el.innerText = `Stock: ${formattedStock} ${unit}`;
                     }
                 });
             }

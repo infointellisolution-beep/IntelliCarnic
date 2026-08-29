@@ -228,7 +228,7 @@
             <a href="{{ route('handheld.index') }}" class="hh-btn-icon" title="Menú Principal Handheld">
                 <i class="fa-solid fa-house"></i>
             </a>
-            <form action="{{ route('logout') }}" method="POST" style="margin: 0; display: inline;">
+            <form action="{{ route('logout') }}" method="POST" onsubmit="sessionStorage.removeItem('force_desktop'); sessionStorage.removeItem('force_handheld');" style="margin: 0; display: inline;">
                 @csrf
                 <button type="submit" class="hh-btn-icon" title="Cerrar Sesión" style="color: #ef4444;">
                     <i class="fa-solid fa-power-off"></i>
@@ -255,6 +255,38 @@
 
         @yield('content')
     </main>
+
+    @auth
+    <!-- Detección Dinámica de Pantalla de Escritorio y Redirección a Desktop -->
+    <script>
+        (function() {
+            function checkDesktopScreen() {
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('handheld') === '1') {
+                    sessionStorage.setItem('force_handheld', '1');
+                    sessionStorage.removeItem('force_desktop');
+                } else if (urlParams.get('handheld') === '0') {
+                    sessionStorage.removeItem('force_handheld');
+                }
+
+                if (urlParams.get('desktop') === '1') {
+                    sessionStorage.setItem('force_desktop', '1');
+                    sessionStorage.removeItem('force_handheld');
+                }
+
+                const isDesktopScreen = window.innerWidth > 768;
+                const forceHandheld = sessionStorage.getItem('force_handheld') === '1' || urlParams.get('handheld') === '1';
+
+                // Si la pantalla es escritorio (> 768px) y no está forzado a handheld, volver al dashboard
+                if (isDesktopScreen && !forceHandheld) {
+                    window.location.replace("{{ route('dashboard.index') }}");
+                }
+            }
+
+            checkDesktopScreen();
+        })();
+    </script>
+    @endauth
 
     @stack('scripts')
 </body>

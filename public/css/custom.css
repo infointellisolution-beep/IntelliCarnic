@@ -255,9 +255,18 @@ body {
     border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
-    justify-content: flex-start;
-    padding: 0 2rem;
+    justify-content: space-between;
+    padding: 0 1.5rem;
     gap: 1rem;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+}
+
+.user-dropdown-container {
+    margin-left: auto;
+    flex-shrink: 0;
+    position: relative;
 }
 
 .top-bar-hint {
