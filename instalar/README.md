@@ -1,6 +1,16 @@
-# IntelliCarnic - Carpeta de Instalación
+# Carpeta Universal de Instalación (Laravel + Laragon)
 
-Esta carpeta contiene los scripts necesarios para instalar el sistema en la PC de cada cliente.
+Esta carpeta es **100% genérica y reutilizable (Plug & Play)**. Puedes copiarla directamente a cualquier proyecto Laravel dentro de `C:\laragon\www\` y funcionará automáticamente sin modificar código.
+
+---
+
+## ⚙️ Detección Automática Inteligente
+
+Todos los scripts leen de manera dinámica la configuración de tu proyecto desde el archivo `.env`:
+* **`APP_NAME`:** Se usa automáticamente para el nombre del icono en el Escritorio (ej. `MiSistema - TPV.lnk`) y los mensajes del instalador.
+* **`APP_URL`:** Se detecta automáticamente para abrir la URL exacta de tu proyecto en el navegador.
+* **Ícono (`.ico`):** Si colocas un archivo `.ico` dentro de `instalar/` o tienes `public/favicon.ico`, lo asocia automáticamente al acceso directo.
+* **Git Branch:** `actualizar_sistema.bat` detecta automáticamente tu rama actual de Git para actualizar el código y ejecutar migraciones.
 
 ---
 
@@ -8,52 +18,27 @@ Esta carpeta contiene los scripts necesarios para instalar el sistema en la PC d
 
 | Archivo | Descripción |
 |---------|-------------|
-| `configurar_inicio_automatico.vbs` | Configura Laragon para iniciar automáticamente cuando se enciende la PC (Opción 2 / Nativa). **Ejecutar primero.** |
-| `crear_acceso_directo.vbs` | Crea el ícono **"IntelliCarnic - TPV"** en el Escritorio del cliente. **Ejecutar segundo.** |
-| `IntelliCarnic.vbs` | Lanzador invisible (sin ventana negra). **No ejecutar directamente.** Es el núcleo del ícono del Escritorio. |
-| `abrir_sistema.bat` | Script inteligente que verifica si Laragon está activo antes de abrir el navegador. **No ejecutar directamente.** |
-| `intellicarnic.ico` | *(Opcional)* Icono personalizado del sistema. Colocar aquí para que aparezca en el Escritorio. |
+| `configurar_inicio_automatico.vbs` | Registra Laragon para iniciar automáticamente con Windows con todos los servicios encendidos. **Ejecutar primero.** |
+| `crear_acceso_directo.vbs` | Crea el ícono del sistema en el Escritorio del cliente con el nombre y URL leídos desde `.env`. **Ejecutar segundo.** |
+| `iniciar_sistema.vbs` | Lanzador invisible universal (sin ventana negra de CMD). |
+| `abrir_sistema.bat` | Script inteligente que verifica si Apache/Nginx están corriendo y abre el sistema de inmediato. |
+| `actualizar_sistema.bat` | Script de 1 clic que descarga cambios de Git, ejecuta migraciones y optimiza la caché de Laravel. |
+| `*.ico` | *(Opcional)* Ícono personalizado del proyecto para el acceso directo del Escritorio. |
 
 ---
 
 ## 🚀 Pasos de instalación en la PC del cliente
 
 ### Paso 1 - Instalar Laragon
-1. Descargar e instalar Laragon desde [laragon.org](https://laragon.org/download).
-2. Asegurarse de instalar en la ruta predeterminada: `C:\laragon\`.
+1. Descargar e instalar Laragon en `C:\laragon\`.
 
 ### Paso 2 - Copiar el proyecto
-1. Copiar la carpeta del proyecto `intelliCarnic` a: `C:\laragon\www\intelliCarnic\`.
+1. Copiar la carpeta del proyecto a `C:\laragon\www\tuProyecto\`.
 
-### Paso 3 - Configurar la base de datos
-1. Abrir Laragon → Terminal → `php artisan migrate --force`.
-
-### Paso 4 - Configurar inicio automático (Opción 2 Nativa)
+### Paso 3 - Configurar inicio automático
 1. Hacer **doble clic** en `configurar_inicio_automatico.vbs`.
-2. Confirmar el mensaje de éxito.
 
-### Paso 5 - Crear el ícono en el Escritorio
-1. *(Opcional)* Colocar el archivo `intellicarnic.ico` en esta carpeta `instalar\`.
-2. Hacer **doble clic** en `crear_acceso_directo.vbs`.
-3. Confirmar el mensaje de éxito.
+### Paso 4 - Crear el ícono en el Escritorio
+1. Hacer **doble clic** en `crear_acceso_directo.vbs`.
 
----
-
-## 🛡️ Comportamiento del ícono del Escritorio
-
-```
-Cliente hace doble clic en el ícono
-          │
-          ▼
-¿Laragon está corriendo?
-    │               │
-   SÍ              NO
-    │               │
-    ▼               ▼
-Abre el        Enciende Laragon
-navegador      automáticamente
-al instante    y abre el sistema
-```
-
-- **Situación normal** → Laragon inicia con Windows → ícono abre el sistema **al instante**.
-- **Si alguien cerró Laragon accidentalmente** → El ícono detecta que está apagado, lo enciende automáticamente y abre el sistema. **Auto-recuperación transparente para el cliente.**
+¡Listo! El cliente tendrá su acceso directo configurado y funcionando.
