@@ -1,0 +1,58 @@
+name: Auto-Ofuscacion y Publicacion a Clientes
+
+on:
+  push:
+    branches:
+      - dev
+      - develop
+
+permissions:
+  contents: write
+
+jobs:
+  obfuscate-and-publish:
+    runs-on: ubuntu-latest
+    name: Ofuscar Codigo y Publicar a Main
+
+    steps:
+      - name: 1. Descargar codigo limpio desde la rama de desarrollo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 2. Configurar entorno PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, iconv, json
+          coverage: none
+
+      - name: 3. Instalar Ofuscador Yakpro-PO en el servidor de GitHub
+        run: |
+          git clone https://github.com/pk-fr/yakpro-po.git /tmp/yakpro-po
+          cd /tmp/yakpro-po
+          composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: 4. Ofuscar controladores, modelos, servicios y rutas
+        run: |
+          # Ofuscar carpeta app/
+          php /tmp/yakpro-po/yakpro-po.php app -o /tmp/app_obfuscated --clean-mode
+          rm -rf app
+          mv /tmp/app_obfuscated app
+
+          # Ofuscar carpeta routes/
+          php /tmp/yakpro-po/yakpro-po.php routes -o /tmp/routes_obfuscated --clean-mode
+          rm -rf routes
+          mv /tmp/routes_obfuscated routes
+
+      - name: 5. Publicar codigo protegido automaticamente en la rama 'main'
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Cambiar a rama main y forzar actualizacion con el codigo ofuscado
+          git checkout -B main
+          git add -A
+          git commit -m "🚀 Auto-Release: Codigo protegido y ofuscado [skip ci]" || echo "Sin cambios nuevos"
+          git push origin main --force
