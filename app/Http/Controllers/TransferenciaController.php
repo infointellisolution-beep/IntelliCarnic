@@ -18,16 +18,22 @@ use Illuminate\View\View;
 class TransferenciaController extends Controller
 {
     // ─────────────────────────────────────────────────────────
-    //  VISTA PRINCIPAL (Enviar Mercancía / Recepciones / Buzón Cloud)
+    //  VISTA PRINCIPAL (Enviar Mercancía / Recepciones / Buzón Cloud / Historial)
     // ─────────────────────────────────────────────────────────
     public function index(Request $request): View
     {
         $tab = $request->get('tab', 'enviar');
-        if (!in_array($tab, ['enviar', 'recibir', 'nube'])) {
+        if (!in_array($tab, ['enviar', 'recibir', 'nube', 'historial'])) {
             $tab = 'enviar';
         }
         $settings = Setting::values();
         $modoInventario = $settings['modo_inventario'] ?? 'dinamico';
+        $modoTransferencias = $settings['modo_transferencias'] ?? 'cloud';
+
+        // Si está en modo archivo y solicitaron la pestaña nube, redirigir a historial
+        if ($modoTransferencias === 'archivo' && $tab === 'nube') {
+            $tab = 'historial';
+        }
 
         $sucursalActual = Sucursal::actual();
         $sucursales = Sucursal::orderBy('nombre')->get();
@@ -102,17 +108,23 @@ class TransferenciaController extends Controller
         $totalNubeCount = 0;
         
         $syncService = new TransferenciaSyncService();
-        if ($tab === 'nube') {
+        if ($tab === 'nube' && $modoTransferencias === 'cloud') {
             $cloudStatus = $syncService->testConexion();
             $respNube = $syncService->consultarTodasEnNube();
             $transferenciasNube = $respNube['transferencias'] ?? [];
             $totalNubeCount = $respNube['count'] ?? 0;
         }
 
+        // Historial general de transferencias (todas las enviadas / recibidas)
+        $transferenciasHistorial = Transferencia::with(['sucursalOrigen', 'sucursalDestino', 'usuario', 'usuarioRecibe', 'detalles'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
+
         return view('transferencias.index', compact(
             'tab',
             'settings',
             'modoInventario',
+            'modoTransferencias',
             'sucursalActual',
             'sucursales',
             'sucursalesDestino',
@@ -120,7 +132,8 @@ class TransferenciaController extends Controller
             'pendientesCount',
             'transferenciasNube',
             'cloudStatus',
-            'totalNubeCount'
+            'totalNubeCount',
+            'transferenciasHistorial'
         ));
     }
 
@@ -239,13 +252,29 @@ class TransferenciaController extends Controller
             ]);
         });
 
-        // Intentar sincronizar con la nube
-        $syncService = new TransferenciaSyncService();
-        $syncResult = $syncService->enviarNube($transferencia);
+        // Determinar comportamiento según el modo de transferencias configurado
+        $modoTransferencias = Setting::getValue('modo_transferencias', 'cloud');
+        $syncResult = ['success' => true, 'modo' => $modoTransferencias];
 
-        if (!$syncResult['success'] && ($syncResult['offline'] ?? false)) {
-            // Sin internet: marcar como manual
-            $transferencia->update(['tipo_sincronizacion' => 'manual_trn']);
+        if ($modoTransferencias === 'archivo') {
+            $transferencia->update([
+                'tipo_sincronizacion' => 'archivo_trn',
+                'payload_json' => json_encode($transferencia->buildPayload(), JSON_UNESCAPED_UNICODE),
+            ]);
+            $syncResult = [
+                'success' => true,
+                'message' => 'Transferencia registrada en modo archivo (.TRN).',
+                'offline' => true,
+            ];
+        } else {
+            // Intentar sincronizar con la nube
+            $syncService = new TransferenciaSyncService();
+            $syncResult = $syncService->enviarNube($transferencia);
+
+            if (!$syncResult['success'] && ($syncResult['offline'] ?? false)) {
+                // Sin internet: marcar como manual
+                $transferencia->update(['tipo_sincronizacion' => 'manual_trn']);
+            }
         }
 
         return response()->json([
@@ -253,6 +282,8 @@ class TransferenciaController extends Controller
             'message' => "Transferencia {$transferencia->folio} registrada exitosamente.",
             'transferencia_id' => $transferencia->id,
             'folio' => $transferencia->folio,
+            'modo_transferencias' => $modoTransferencias,
+            'download_url' => route('transferencias.descargar-trn', $transferencia->id),
             'sync' => $syncResult,
         ]);
     }
@@ -665,18 +696,26 @@ class TransferenciaController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────
-    //  GUARDAR CONFIGURACIÓN CLOUD (AJAX)
+    //  GUARDAR CONFIGURACIÓN DE TRANSFERENCIAS (CLOUD O ARCHIVO) (AJAX)
     // ─────────────────────────────────────────────────────────
     public function guardarConfigCloud(Request $request): JsonResponse
     {
         $data = $request->validate([
+            'modo_transferencias' => ['nullable', 'string', 'in:cloud,archivo'],
             'cloud_sync_endpoint' => ['nullable', 'string', 'max:500'],
             'cloud_sync_token' => ['nullable', 'string', 'max:500'],
         ]);
 
+        if (isset($data['modo_transferencias'])) {
+            Setting::setValue('modo_transferencias', $data['modo_transferencias']);
+        }
         Setting::setValue('cloud_sync_endpoint', $data['cloud_sync_endpoint'] ?? '');
         Setting::setValue('cloud_sync_token', $data['cloud_sync_token'] ?? '');
 
-        return response()->json(['success' => true, 'message' => 'Configuración cloud guardada.']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Configuración de transferencias guardada exitosamente.',
+            'modo_transferencias' => $data['modo_transferencias'] ?? 'cloud',
+        ]);
     }
 }

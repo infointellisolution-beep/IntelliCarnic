@@ -28,6 +28,9 @@ class Setting extends Model
             'empresa_correo' => '',
             'empresa_celular' => '',
             'timezone' => 'America/Managua',
+            'modo_transferencias' => 'cloud', // 'cloud' o 'archivo'
+            'cloud_sync_endpoint' => 'https://intellicarnicsync.intellisolution.net',
+            'cloud_sync_token' => 'IntelliCarnic_Sync_2026_Key',
         ];
     }
 

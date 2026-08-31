@@ -3,6 +3,10 @@
 @section('title', 'Transferencias Multisucursal')
 
 @section('content')
+@php
+    $modoTransferencias = $modoTransferencias ?? ($settings['modo_transferencias'] ?? 'cloud');
+@endphp
+
 <div class="content-header">
     <div>
         <h1 class="page-title">Transferencias entre Sucursales</h1>
@@ -16,6 +20,10 @@
                     <i class="fa-solid fa-triangle-exclamation"></i> Asignar Sucursal en Configuración
                 </a>
             @endif
+
+            <span class="badge" style="background: {{ $modoTransferencias === 'cloud' ? '#e0f2fe' : '#dcfce7' }}; color: {{ $modoTransferencias === 'cloud' ? '#0369a1' : '#166534' }}; font-weight: 700; font-size: 0.78rem; padding: 3px 9px; border-radius: 12px; margin-left: 6px;">
+                <i class="fa-solid {{ $modoTransferencias === 'cloud' ? 'fa-cloud' : 'fa-file-export' }}"></i> Modo: {{ $modoTransferencias === 'cloud' ? 'Enlace en la Nube (Hostinger)' : 'Archivo Físico (.TRN / Offline)' }}
+            </span>
         </p>
     </div>
 </div>
@@ -30,11 +38,13 @@
     <a href="{{ route('transferencias.index', ['tab' => 'recibir']) }}"
        class="tab-btn {{ $tab === 'recibir' ? 'active' : '' }}"
        style="padding: 0.75rem 1.5rem; font-weight: 600; font-size: 0.9rem; color: {{ $tab === 'recibir' ? 'var(--accent)' : 'var(--text-muted)' }}; border-bottom: 2px solid {{ $tab === 'recibir' ? 'var(--accent)' : 'transparent' }}; text-decoration: none; transition: all 0.2s; position: relative;">
-        <i class="fa-solid fa-inbox"></i> Recepciones
+        <i class="fa-solid {{ $modoTransferencias === 'archivo' ? 'fa-file-import' : 'fa-inbox' }}"></i>
+        {{ $modoTransferencias === 'archivo' ? 'Recepción por Archivo' : 'Recepciones' }}
         @if($pendientesCount > 0)
             <span style="background:#ef4444;color:#fff;border-radius:50%;font-size:0.65rem;font-weight:700;padding:2px 6px;margin-left:4px;">{{ $pendientesCount }}</span>
         @endif
     </a>
+    @if($modoTransferencias === 'cloud')
     <a href="{{ route('transferencias.index', ['tab' => 'nube']) }}"
        class="tab-btn {{ $tab === 'nube' ? 'active' : '' }}"
        style="padding: 0.75rem 1.5rem; font-weight: 600; font-size: 0.9rem; color: {{ $tab === 'nube' ? '#0284c7' : 'var(--text-muted)' }}; border-bottom: 2px solid {{ $tab === 'nube' ? '#0284c7' : 'transparent' }}; text-decoration: none; transition: all 0.2s; position: relative;">
@@ -43,6 +53,13 @@
             <span style="background:#0284c7;color:#fff;border-radius:10px;font-size:0.7rem;font-weight:800;padding:2px 7px;margin-left:4px;">{{ $totalNubeCount }}</span>
         @endif
     </a>
+    @else
+    <a href="{{ route('transferencias.index', ['tab' => 'historial']) }}"
+       class="tab-btn {{ $tab === 'historial' ? 'active' : '' }}"
+       style="padding: 0.75rem 1.5rem; font-weight: 600; font-size: 0.9rem; color: {{ $tab === 'historial' ? '#10b981' : 'var(--text-muted)' }}; border-bottom: 2px solid {{ $tab === 'historial' ? '#10b981' : 'transparent' }}; text-decoration: none; transition: all 0.2s; position: relative;">
+        <i class="fa-solid fa-clock-rotate-left"></i> Historial de Transferencias
+    </a>
+    @endif
 </div>
 
 {{-- ═══════════════════════════════════════════════════════════ --}}
@@ -181,9 +198,30 @@
 {{-- ═══════════════════════════════════════════════════════════ --}}
 @if($tab === 'recibir')
 <div id="panelRecibir">
+    @if($modoTransferencias === 'archivo')
+    {{-- Banner de Importación Rápida para Modo Archivo --}}
+    <div class="card" style="margin-bottom: 1.5rem; background: linear-gradient(135deg, #f0fdf4, #ffffff); border: 2px dashed #86efac; padding: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <h4 style="margin: 0; color: #166534; font-size: 1.15rem; display: flex; align-items: center; gap: 0.6rem;">
+                    <i class="fa-solid fa-file-import" style="color: #16a34a; font-size: 1.3rem;"></i> Importar Archivo de Transferencia (.TRN)
+                </h4>
+                <p style="color: #475569; font-size: 0.88rem; margin: 6px 0 0 0; line-height: 1.4;">
+                    Selecciona el archivo <code>.trn</code> generado por la sucursal de origen para ingresar automáticamente la mercancía y sus lotes a este equipo.
+                </p>
+            </div>
+            <label class="btn-modern btn-accent" style="cursor: pointer; padding: 0.75rem 1.75rem; font-weight: 700; font-size: 0.95rem; display: inline-flex; align-items: center; gap: 0.6rem; margin: 0; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);">
+                <i class="fa-solid fa-folder-open"></i> Seleccionar Archivo .TRN
+                <input type="file" accept=".trn" onchange="importarArchivoTrn(this)" style="display: none;">
+            </label>
+        </div>
+    </div>
+    @endif
+
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-        <h3 style="margin: 0;"><i class="fa-solid fa-inbox" style="color: var(--accent);"></i> Transferencias Entrantes</h3>
+        <h3 style="margin: 0;"><i class="fa-solid {{ $modoTransferencias === 'archivo' ? 'fa-boxes-packing' : 'fa-inbox' }}" style="color: var(--accent);"></i> Transferencias en Tránsito para esta Sucursal</h3>
         <div style="display: flex; gap: 0.75rem;">
+            @if($modoTransferencias === 'cloud')
             <button onclick="sincronizarNube()" class="btn-modern btn-secondary" id="btnSyncNube">
                 <i class="fa-solid fa-cloud-arrow-down"></i> Sincronizar con Nube
             </button>
@@ -191,6 +229,7 @@
                 <i class="fa-solid fa-file-import"></i> Importar .TRN
                 <input type="file" accept=".trn" onchange="importarArchivoTrn(this)" style="display: none;">
             </label>
+            @endif
         </div>
     </div>
 
@@ -211,9 +250,13 @@
 
         @if($pendientesLocales->isEmpty())
             <div class="card" style="text-align: center; padding: 3rem;">
-                <i class="fa-solid fa-inbox" style="font-size: 3rem; color: #94a3b8; margin-bottom: 1rem;"></i>
+                <i class="fa-solid {{ $modoTransferencias === 'archivo' ? 'fa-file-circle-check' : 'fa-inbox' }}" style="font-size: 3rem; color: #94a3b8; margin-bottom: 1rem;"></i>
                 <h3 style="margin-bottom: 0.5rem;">Sin transferencias pendientes</h3>
-                <p style="color: var(--text-muted);">No hay envíos pendientes de recibir. Presione <strong>"Sincronizar con Nube"</strong> para consultar.</p>
+                @if($modoTransferencias === 'archivo')
+                    <p style="color: var(--text-muted);">No hay transferencias pendientes de confirmar en este equipo. Usa el botón superior para importar un archivo <code>.trn</code>.</p>
+                @else
+                    <p style="color: var(--text-muted);">No hay envíos pendientes de recibir. Presione <strong>"Sincronizar con Nube"</strong> para consultar.</p>
+                @endif
             </div>
         @else
             @foreach($pendientesLocales as $pend)
@@ -298,9 +341,9 @@
 @endif
 
 {{-- ═══════════════════════════════════════════════════════════ --}}
-{{--  TAB 3: BUZÓN EN LA NUBE (Monitoreo de Hostinger Cloud)     --}}
+{{--  TAB 3: BUZÓN EN LA NUBE (Solo Modo Cloud)                  --}}
 {{-- ═══════════════════════════════════════════════════════════ --}}
-@if($tab === 'nube')
+@if($tab === 'nube' && $modoTransferencias === 'cloud')
 <div id="panelNube">
     {{-- Cabecera con estado de Hostinger y botón de refresco --}}
     <div class="card" style="margin-bottom: 1.5rem; padding: 1.25rem 1.5rem; background: linear-gradient(to right, #f8fafc, #ffffff); border-left: 4px solid #0284c7;">
@@ -426,6 +469,109 @@
                 </div>
             </div>
             @endforeach
+        @endif
+    </div>
+</div>
+@elseif($tab === 'historial' || ($tab === 'nube' && $modoTransferencias === 'archivo'))
+{{-- ═══════════════════════════════════════════════════════════ --}}
+{{--  TAB 3: HISTORIAL DE TRANSFERENCIAS (Modo Archivo Físico)   --}}
+{{-- ═══════════════════════════════════════════════════════════ --}}
+<div id="panelHistorial">
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+            <div>
+                <h3 style="margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fa-solid fa-clock-rotate-left" style="color: #10b981;"></i> Historial General de Transferencias
+                </h3>
+                <p style="margin: 4px 0 0 0; color: var(--text-muted); font-size: 0.85rem;">
+                    Consulta y descarga respaldos <code>.TRN</code> de cualquier transferencia realizada.
+                </p>
+            </div>
+        </div>
+
+        @if(!isset($transferenciasHistorial) || $transferenciasHistorial->isEmpty())
+            <div style="text-align: center; padding: 3rem;">
+                <i class="fa-solid fa-folder-open" style="font-size: 3rem; color: #94a3b8; margin-bottom: 1rem; opacity: 0.5;"></i>
+                <h3 style="margin-bottom: 0.5rem;">Sin transferencias registradas</h3>
+                <p style="color: var(--text-muted);">Aún no se han generado transferencias en este equipo.</p>
+            </div>
+        @else
+            <div style="overflow-x: auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Folio</th>
+                            <th>Origen → Destino</th>
+                            <th>Fecha</th>
+                            <th>Responsable</th>
+                            <th>Ítems / Peso</th>
+                            <th>Costo Total</th>
+                            <th>Estado</th>
+                            <th style="text-align: center;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($transferenciasHistorial as $th)
+                        <tr>
+                            <td>
+                                <strong style="font-family: monospace; font-size: 0.95rem; color: var(--accent);">{{ $th->folio }}</strong>
+                            </td>
+                            <td>
+                                <div style="font-size: 0.88rem; font-weight: 600;">
+                                    {{ $th->sucursalOrigen->nombre ?? 'N/A' }} 
+                                    <i class="fa-solid fa-arrow-right" style="color: var(--text-muted); font-size: 0.75rem; margin: 0 4px;"></i>
+                                    <span style="color: #0369a1;">{{ $th->sucursalDestino->nombre ?? 'N/A' }}</span>
+                                </div>
+                            </td>
+                            <td style="font-size: 0.85rem; color: #64748b;">
+                                {{ $th->fecha_envio ? $th->fecha_envio->format('d/m/Y H:i') : $th->created_at->format('d/m/Y H:i') }}
+                            </td>
+                            <td style="font-size: 0.85rem;">
+                                {{ $th->usuario->name ?? 'N/A' }}
+                            </td>
+                            <td style="font-size: 0.85rem;">
+                                <strong>{{ $th->detalles->count() }}</strong> arts.
+                                @if($th->total_peso > 0)
+                                    <span style="color: #64748b;">({{ number_format($th->total_peso, 2) }} LB)</span>
+                                @endif
+                            </td>
+                            <td style="font-size: 0.92rem; font-weight: 700; color: var(--text-main);">
+                                ${{ number_format($th->costo_total, 2) }}
+                            </td>
+                            <td>
+                                @if($th->estado === 'en_transito')
+                                    <span class="badge" style="background: #fef3c7; color: #92400e; font-weight: 700; font-size: 0.75rem;">
+                                        <i class="fa-solid fa-truck-fast"></i> En Tránsito
+                                    </span>
+                                @elseif($th->estado === 'recibida')
+                                    <span class="badge" style="background: #dcfce7; color: #166534; font-weight: 700; font-size: 0.75rem;">
+                                        <i class="fa-solid fa-circle-check"></i> Recibida
+                                    </span>
+                                @else
+                                    <span class="badge" style="background: #fee2e2; color: #991b1b; font-weight: 700; font-size: 0.75rem;">
+                                        <i class="fa-solid fa-ban"></i> Cancelada
+                                    </span>
+                                @endif
+                            </td>
+                            <td style="text-align: center;">
+                                <div style="display: inline-flex; gap: 0.35rem;">
+                                    <a href="{{ route('transferencias.descargar-trn', $th->id) }}" class="btn-modern btn-secondary" style="padding: 4px 8px; font-size: 0.78rem; text-decoration: none;" title="Descargar archivo .TRN">
+                                        <i class="fa-solid fa-file-arrow-down" style="color: #10b981;"></i> .TRN
+                                    </a>
+                                    <button type="button" onclick="window.open('{{ route('transferencias.ticket', $th->id) }}', '_blank', 'width=350,height=600')" class="btn-modern btn-secondary" style="padding: 4px 8px; font-size: 0.78rem;" title="Imprimir Ticket Térmico">
+                                        <i class="fa-solid fa-print"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            
+            <div style="margin-top: 1rem;">
+                {{ $transferenciasHistorial->links() }}
+            </div>
         @endif
     </div>
 </div>
@@ -584,7 +730,10 @@
             <div id="resultadoSyncBadge" style="margin-bottom: 0.5rem; font-size: 0.85rem; padding: 0.5rem 1rem; border-radius: 8px; display: inline-flex; align-items: center; gap: 0.5rem;"></div>
         </div>
 
-        <div style="padding: 1rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: center; gap: 0.75rem;">
+        <div style="padding: 1rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: center; gap: 0.75rem; flex-wrap: wrap;">
+            <a id="btnDescargarTrnResultado" href="#" class="btn-modern btn-secondary" style="padding: 0.65rem 1.25rem; font-weight: 700; text-decoration: none; color: #166534; border-color: #86efac; background: #f0fdf4; display: none;">
+                <i class="fa-solid fa-file-arrow-down"></i> Descargar Archivo .TRN
+            </a>
             <button type="button" id="btnImprimirTicketResultado" class="btn-modern btn-secondary" style="padding: 0.65rem 1.25rem; font-weight: 700;">
                 <i class="fa-solid fa-print"></i> Imprimir Ticket
             </button>
@@ -1496,16 +1645,46 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (msgEl) msgEl.textContent = data.message || 'La transferencia fue registrada exitosamente.';
 
                 if (badgeEl) {
-                    if (data.sync && data.sync.success) {
+                    if (data.modo_transferencias === 'archivo') {
+                        badgeEl.style.display = 'inline-flex';
+                        badgeEl.style.background = '#dcfce7';
+                        badgeEl.style.color = '#166534';
+                        badgeEl.innerHTML = '<i class="fa-solid fa-file-circle-check"></i> Archivo .TRN generado exitosamente para traspaso.';
+                    } else if (data.sync && data.sync.success) {
+                        badgeEl.style.display = 'inline-flex';
                         badgeEl.style.background = '#dcfce7';
                         badgeEl.style.color = '#166534';
                         badgeEl.innerHTML = '<i class="fa-solid fa-cloud-check"></i> Sincronizado con la nube exitosamente.';
                     } else if (data.sync && !data.sync.success) {
+                        badgeEl.style.display = 'inline-flex';
                         badgeEl.style.background = '#fef3c7';
                         badgeEl.style.color = '#92400e';
                         badgeEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Guardado localmente (Offline).';
                     } else {
                         badgeEl.style.display = 'none';
+                    }
+                }
+
+                // Configurar botón de descarga .TRN
+                const btnTrn = document.getElementById('btnDescargarTrnResultado');
+                if (btnTrn) {
+                    if (data.download_url) {
+                        btnTrn.href = data.download_url;
+                        btnTrn.style.display = 'inline-flex';
+                        
+                        // Si está en modo archivo, iniciar descarga automática tras 300ms
+                        if (data.modo_transferencias === 'archivo') {
+                            setTimeout(() => {
+                                const link = document.createElement('a');
+                                link.href = data.download_url;
+                                link.download = `${data.folio || 'transferencia'}.trn`;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                            }, 350);
+                        }
+                    } else {
+                        btnTrn.style.display = 'none';
                     }
                 }
 

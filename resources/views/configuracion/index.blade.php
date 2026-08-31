@@ -790,42 +790,99 @@
     </div>
 @elseif($activeTab === 'sucursales')
     <div class="config-grid">
-        {{-- Card 1: Configuración Sincronización Cloud con Hostinger --}}
+        {{-- Card 1: Método de Transferencia entre Sucursales (Cloud vs Archivo .TRN) --}}
+        @php
+            $modoTransferencias = $settings['modo_transferencias'] ?? 'cloud';
+        @endphp
         <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.5rem;">
                 <div>
-                    <div class="hero-kicker"><i class="fa-solid fa-cloud"></i> Sincronización en la Nube (Cloud Hub)</div>
-                    <h2 class="hero-title" style="font-size: 1.35rem; margin-top: 0.25rem;">Servidor de Enlace en Hostinger</h2>
+                    <div class="hero-kicker"><i class="fa-solid fa-arrows-split-up-and-left"></i> Método de Transferencias</div>
+                    <h2 class="hero-title" style="font-size: 1.35rem; margin-top: 0.25rem;">Arquitectura de Transferencia entre Sucursales</h2>
                 </div>
-                <button type="button" onclick="testConexionCloud()" class="btn-modern btn-secondary" id="btnTestCloud" style="width: auto;">
-                    <i class="fa-solid fa-satellite-dish"></i> Probar Conexión
-                </button>
             </div>
 
-            <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1rem;">
-                Conecta este servidor local con tu Buzón Central en Hostinger para intercambiar transferencias con las demás sucursales por internet.
+            <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1.25rem;">
+                Selecciona cómo interactúan tus sucursales para transferir mercancía, productos e inventario.
             </p>
 
-            <div id="estadoCloud" style="display: none; margin-bottom: 1rem; padding: 0.75rem 1rem; border-radius: var(--radius-md); font-size: 0.85rem;"></div>
+            {{-- Selector de Modo: Nube vs Archivo --}}
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                {{-- Opción 1: Nube / Hosting --}}
+                <label class="modo-transferencia-card" id="cardModoCloud" style="border: 2px solid {{ $modoTransferencias === 'cloud' ? 'var(--accent)' : 'var(--border)' }}; background: {{ $modoTransferencias === 'cloud' ? 'rgba(2, 132, 199, 0.04)' : 'var(--bg-card)' }}; border-radius: var(--radius-md); padding: 1.25rem; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; gap: 0.5rem;">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <input type="radio" name="modo_transferencias" value="cloud" {{ $modoTransferencias === 'cloud' ? 'checked' : '' }} onchange="cambiarModoTransferencia('cloud')" style="accent-color: var(--accent); width: 1.1rem; height: 1.1rem;">
+                            <span style="font-weight: 700; font-size: 1rem; color: var(--text-main);"><i class="fa-solid fa-cloud" style="color: #0284c7; margin-right: 4px;"></i> Enlace en la Nube / Hosting</span>
+                        </div>
+                        <span class="badge" style="background: #e0f2fe; color: #0369a1; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 9999px;">Hostinger / Cloud Sync</span>
+                    </div>
+                    <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0; line-height: 1.4;">
+                        Transferencias automáticas por internet. Cada tienda envía y recibe mercancía a través del Buzón Central en la nube en tiempo real.
+                    </p>
+                </label>
 
-            <div class="form-grid">
-                <div class="input-group">
-                    <label>URL Endpoint de Hostinger</label>
-                    <input type="url" id="inputCloudEndpoint" class="input-modern"
-                           placeholder="https://intellicarnicsync.intellisolution.net"
-                           value="{{ $settings['cloud_sync_endpoint'] ?? 'https://intellicarnicsync.intellisolution.net' }}">
+                {{-- Opción 2: Archivo Físico (.TRN / Offline) --}}
+                <label class="modo-transferencia-card" id="cardModoArchivo" style="border: 2px solid {{ $modoTransferencias === 'archivo' ? 'var(--accent)' : 'var(--border)' }}; background: {{ $modoTransferencias === 'archivo' ? 'rgba(2, 132, 199, 0.04)' : 'var(--bg-card)' }}; border-radius: var(--radius-md); padding: 1.25rem; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; gap: 0.5rem;">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <input type="radio" name="modo_transferencias" value="archivo" {{ $modoTransferencias === 'archivo' ? 'checked' : '' }} onchange="cambiarModoTransferencia('archivo')" style="accent-color: var(--accent); width: 1.1rem; height: 1.1rem;">
+                            <span style="font-weight: 700; font-size: 1rem; color: var(--text-main);"><i class="fa-solid fa-file-export" style="color: #10b981; margin-right: 4px;"></i> Archivo Físico (.TRN / Offline)</span>
+                        </div>
+                        <span class="badge" style="background: #dcfce7; color: #166534; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 9999px;">100% Offline / USB</span>
+                    </div>
+                    <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0; line-height: 1.4;">
+                        No requiere hosting ni internet. Al procesar una transferencia se descarga un archivo <code>.trn</code> que se pasa por memoria USB o WhatsApp a la otra sucursal.
+                    </p>
+                </label>
+            </div>
+
+            {{-- Bloque de Parámetros de Hostinger (Modo Cloud) --}}
+            <div id="contenedorCamposCloud" style="display: {{ $modoTransferencias === 'cloud' ? 'block' : 'none' }}; border-top: 1px solid var(--border); padding-top: 1.25rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                    <h3 style="font-size: 1.05rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fa-solid fa-server" style="color: #0284c7;"></i> Conexión con Servidor Central en Hostinger
+                    </h3>
+                    <button type="button" onclick="testConexionCloud()" class="btn-modern btn-secondary" id="btnTestCloud" style="width: auto; font-size: 0.82rem; padding: 5px 12px;">
+                        <i class="fa-solid fa-satellite-dish"></i> Probar Conexión
+                    </button>
                 </div>
-                <div class="input-group">
-                    <label>API Token de Seguridad</label>
-                    <input type="password" id="inputCloudToken" class="input-modern"
-                           placeholder="Clave secreta"
-                           value="{{ $settings['cloud_sync_token'] ?? 'IntelliCarnic_Sync_2026_Key' }}">
+
+                <div id="estadoCloud" style="display: none; margin-bottom: 1rem; padding: 0.75rem 1rem; border-radius: var(--radius-md); font-size: 0.85rem;"></div>
+
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label>URL Endpoint de Hostinger</label>
+                        <input type="url" id="inputCloudEndpoint" class="input-modern"
+                               placeholder="https://intellicarnicsync.intellisolution.net"
+                               value="{{ $settings['cloud_sync_endpoint'] ?? 'https://intellicarnicsync.intellisolution.net' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>API Token de Seguridad</label>
+                        <input type="password" id="inputCloudToken" class="input-modern"
+                               placeholder="Clave secreta"
+                               value="{{ $settings['cloud_sync_token'] ?? 'IntelliCarnic_Sync_2026_Key' }}">
+                    </div>
                 </div>
             </div>
 
-            <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
+            {{-- Bloque Informativo de Flujo por Archivo (Modo Archivo) --}}
+            <div id="contenedorGuiaArchivo" style="display: {{ $modoTransferencias === 'archivo' ? 'block' : 'none' }}; border-top: 1px solid var(--border); padding-top: 1.25rem;">
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--radius-md); padding: 1.25rem;">
+                    <h4 style="margin: 0 0 0.75rem 0; color: #1e293b; font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fa-solid fa-circle-info" style="color: #10b981;"></i> Flujo de Operación por Archivo (.TRN)
+                    </h4>
+                    <ol style="margin: 0; padding-left: 1.25rem; font-size: 0.85rem; color: #475569; display: flex; flex-direction: column; gap: 0.4rem;">
+                        <li><strong>Sucursal Origen (Emisor):</strong> Crea la transferencia en el módulo y el sistema descargará automáticamente el archivo <code>TRN-XXXXXXXX-XXXX.trn</code>.</li>
+                        <li><strong>Transporte de Archivo:</strong> Se traslada el archivo <code>.trn</code> a la otra tienda mediante memoria USB, red local compartida o por WhatsApp/correo.</li>
+                        <li><strong>Sucursal Destino (Receptor):</strong> Entra a <em>Transferencias → Recepciones</em>, presiona <strong>"Importar Archivo .TRN"</strong>, selecciona el archivo y la mercancía ingresará al inventario local al instante.</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 1.25rem;">
                 <button type="button" onclick="guardarConfigCloud()" class="btn-modern btn-accent" style="width: auto;">
-                    <i class="fa-solid fa-floppy-disk"></i> Guardar Configuración Cloud
+                    <i class="fa-solid fa-floppy-disk"></i> Guardar Método de Transferencias
                 </button>
             </div>
         </div>
@@ -1491,17 +1548,48 @@
         .catch(err => alert('Error: ' + err.message));
     }
 
+    function cambiarModoTransferencia(modo) {
+        const cardCloud = document.getElementById('cardModoCloud');
+        const cardArchivo = document.getElementById('cardModoArchivo');
+        const contCloud = document.getElementById('contenedorCamposCloud');
+        const contArchivo = document.getElementById('contenedorGuiaArchivo');
+
+        if (modo === 'cloud') {
+            cardCloud.style.borderColor = 'var(--accent)';
+            cardCloud.style.background = 'rgba(2, 132, 199, 0.04)';
+            cardArchivo.style.borderColor = 'var(--border)';
+            cardArchivo.style.background = 'var(--bg-card)';
+            contCloud.style.display = 'block';
+            contArchivo.style.display = 'none';
+        } else {
+            cardArchivo.style.borderColor = 'var(--accent)';
+            cardArchivo.style.background = 'rgba(2, 132, 199, 0.04)';
+            cardCloud.style.borderColor = 'var(--border)';
+            cardCloud.style.background = 'var(--bg-card)';
+            contCloud.style.display = 'none';
+            contArchivo.style.display = 'block';
+        }
+    }
+
     function guardarConfigCloud() {
+        const modo = document.querySelector('input[name="modo_transferencias"]:checked')?.value || 'cloud';
         const endpoint = document.getElementById('inputCloudEndpoint')?.value.trim();
         const token = document.getElementById('inputCloudToken')?.value.trim();
 
         fetch('{{ route("transferencias.api.guardar-config-cloud") }}', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-            body: JSON.stringify({ cloud_sync_endpoint: endpoint, cloud_sync_token: token }),
+            body: JSON.stringify({ modo_transferencias: modo, cloud_sync_endpoint: endpoint, cloud_sync_token: token }),
         })
         .then(r => r.json())
-        .then(() => alert('Configuración de sincronización en la nube guardada exitosamente.'))
+        .then(data => {
+            if (data.success) {
+                alert('Configuración de transferencias guardada exitosamente.');
+                location.reload();
+            } else {
+                alert('Error al guardar configuración: ' + (data.error || 'Error'));
+            }
+        })
         .catch(err => alert('Error: ' + err.message));
     }
 
