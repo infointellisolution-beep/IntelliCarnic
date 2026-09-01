@@ -43,7 +43,8 @@
 
     <div class="input-group" id="group-codigo-field">
         <label id="label-codigo-field">Código Proveedor / Barras</label>
-        <input type="text" class="input-modern" name="codigo" id="field-codigo" value="{{ old('codigo', $modalArticulo->codigo ?? '') }}" required placeholder="Código de barras o SKU">
+        <input type="text" class="input-modern" name="codigo" id="field-codigo" value="{{ old('codigo', $modalArticulo->codigo ?? '') }}" required placeholder="Código de barras o SKU" oninput="onCodigoScanOrInput(this)" autocomplete="off">
+        <input type="hidden" name="codigo_original" id="field-codigo-original" value="">
     </div>
     <div class="input-group" id="group-codigo-cliente">
         <label>Código cliente (Báscula)</label>
@@ -272,6 +273,40 @@ function onTipoArticuloChange() {
         if (scalePreviewContainer) {
             scalePreviewContainer.innerHTML = '';
         }
+    }
+}
+
+function onCodigoScanOrInput(input) {
+    if (!input) return;
+    const raw = input.value.trim();
+    const clean = raw.replace(/[()\-\s]/g, '');
+    const gtinMatch = clean.match(/^01(\d{14})/);
+
+    if (gtinMatch && clean.length >= 24) {
+        const origInput = document.getElementById('field-codigo-original');
+        if (origInput) origInput.value = clean;
+
+        // Extraer los 14 digitos del GTIN
+        input.value = gtinMatch[1];
+
+        // Autocompletar Codigo Cliente con los ultimos 6 digitos si esta vacio
+        const ccInput = document.getElementById('field-codigo-cliente');
+        if (ccInput && !ccInput.value) {
+            ccInput.value = gtinMatch[1].slice(-6);
+        }
+
+        // Extraer peso y rellenar stock inicial si esta en 0
+        const wMatch = clean.match(/(320[0-5]|310[0-5])(\d{6})/);
+        if (wMatch) {
+            const dec = parseInt(wMatch[1].charAt(3), 10);
+            const wVal = parseInt(wMatch[2], 10) / Math.pow(10, dec);
+            const stockInput = document.getElementById('field-stock');
+            if (stockInput && (!stockInput.value || parseFloat(stockInput.value) === 0)) {
+                stockInput.value = wVal.toFixed(3);
+            }
+        }
+
+        updateScaleCodePreview();
     }
 }
 

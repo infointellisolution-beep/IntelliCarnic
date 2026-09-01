@@ -105,6 +105,60 @@ class ArticuloController extends Controller
         ]);
     }
 
+    public static function parseGs1Barcode(?string $rawCode): array
+    {
+        if (!$rawCode) {
+            return ['is_gs1' => false, 'gtin' => null, 'codigo_cliente' => null, 'peso' => null, 'fecha_vencimiento' => null, 'lote' => null, 'serie' => null, 'codigo_completo' => null];
+        }
+
+        $code = preg_replace('/[()\-\s]/', '', trim($rawCode));
+        $result = [
+            'is_gs1' => false,
+            'gtin' => null,
+            'codigo_cliente' => null,
+            'peso' => null,
+            'fecha_vencimiento' => null,
+            'lote' => null,
+            'serie' => null,
+            'codigo_completo' => $code,
+        ];
+
+        if (preg_match('/01(\d{14})/', $code, $gtinMatch)) {
+            $result['is_gs1'] = true;
+            $result['gtin'] = $gtinMatch[1];
+            $result['codigo_cliente'] = substr($gtinMatch[1], -6);
+
+            // Peso: 320x (libras) o 310x (kilos)
+            if (preg_match('/(320[0-5]|310[0-5])(\d{6})/', $code, $wMatch)) {
+                $decimals = (int) substr($wMatch[1], 3, 1);
+                $weightVal = ((int) $wMatch[2]) / pow(10, $decimals);
+                $result['peso'] = $weightVal;
+            }
+
+            // Fecha de Vencimiento: (17YYMMDD o 15YYMMDD)
+            if (preg_match('/(?:17|15)(\d{2})(\d{2})(\d{2})/', $code, $expMatch)) {
+                $year = 2000 + (int) $expMatch[1];
+                $month = str_pad($expMatch[2], 2, '0', STR_PAD_LEFT);
+                $day = str_pad($expMatch[3], 2, '0', STR_PAD_LEFT);
+                if (checkdate((int)$month, (int)$day, (int)$year)) {
+                    $result['fecha_vencimiento'] = "{$year}-{$month}-{$day}";
+                }
+            }
+
+            // Lote: 10XXXXXX
+            if (preg_match('/10([A-Za-z0-9]+?)(?:21|320|310|17|15|$)/', $code, $lotMatch)) {
+                $result['lote'] = $lotMatch[1];
+            }
+
+            // Serie: 21XXXXXX
+            if (preg_match('/21([A-Za-z0-9]+)/', $code, $serMatch)) {
+                $result['serie'] = $serMatch[1];
+            }
+        }
+
+        return $result;
+    }
+
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validateArticulo($request);
@@ -116,11 +170,53 @@ class ArticuloController extends Controller
             $data['imagen'] = $request->file('imagen')->store('articulos', 'public');
         }
 
+        $rawCodigo = $request->input('codigo_original') ?: $request->input('codigo');
+        $gs1Data = self::parseGs1Barcode($rawCodigo);
+
+        if ($gs1Data['is_gs1'] && $gs1Data['gtin']) {
+            $data['codigo'] = $gs1Data['gtin'];
+            if (empty($data['codigo_cliente'])) {
+                $data['codigo_cliente'] = $gs1Data['codigo_cliente'];
+            }
+            if ((float)($data['stock'] ?? 0) <= 0 && $gs1Data['peso'] > 0) {
+                $data['stock'] = $gs1Data['peso'];
+            }
+        }
+
         $articulo = Articulo::create($data);
+
+        // Si el artículo se crea con stock inicial > 0 y es pesable, registrar su lote en compra_detalles
+        if ((float)$articulo->stock > 0 && $articulo->tipo_articulo !== 'unidad') {
+            $compraInicial = \App\Models\Compra::firstOrCreate(
+                ['numero_factura' => 'INI-' . $articulo->codigo],
+                [
+                    'proveedor_id' => null,
+                    'proveedor_nombre' => 'Inventario Inicial',
+                    'fecha_compra' => now(),
+                    'subtotal' => round($articulo->stock * (float)$articulo->precio_compra, 2),
+                    'iva' => 0,
+                    'total' => round($articulo->stock * (float)$articulo->precio_compra, 2),
+                    'observaciones' => 'Registro de lote inicial al dar de alta el artículo',
+                    'user_id' => \Illuminate\Support\Facades\Auth::id(),
+                ]
+            );
+
+            \App\Models\CompraDetalle::create([
+                'compra_id' => $compraInicial->id,
+                'articulo_id' => $articulo->id,
+                'codigo_escaneado' => $gs1Data['is_gs1'] ? $gs1Data['codigo_completo'] : $articulo->codigo,
+                'lote' => $gs1Data['lote'] ?: 'INICIAL',
+                'serie' => $gs1Data['serie'] ?: '1',
+                'fecha_vencimiento' => $gs1Data['fecha_vencimiento'] ?: now()->addMonths(6)->toDateString(),
+                'cantidad_peso' => (float)$articulo->stock,
+                'costo_unitario' => (float)$articulo->precio_compra,
+                'subtotal' => round($articulo->stock * (float)$articulo->precio_compra, 2),
+            ]);
+        }
 
         return redirect()
             ->route('articulos.index')
-            ->with('status', 'Artículo creado correctamente.');
+            ->with('status', 'Artículo creado correctamente y lote inicial registrado.');
     }
 
     public function edit(Articulo $articulo): View
