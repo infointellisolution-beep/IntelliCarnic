@@ -343,58 +343,77 @@ class TransferenciaController extends Controller
             'payload' => ['required', 'array'],
         ]);
 
-        // Verificar que no exista ya localmente
-        if (Transferencia::where('folio', $data['folio'])->exists()) {
-            return response()->json(['success' => false, 'error' => 'Esta transferencia ya fue importada previamente.']);
+        // Verificar si ya existe localmente
+        $existente = Transferencia::where('folio', $data['folio'])->first();
+        if ($existente) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Esta transferencia ya fue descargada localmente.',
+                'transferencia_id' => $existente->id,
+                'estado' => $existente->estado,
+            ]);
         }
 
         $cloudData = $data['payload'];
         $sucursalActual = Sucursal::actual();
 
         // Buscar o crear sucursal origen por código
-        $sucursalOrigen = Sucursal::where('codigo', $cloudData['sucursal_origen'] ?? '')->first();
+        $codigoOrigen = $cloudData['sucursal_origen'] ?? ($cloudData['payload']['sucursal_origen'] ?? 'ORIGEN');
+        $sucursalOrigen = Sucursal::where('codigo', $codigoOrigen)->first();
         if (!$sucursalOrigen) {
             $sucursalOrigen = Sucursal::create([
-                'codigo' => $cloudData['sucursal_origen'] ?? 'UNKNOWN',
-                'nombre' => 'Sucursal ' . ($cloudData['sucursal_origen'] ?? '?'),
+                'codigo' => $codigoOrigen,
+                'nombre' => 'Sucursal ' . $codigoOrigen,
                 'activo' => true,
             ]);
         }
 
-        DB::transaction(function () use ($cloudData, $sucursalOrigen, $sucursalActual, $data) {
+        $transferencia = null;
+
+        DB::transaction(function () use ($cloudData, $sucursalOrigen, $sucursalActual, $data, &$transferencia) {
             $transferencia = Transferencia::create([
                 'folio' => $data['folio'],
                 'sucursal_origen_id' => $sucursalOrigen->id,
-                'sucursal_destino_id' => $sucursalActual->id,
+                'sucursal_destino_id' => $sucursalActual ? $sucursalActual->id : null,
                 'estado' => 'en_transito',
                 'tipo_sincronizacion' => 'cloud',
-                'total_peso' => $cloudData['total_peso'] ?? 0,
-                'total_unidades' => $cloudData['total_unidades'] ?? 0,
-                'costo_total' => $cloudData['costo_total'] ?? 0,
-                'notas' => $cloudData['notas'] ?? null,
-                'fecha_envio' => $cloudData['fecha_envio'] ?? now(),
+                'total_peso' => $cloudData['total_peso'] ?? ($cloudData['payload']['total_peso'] ?? 0),
+                'total_unidades' => $cloudData['total_unidades'] ?? ($cloudData['payload']['total_unidades'] ?? 0),
+                'costo_total' => $cloudData['costo_total'] ?? ($cloudData['payload']['costo_total'] ?? 0),
+                'notas' => $cloudData['notas'] ?? ($cloudData['payload']['notas'] ?? null),
+                'fecha_envio' => $cloudData['fecha_envio'] ?? ($cloudData['payload']['fecha_envio'] ?? now()),
                 'payload_json' => json_encode($cloudData, JSON_UNESCAPED_UNICODE),
             ]);
 
-            foreach ($cloudData['payload'] ?? [] as $item) {
+            // Extraer items independientemente de la estructura de envoltura
+            $items = $cloudData['items'] 
+                ?? ($cloudData['payload']['items'] 
+                ?? (is_array($cloudData['payload'] ?? null) && isset($cloudData['payload'][0]) ? $cloudData['payload'] : []));
+
+            foreach ($items as $item) {
                 TransferenciaDetalle::create([
                     'transferencia_id' => $transferencia->id,
                     'articulo_id' => $item['articulo_id'] ?? 0,
                     'codigo' => $item['codigo'] ?? null,
                     'descripcion' => $item['descripcion'] ?? 'Artículo transferido',
                     'tipo_articulo' => $item['tipo_articulo'] ?? 'pesable',
-                    'cantidad_enviada' => $item['cantidad_enviada'] ?? 0,
+                    'cantidad_enviada' => $item['cantidad_enviada'] ?? ($item['cantidad'] ?? 0),
                     'unidad_medida' => $item['unidad_medida'] ?? 'LB',
-                    'costo_unitario' => $item['costo_unitario'] ?? 0,
+                    'costo_unitario' => $item['costo_unitario'] ?? ($item['costo'] ?? 0),
                     'subtotal_costo' => $item['subtotal_costo'] ?? 0,
                     'lote' => $item['lote'] ?? null,
-                    'numero_lote' => $item['numero_lote'] ?? null,
-                    'fecha_vencimiento_lote' => $item['fecha_vencimiento_lote'] ?? null,
+                    'numero_lote' => $item['numero_lote'] ?? ($item['serie'] ?? null),
+                    'fecha_vencimiento_lote' => $item['fecha_vencimiento_lote'] ?? ($item['fecha_vencimiento'] ?? null),
                 ]);
             }
         });
 
-        return response()->json(['success' => true, 'message' => "Transferencia {$data['folio']} importada desde la nube."]);
+        return response()->json([
+            'success' => true,
+            'message' => "Transferencia {$data['folio']} descargada desde la nube.",
+            'transferencia_id' => $transferencia ? $transferencia->id : null,
+            'estado' => 'en_transito',
+        ]);
     }
 
     // ─────────────────────────────────────────────────────────

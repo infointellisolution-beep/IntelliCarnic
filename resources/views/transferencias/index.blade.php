@@ -459,11 +459,17 @@
                             </div>
                         </div>
 
-                        <div style="display: flex; gap: 0.5rem;">
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                             <button type="button" class="btn-modern btn-secondary" style="padding: 0.45rem 0.85rem; font-size: 0.82rem; font-weight: 700;"
                                     onclick='abrirModalDetalleCloud(@json($trn))'>
                                 <i class="fa-solid fa-eye"></i> Ver Contenido
                             </button>
+                            @if(($trn['sucursal_destino'] ?? '') === ($sucursalActual->codigo ?? ''))
+                                <button type="button" class="btn-modern btn-accent" style="padding: 0.45rem 0.85rem; font-size: 0.82rem; font-weight: 700;"
+                                        onclick='recibirDirectoDesdeCloud(@json($trn))'>
+                                    <i class="fa-solid fa-inbox"></i> Recibir Mercancía
+                                </button>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -808,7 +814,12 @@
             </div>
         </div>
 
-        <div style="padding: 0.85rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; text-align: right;">
+        <div style="padding: 0.85rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; gap: 0.75rem;">
+            <div>
+                <button type="button" id="btnModalCloudRecibir" class="btn-modern btn-accent" style="display: none; font-size: 0.85rem; padding: 0.5rem 1.25rem;">
+                    <i class="fa-solid fa-inbox"></i> Recibir e Ingresar a Inventario
+                </button>
+            </div>
             <button type="button" onclick="cerrarModalDetalleCloud()" class="btn-modern btn-secondary" style="font-size: 0.85rem; padding: 0.5rem 1.25rem;">
                 Cerrar
             </button>
@@ -1967,7 +1978,45 @@ document.addEventListener('DOMContentLoaded', function() {
             }).join('');
         }
 
+        const btnRecibirModal = document.getElementById('btnModalCloudRecibir');
+        const sucursalActualCodigo = '{{ $sucursalActual->codigo ?? "" }}';
+        if (btnRecibirModal) {
+            if (trn.estado === 'pendiente' && (trn.sucursal_destino === sucursalActualCodigo || !sucursalActualCodigo)) {
+                btnRecibirModal.style.display = 'inline-flex';
+                btnRecibirModal.onclick = function() {
+                    cerrarModalDetalleCloud();
+                    recibirDirectoDesdeCloud(trn);
+                };
+            } else {
+                btnRecibirModal.style.display = 'none';
+            }
+        }
+
         modal.style.display = 'flex';
+    };
+
+    // ─── Recibir directamente desde la Nube (Descargar + Confirmar) ───
+    window.recibirDirectoDesdeCloud = function(trn) {
+        if (!trn || !trn.folio) return;
+
+        mostrarNotificacion('info', `Descargando paquete ${trn.folio} desde la nube...`);
+
+        fetch('{{ route("transferencias.api.importar-nube") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+            body: JSON.stringify({ folio: trn.folio, payload: trn }),
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (res.transferencia_id) {
+                confirmarRecepcion(res.transferencia_id, trn.folio);
+            } else {
+                mostrarNotificacion('error', res.error || 'No se pudo descargar la transferencia.');
+            }
+        })
+        .catch(err => {
+            mostrarNotificacion('error', 'Error al procesar: ' + err.message);
+        });
     };
 
     window.cerrarModalDetalleCloud = function() {
