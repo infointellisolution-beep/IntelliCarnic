@@ -163,133 +163,144 @@ class TransferenciaController extends Controller
         $transferencia = null;
         $syncResult = null;
 
-        DB::transaction(function () use ($data, $sucursalActual, &$transferencia) {
-            $settings = Setting::values();
-            $unidadPeso = strtoupper($settings['unidad_peso'] ?? 'LB');
-            $folio = Transferencia::generarFolio();
+        try {
+            DB::transaction(function () use ($data, $sucursalActual, &$transferencia) {
+                $settings = Setting::values();
+                $unidadPeso = strtoupper($settings['unidad_peso'] ?? 'LB');
+                $folio = Transferencia::generarFolio();
 
-            $totalPeso = 0;
-            $totalUnidades = 0;
-            $costoTotal = 0;
+                $totalPeso = 0;
+                $totalUnidades = 0;
+                $costoTotal = 0;
 
-            // Crear la transferencia
-            $transferencia = Transferencia::create([
-                'folio' => $folio,
-                'sucursal_origen_id' => $sucursalActual->id,
-                'sucursal_destino_id' => $data['sucursal_destino_id'],
-                'user_id' => Auth::id(),
-                'estado' => 'en_transito',
-                'notas' => $data['notas'] ?? null,
-                'fecha_envio' => now(),
-            ]);
-
-            // Procesar cada línea de detalle
-            foreach ($data['detalles'] as $item) {
-                $articulo = Articulo::findOrFail($item['articulo_id']);
-                $cantidad = (float) $item['cantidad'];
-                $costoUnitario = (float) $articulo->precio_compra;
-                $subtotal = round($cantidad * $costoUnitario, 2);
-
-                // Determinar unidad de medida
-                $unidadMedida = $articulo->isUnidad() ? 'UND' : $unidadPeso;
-
-                // Datos del lote (si aplica)
-                $lote = null;
-                $numeroLote = null;
-                $fechaVencimiento = null;
-                $compraDetalleId = $item['compra_detalle_id'] ?? null;
-
-                if ($compraDetalleId) {
-                    $compraDetalle = CompraDetalle::find($compraDetalleId);
-                    if ($compraDetalle) {
-                        $lote = $compraDetalle->lote;
-                        $numeroLote = $compraDetalle->serie;
-                        $fechaVencimiento = $compraDetalle->fecha_vencimiento;
-                        if ((float)$compraDetalle->costo_unitario > 0) {
-                            $costoUnitario = (float) $compraDetalle->costo_unitario;
-                            $subtotal = round($cantidad * $costoUnitario, 2);
-                        }
-
-                        // Descontar del lote específico
-                        $compraDetalle->cantidad_peso = max(0, $compraDetalle->cantidad_peso - $cantidad);
-                        $compraDetalle->save();
-                    }
-                }
-
-                TransferenciaDetalle::create([
-                    'transferencia_id' => $transferencia->id,
-                    'articulo_id' => $articulo->id,
-                    'codigo' => $articulo->codigo ?? $articulo->codigo_cliente,
-                    'descripcion' => $articulo->descripcion,
-                    'tipo_articulo' => $articulo->tipo_articulo ?? 'pesable',
-                    'cantidad_enviada' => $cantidad,
-                    'unidad_medida' => $unidadMedida,
-                    'costo_unitario' => $costoUnitario,
-                    'subtotal_costo' => $subtotal,
-                    'lote' => $lote,
-                    'numero_lote' => $numeroLote,
-                    'fecha_vencimiento_lote' => $fechaVencimiento,
-                    'compra_detalle_id' => $compraDetalleId,
+                // Crear la transferencia
+                $transferencia = Transferencia::create([
+                    'folio' => $folio,
+                    'sucursal_origen_id' => $sucursalActual->id,
+                    'sucursal_destino_id' => $data['sucursal_destino_id'],
+                    'user_id' => Auth::id(),
+                    'estado' => 'en_transito',
+                    'notas' => $data['notas'] ?? null,
+                    'fecha_envio' => now(),
                 ]);
 
-                // Descontar stock general del artículo
-                $articulo->stock = max(0, $articulo->stock - $cantidad);
-                if ($articulo->stock <= 0) {
-                    $articulo->estado = 'sin_stock';
-                }
-                $articulo->save();
+                // Procesar cada línea de detalle
+                foreach ($data['detalles'] as $item) {
+                    $articulo = Articulo::findOrFail($item['articulo_id']);
+                    $cantidad = (float) $item['cantidad'];
+                    $costoUnitario = (float) $articulo->precio_compra;
+                    $subtotal = round($cantidad * $costoUnitario, 2);
 
-                // Acumular totales
-                if ($articulo->isUnidad()) {
-                    $totalUnidades += (int) $cantidad;
-                } else {
-                    $totalPeso += $cantidad;
+                    // Determinar unidad de medida
+                    $unidadMedida = $articulo->isUnidad() ? 'UND' : $unidadPeso;
+
+                    // Datos del lote (si aplica)
+                    $lote = null;
+                    $numeroLote = null;
+                    $fechaVencimiento = null;
+                    $compraDetalleId = $item['compra_detalle_id'] ?? null;
+
+                    if ($compraDetalleId) {
+                        $compraDetalle = CompraDetalle::find($compraDetalleId);
+                        if ($compraDetalle) {
+                            $lote = $compraDetalle->lote;
+                            $numeroLote = $compraDetalle->serie;
+                            $fechaVencimiento = $compraDetalle->fecha_vencimiento;
+                            if ((float)$compraDetalle->costo_unitario > 0) {
+                                $costoUnitario = (float) $compraDetalle->costo_unitario;
+                                $subtotal = round($cantidad * $costoUnitario, 2);
+                            }
+
+                            // Descontar del lote específico
+                            $compraDetalle->cantidad_peso = max(0, $compraDetalle->cantidad_peso - $cantidad);
+                            $compraDetalle->save();
+                        }
+                    }
+
+                    TransferenciaDetalle::create([
+                        'transferencia_id' => $transferencia->id,
+                        'articulo_id' => $articulo->id,
+                        'codigo' => $articulo->codigo ?? $articulo->codigo_cliente,
+                        'descripcion' => $articulo->descripcion,
+                        'tipo_articulo' => $articulo->tipo_articulo ?? 'pesable',
+                        'cantidad_enviada' => $cantidad,
+                        'unidad_medida' => $unidadMedida,
+                        'costo_unitario' => $costoUnitario,
+                        'subtotal_costo' => $subtotal,
+                        'lote' => $lote,
+                        'numero_lote' => $numeroLote,
+                        'fecha_vencimiento_lote' => $fechaVencimiento,
+                        'compra_detalle_id' => $compraDetalleId,
+                    ]);
+
+                    // Descontar stock general del artículo
+                    $articulo->stock = max(0, $articulo->stock - $cantidad);
+                    if ($articulo->stock <= 0) {
+                        $articulo->estado = 'sin_stock';
+                    }
+                    $articulo->save();
+
+                    // Acumular totales
+                    if ($articulo->isUnidad()) {
+                        $totalUnidades += (int) $cantidad;
+                    } else {
+                        $totalPeso += $cantidad;
+                    }
+                    $costoTotal += $subtotal;
                 }
-                $costoTotal += $subtotal;
+
+                // Actualizar totales en la transferencia
+                $transferencia->update([
+                    'total_peso' => $totalPeso,
+                    'total_unidades' => $totalUnidades,
+                    'costo_total' => $costoTotal,
+                ]);
+            });
+
+            // Determinar comportamiento según el modo de transferencias configurado
+            $modoTransferencias = Setting::getValue('modo_transferencias', 'cloud');
+            $syncResult = ['success' => true, 'modo' => $modoTransferencias];
+
+            if ($modoTransferencias === 'archivo') {
+                $transferencia->update([
+                    'tipo_sincronizacion' => 'manual_trn',
+                    'payload_json' => json_encode($transferencia->buildPayload(), JSON_UNESCAPED_UNICODE),
+                ]);
+                $syncResult = [
+                    'success' => true,
+                    'message' => 'Transferencia registrada en modo archivo (.TRN).',
+                    'offline' => true,
+                ];
+            } else {
+                // Intentar sincronizar con la nube
+                $syncService = new TransferenciaSyncService();
+                $syncResult = $syncService->enviarNube($transferencia);
+
+                if (!$syncResult['success'] && ($syncResult['offline'] ?? false)) {
+                    // Sin internet o error de conexión: marcar como manual
+                    $transferencia->update([
+                        'tipo_sincronizacion' => 'manual_trn',
+                        'payload_json' => json_encode($transferencia->buildPayload(), JSON_UNESCAPED_UNICODE),
+                    ]);
+                }
             }
 
-            // Actualizar totales en la transferencia
-            $transferencia->update([
-                'total_peso' => $totalPeso,
-                'total_unidades' => $totalUnidades,
-                'costo_total' => $costoTotal,
-            ]);
-        });
-
-        // Determinar comportamiento según el modo de transferencias configurado
-        $modoTransferencias = Setting::getValue('modo_transferencias', 'cloud');
-        $syncResult = ['success' => true, 'modo' => $modoTransferencias];
-
-        if ($modoTransferencias === 'archivo') {
-            $transferencia->update([
-                'tipo_sincronizacion' => 'archivo_trn',
-                'payload_json' => json_encode($transferencia->buildPayload(), JSON_UNESCAPED_UNICODE),
-            ]);
-            $syncResult = [
+            return response()->json([
                 'success' => true,
-                'message' => 'Transferencia registrada en modo archivo (.TRN).',
-                'offline' => true,
-            ];
-        } else {
-            // Intentar sincronizar con la nube
-            $syncService = new TransferenciaSyncService();
-            $syncResult = $syncService->enviarNube($transferencia);
-
-            if (!$syncResult['success'] && ($syncResult['offline'] ?? false)) {
-                // Sin internet: marcar como manual
-                $transferencia->update(['tipo_sincronizacion' => 'manual_trn']);
-            }
+                'message' => "Transferencia {$transferencia->folio} registrada exitosamente.",
+                'transferencia_id' => $transferencia->id,
+                'folio' => $transferencia->folio,
+                'modo_transferencias' => $modoTransferencias,
+                'download_url' => route('transferencias.descargar-trn', $transferencia->id),
+                'sync' => $syncResult,
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Error al registrar transferencia: ' . $e->getMessage() . ' en ' . $e->getFile() . ':' . $e->getLine());
+            return response()->json([
+                'success' => false,
+                'error' => 'Error al procesar la transferencia: ' . $e->getMessage(),
+            ], 500);
         }
-
-        return response()->json([
-            'success' => true,
-            'message' => "Transferencia {$transferencia->folio} registrada exitosamente.",
-            'transferencia_id' => $transferencia->id,
-            'folio' => $transferencia->folio,
-            'modo_transferencias' => $modoTransferencias,
-            'download_url' => route('transferencias.descargar-trn', $transferencia->id),
-            'sync' => $syncResult,
-        ]);
     }
 
     // ─────────────────────────────────────────────────────────
