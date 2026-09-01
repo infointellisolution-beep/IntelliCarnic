@@ -328,9 +328,97 @@
                     <i class="fa-solid fa-download"></i> Descargar Script (.bat)
                 </a>
             </div>
+
+            {{-- ─── Última Actualización Realizada ─── --}}
+            @php
+                $lastCommitRaw   = $settings['last_update_commit'] ?? '';
+                $lastUpdateAt    = $settings['last_update_at'] ?? '';
+                $lastUpdateMethod= $settings['last_update_method'] ?? '';
+                $commitParts     = $lastCommitRaw ? explode('|', $lastCommitRaw, 3) : [];
+                $commitHash      = $commitParts[0] ?? '';
+                $commitMsg       = $commitParts[1] ?? '';
+                $commitAgo       = $commitParts[2] ?? '';
+                // También mostrar el commit actual en el repo (live desde git log)
+                $liveCommitParts = $gitLastCommit ? explode('|', $gitLastCommit, 3) : [];
+                $liveHash        = $liveCommitParts[0] ?? '';
+                $liveMsg         = $liveCommitParts[1] ?? '';
+                $liveAgo         = $liveCommitParts[2] ?? '';
+            @endphp
+
+            <div style="margin-top: 1.5rem; background: var(--surface-bg); border: 1px solid var(--border-color); border-radius: var(--radius-md); overflow: hidden;">
+                <div style="padding: 0.75rem 1.25rem; background: linear-gradient(135deg, #f0fdf4, #dcfce7); border-bottom: 1px solid #bbf7d0; display: flex; align-items: center; gap: 0.6rem;">
+                    <i class="fa-solid fa-clock-rotate-left" style="color: #16a34a;"></i>
+                    <span style="font-weight: 700; font-size: 0.85rem; color: #15803d; text-transform: uppercase; letter-spacing: 0.05em;">Historial de Actualizaciones</span>
+                </div>
+                <div style="padding: 1rem 1.25rem;">
+
+                    {{-- Versión actual en el repositorio --}}
+                    <div style="margin-bottom: 1rem;">
+                        <div style="font-size: 0.78rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 0.4rem;">
+                            <i class="fa-brands fa-git-alt" style="color: #f97316;"></i> Versión actual en el repositorio
+                        </div>
+                        @if($liveHash)
+                            <div style="display: flex; align-items: flex-start; gap: 0.75rem; flex-wrap: wrap;">
+                                <span style="background: #1e293b; color: #f8fafc; font-family: monospace; font-size: 0.8rem; padding: 0.2rem 0.55rem; border-radius: 6px; white-space: nowrap;">
+                                    {{ $liveHash }}
+                                </span>
+                                <span style="font-size: 0.9rem; color: var(--text-main); font-weight: 500; flex: 1; min-width: 0;">
+                                    {{ $liveMsg ?: 'Sin descripción' }}
+                                </span>
+                                @if($liveAgo)
+                                    <span style="font-size: 0.8rem; color: var(--text-muted); white-space: nowrap;">{{ $liveAgo }}</span>
+                                @endif
+                            </div>
+                        @else
+                            <span style="font-size: 0.85rem; color: var(--text-muted);">No disponible (Git no detectado)</span>
+                        @endif
+                    </div>
+
+                    {{-- Última actualización ejecutada (vía botón web o script .bat) --}}
+                    <div style="border-top: 1px solid var(--border-color); padding-top: 0.85rem;">
+                        <div style="font-size: 0.78rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 0.4rem;">
+                            <i class="fa-solid fa-arrows-rotate" style="color: #2563eb;"></i> Última actualización instalada
+                        </div>
+                        @if($commitHash)
+                            <div style="display: flex; align-items: flex-start; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
+                                <span style="background: #1e40af; color: #eff6ff; font-family: monospace; font-size: 0.8rem; padding: 0.2rem 0.55rem; border-radius: 6px; white-space: nowrap;">
+                                    {{ $commitHash }}
+                                </span>
+                                <span style="font-size: 0.9rem; color: var(--text-main); font-weight: 500; flex: 1; min-width: 0;">
+                                    {{ $commitMsg ?: 'Sin descripción' }}
+                                </span>
+                                @if($commitAgo)
+                                    <span style="font-size: 0.8rem; color: var(--text-muted); white-space: nowrap;">{{ $commitAgo }}</span>
+                                @endif
+                            </div>
+                            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                                @if($lastUpdateAt)
+                                    <span style="font-size: 0.8rem; color: var(--text-muted);">
+                                        <i class="fa-regular fa-calendar"></i>
+                                        {{ \Carbon\Carbon::parse($lastUpdateAt)->format('d/m/Y H:i') }}
+                                    </span>
+                                @endif
+                                @if($lastUpdateMethod)
+                                    <span style="font-size: 0.8rem; color: var(--text-muted);">
+                                        <i class="fa-solid fa-{{ $lastUpdateMethod === 'web' ? 'globe' : 'terminal' }}"></i>
+                                        Vía {{ $lastUpdateMethod === 'web' ? 'Botón Web' : 'Script .bat' }}
+                                    </span>
+                                @endif
+                            </div>
+                        @else
+                            <span style="font-size: 0.85rem; color: var(--text-muted); font-style: italic;">
+                                Aún no se ha ejecutado ninguna actualización desde este sistema.
+                            </span>
+                        @endif
+                    </div>
+
+                </div>
+            </div>
+
         </div>
     </div>
 @elseif($activeTab === 'users')
+
     @php
         $totalUsers = $users->count();
         $adminCount = $users->filter(fn($u) => $u->isAdministrator())->count();

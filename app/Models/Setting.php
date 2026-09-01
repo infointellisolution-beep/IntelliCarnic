@@ -31,6 +31,11 @@ class Setting extends Model
             'modo_transferencias' => 'cloud', // 'cloud' o 'archivo'
             'cloud_sync_endpoint' => 'https://intellicarnicsync.intellisolution.net',
             'cloud_sync_token' => 'IntelliCarnic_Sync_2026_Key',
+            // Control de actualizaciones
+            'github_url'          => '',
+            'last_update_commit'  => '',
+            'last_update_at'      => '',
+            'last_update_method'  => '',
         ];
     }
 

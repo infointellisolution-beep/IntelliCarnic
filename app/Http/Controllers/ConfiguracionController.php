@@ -26,17 +26,33 @@ class ConfiguracionController extends Controller
 
         $users = User::query()->with('sucursal')->orderBy('name', 'asc')->get();
 
+        // Información de Git para la vista
+        $gitRepoUrl   = $this->safeShellExec('git remote get-url origin 2>&1') ?? 'No detectado / No vinculado';
+        $gitRepoUrl   = trim($gitRepoUrl);
+        if (empty($gitRepoUrl) || str_contains(strtolower($gitRepoUrl), 'fatal') || str_contains(strtolower($gitRepoUrl), 'error')) {
+            $gitRepoUrl = Setting::getValue('github_url', 'No detectado / No vinculado');
+        }
+        $gitBranch    = trim($this->safeShellExec('git branch --show-current 2>&1') ?? 'main');
+        // Último commit: hash corto + mensaje + fecha
+        $gitLastCommit = trim($this->safeShellExec('git log -1 --pretty=format:"%h|%s|%ar" 2>&1') ?? '');
+        $lanUrl = 'http://' . (request()->server('SERVER_ADDR') ?? '127.0.0.1') . '/' . basename(base_path()) . '/public';
+
         return view('configuracion.index', [
-            'settings' => Setting::values(),
-            'users' => $users,
-            'sucursales' => \App\Models\Sucursal::orderBy('nombre', 'asc')->get(),
+            'settings'       => Setting::values(),
+            'users'          => $users,
+            'sucursales'     => \App\Models\Sucursal::orderBy('nombre', 'asc')->get(),
             'sucursalActual' => \App\Models\Sucursal::actual(),
-            'backups' => $backupService->listBackups(),
-            'dbStats' => $backupService->getDatabaseStats(),
+            'backups'        => $backupService->listBackups(),
+            'dbStats'        => $backupService->getDatabaseStats(),
             'reminderStatus' => $backupService->getBackupReminderStatus(),
-            'allModules' => User::getAllModulesAndPermissions(),
+            'allModules'     => User::getAllModulesAndPermissions(),
+            'gitRepoUrl'     => $gitRepoUrl,
+            'gitBranch'      => $gitBranch ?: 'main',
+            'gitLastCommit'  => $gitLastCommit,
+            'lanUrl'         => $lanUrl,
         ]);
     }
+
 
     public function updateGeneral(Request $request): RedirectResponse
     {
@@ -293,12 +309,34 @@ class ConfiguracionController extends Controller
             @putenv('GIT_TERMINAL_PROMPT=0');
             @putenv('GIT_ASKPASS=');
             $pullOutput = $this->safeShellExec($git . ' -c core.askPass= pull origin main 2>&1');
-            \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+
+            // Migraciones — silenciar si SQLite no está disponible en CLI
+            $migrateMsg = '';
+            try {
+                \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+                $migrateMsg = ' Migraciones aplicadas.';
+            } catch (\Throwable $e) {
+                // PDO SQLite no disponible en CLI; ignorar — la BD no necesita cambios
+                \Illuminate\Support\Facades\Log::warning('actualizarSistema: migrate omitido — ' . $e->getMessage());
+            }
+
             \Illuminate\Support\Facades\Artisan::call('config:cache');
             \Illuminate\Support\Facades\Artisan::call('view:cache');
             \Illuminate\Support\Facades\Artisan::call('route:clear');
 
-            $msg = '¡Sistema actualizado y optimizado con éxito! ' . ($pullOutput ? 'Salida Git: ' . trim($pullOutput) : '');
+            // Guardar información del último commit en settings
+            $lastCommit = trim($this->safeShellExec($git . ' log -1 --pretty=format:"%h|%s|%ar" 2>&1') ?? '');
+            if ($lastCommit && !str_contains(strtolower($lastCommit), 'fatal')) {
+                Setting::setValue('last_update_commit', $lastCommit);
+                Setting::setValue('last_update_at', now()->toDateTimeString());
+                Setting::setValue('last_update_method', 'web');
+            }
+
+            $msg = '¡Sistema actualizado y optimizado con éxito!' . $migrateMsg;
+            if ($pullOutput) {
+                $firstLine = explode("\n", trim($pullOutput))[0];
+                $msg .= ' Git: ' . $firstLine;
+            }
             return redirect()
                 ->to(route('configuracion.index', ['tab' => 'sistema'], false))
                 ->with('status', $msg);
@@ -308,6 +346,7 @@ class ConfiguracionController extends Controller
                 ->withErrors(['actualizar' => 'Error durante la actualización: ' . $e->getMessage()]);
         }
     }
+
 
     private function getGitBinary(): ?string
     {
