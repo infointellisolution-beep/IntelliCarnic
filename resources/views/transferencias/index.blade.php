@@ -136,6 +136,16 @@
             <div id="resultadosBusqueda" style="display: none; position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 9999; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 10px; max-height: 380px; overflow-y: auto; box-shadow: 0 16px 36px rgba(0,0,0,0.18);"></div>
         </div>
 
+        {{-- Barra de herramientas de la tabla de envío --}}
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="font-size: 0.92rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fa-solid fa-list-check" style="color: var(--accent);"></i> Lista de Productos a Transferir
+            </div>
+            <button type="button" id="btnVaciarListaEnvio" onclick="limpiarListaEnvio()" class="btn-modern" style="display: none; font-size: 0.8rem; padding: 4px 12px; background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; font-weight: 700; border-radius: 6px; cursor: pointer;">
+                <i class="fa-solid fa-trash-can"></i> Limpiar Todo
+            </button>
+        </div>
+
         {{-- Tabla de productos agregados --}}
         <div style="overflow-x: auto;">
             <table class="modern-table" id="tablaProductosEnvio">
@@ -152,7 +162,7 @@
                         <th style="width: 130px;">Cantidad a Enviar</th>
                         <th>Costo Unit.</th>
                         <th>Subtotal</th>
-                        <th style="width: 50px;"></th>
+                        <th style="width: 50px; text-align: center;">Acción</th>
                     </tr>
                 </thead>
                 <tbody id="bodyProductosEnvio">
@@ -1448,15 +1458,19 @@ document.addEventListener('DOMContentLoaded', function() {
         const tbody = document.getElementById('bodyProductosEnvio');
         const filaSin = document.getElementById('filaSinProductos');
         const resumen = document.getElementById('resumenEnvio');
+        const btnVaciar = document.getElementById('btnVaciarListaEnvio');
 
         if (productosEnvio.length === 0) {
-            filaSin.style.display = '';
-            resumen.style.display = 'none';
+            if (filaSin) filaSin.style.display = '';
+            if (resumen) resumen.style.display = 'none';
+            if (btnVaciar) btnVaciar.style.display = 'none';
+            tbody.innerHTML = '';
             return;
         }
 
-        filaSin.style.display = 'none';
-        resumen.style.display = '';
+        if (filaSin) filaSin.style.display = 'none';
+        if (resumen) resumen.style.display = '';
+        if (btnVaciar) btnVaciar.style.display = 'inline-flex';
 
         tbody.innerHTML = '';
         let totalPeso = 0, totalUnd = 0, totalCosto = 0;
@@ -1490,7 +1504,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     </td>
                     <td>$${p.costo_unitario.toFixed(2)}</td>
                     <td class="subtotal-cell" style="font-weight: 700; color: var(--text-main);">$${subtotal.toFixed(2)}</td>
-                    <td style="text-align: center;"><button onclick="quitarProducto(${idx})" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.15rem; padding: 4px;" title="Quitar"><i class="fa-solid fa-circle-xmark"></i></button></td>
+                    <td style="text-align: center;">
+                        <button type="button" onclick="quitarProducto(${idx})" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.25rem; padding: 4px; display: inline-flex; align-items: center; justify-content: center;" title="Quitar este producto">
+                            <i class="fa-solid fa-circle-xmark"></i>
+                        </button>
+                    </td>
                 `;
             } else {
                 tr.innerHTML = `
@@ -1507,7 +1525,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     </td>
                     <td>$${p.costo_unitario.toFixed(2)}</td>
                     <td class="subtotal-cell" style="font-weight: 700; color: var(--text-main);">$${subtotal.toFixed(2)}</td>
-                    <td style="text-align: center;"><button onclick="quitarProducto(${idx})" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.15rem; padding: 4px;" title="Quitar"><i class="fa-solid fa-circle-xmark"></i></button></td>
+                    <td style="text-align: center;">
+                        <button type="button" onclick="quitarProducto(${idx})" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.25rem; padding: 4px; display: inline-flex; align-items: center; justify-content: center;" title="Quitar este producto">
+                            <i class="fa-solid fa-circle-xmark"></i>
+                        </button>
+                    </td>
                 `;
             }
             tbody.appendChild(tr);
@@ -1552,11 +1574,21 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     window.quitarProducto = function(idx) {
-        const removed = productosEnvio.splice(idx, 1);
-        renderTablaEnvio();
-        if (removed && removed[0]) {
-            mostrarNotificacion('info', `Se quitó <strong>${removed[0].descripcion}</strong> de la lista.`);
+        idx = parseInt(idx, 10);
+        if (idx >= 0 && idx < productosEnvio.length) {
+            const removed = productosEnvio.splice(idx, 1);
+            renderTablaEnvio();
+            if (removed && removed[0]) {
+                mostrarNotificacion('info', `Se quitó <strong>${removed[0].descripcion}</strong> de la lista.`);
+            }
         }
+    };
+
+    window.limpiarListaEnvio = function() {
+        if (!productosEnvio || productosEnvio.length === 0) return;
+        productosEnvio = [];
+        renderTablaEnvio();
+        mostrarNotificacion('info', 'Se ha vaciado la lista de productos a enviar.');
     };
 
     // ─── Modal de Confirmación y Procesar Envío con Candado Anti-Doble Clic ───

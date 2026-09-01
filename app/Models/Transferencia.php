@@ -104,7 +104,7 @@ class Transferencia extends Model
      */
     public function buildPayload(): array
     {
-        $this->load(['detalles', 'sucursalOrigen', 'sucursalDestino', 'usuario']);
+        $this->load(['detalles.compraDetalle', 'sucursalOrigen', 'sucursalDestino', 'usuario']);
 
         return [
             'folio' => $this->folio,
@@ -119,6 +119,7 @@ class Transferencia extends Model
             'payload' => $this->detalles->map(fn ($d) => [
                 'articulo_id' => $d->articulo_id,
                 'codigo' => $d->codigo,
+                'codigo_escaneado' => $d->compraDetalle?->codigo_escaneado ?: ($d->codigo ?: ''),
                 'descripcion' => $d->descripcion,
                 'tipo_articulo' => $d->tipo_articulo,
                 'cantidad_enviada' => (float) $d->cantidad_enviada,

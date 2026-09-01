@@ -205,6 +205,10 @@ class TransferenciaController extends Controller
                         $lote = $compraDetalle->lote;
                         $numeroLote = $compraDetalle->serie;
                         $fechaVencimiento = $compraDetalle->fecha_vencimiento;
+                        if ((float)$compraDetalle->costo_unitario > 0) {
+                            $costoUnitario = (float) $compraDetalle->costo_unitario;
+                            $subtotal = round($cantidad * $costoUnitario, 2);
+                        }
 
                         // Descontar del lote específico
                         $compraDetalle->cantidad_peso = max(0, $compraDetalle->cantidad_peso - $cantidad);
@@ -580,10 +584,25 @@ class TransferenciaController extends Controller
                                 $loteExistente->cantidad_peso = $loteExistente->cantidad_peso + $cantidadRecibida;
                                 $loteExistente->save();
                             } else {
+                                // Extraer el código de escaneo original del payload si está presente
+                                $codigoParaLote = $detalle->codigo;
+                                if (!empty($transferencia->payload_json)) {
+                                    $payloadObj = json_decode($transferencia->payload_json, true);
+                                    $itemsList = $payloadObj['items'] ?? ($payloadObj['payload']['items'] ?? ($payloadObj['payload'] ?? []));
+                                    if (is_array($itemsList)) {
+                                        foreach ($itemsList as $it) {
+                                            if (($it['lote'] ?? '') == $detalle->lote && ($it['numero_lote'] ?? '') == $detalle->numero_lote && !empty($it['codigo_escaneado'])) {
+                                                $codigoParaLote = $it['codigo_escaneado'];
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+
                                 CompraDetalle::create([
                                     'compra_id' => $compraTransferencia->id,
                                     'articulo_id' => $articulo->id,
-                                    'codigo_escaneado' => $detalle->codigo,
+                                    'codigo_escaneado' => $codigoParaLote ?: $detalle->codigo,
                                     'lote' => $detalle->lote,
                                     'serie' => $detalle->numero_lote,
                                     'fecha_vencimiento' => $detalle->fecha_vencimiento_lote,
