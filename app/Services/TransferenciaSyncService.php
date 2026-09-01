@@ -151,7 +151,14 @@ class TransferenciaSyncService
 
             if (!$statusRes['ok']) {
                 $code = $statusRes['status'] ?: 'Sin respuesta';
-                return ['success' => false, 'error' => "El servidor no está accesible (HTTP {$code}). Verifique la URL o la conexión a internet."];
+                $bodySnippet = '';
+                if (!empty($statusRes['body'])) {
+                    $cleanBody = trim(strip_tags($statusRes['body']));
+                    if (!empty($cleanBody) && !str_starts_with($cleanBody, '{')) {
+                        $bodySnippet = ' [Servidor: ' . substr($cleanBody, 0, 120) . ']';
+                    }
+                }
+                return ['success' => false, 'error' => "El servidor respondió con HTTP {$code}.{$bodySnippet} Verifique si la IP está bloqueada en Hostinger."];
             }
 
             // Paso 2: verificar el token con una petición autenticada (action=pendientes)
