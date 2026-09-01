@@ -24,15 +24,108 @@ class TransferenciaSyncService
     }
 
     /**
-     * Cabeceras estándar para peticiones HTTP (incluye User-Agent para evitar bloqueos de ModSecurity).
+     * Cabeceras estándar simulando un navegador moderno completo para evitar bloqueos de ModSecurity/WAF.
      */
-    protected function defaultHeaders(): array
+    protected function defaultHeaders(bool $withAuth = true): array
     {
-        return [
-            'Authorization' => 'Bearer ' . $this->apiToken,
-            'Accept' => 'application/json',
-            'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        $headers = [
+            'Accept' => 'application/json, text/plain, */*',
+            'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Accept-Language' => 'es-ES,es;q=0.9,en;q=0.8',
         ];
+
+        if ($withAuth && !empty($this->apiToken)) {
+            $headers['Authorization'] = 'Bearer ' . $this->apiToken;
+        }
+
+        return $headers;
+    }
+
+    /**
+     * Motor de peticiones HTTP con fallback automático (Laravel Http / cURL -> PHP Native Streams).
+     * Esto garantiza funcionamiento incluso si cURL/OpenSSL en alguna laptop es filtrado por WAFs de Hostinger.
+     */
+    protected function request(string $method, string $url, ?array $data = null, bool $withAuth = true): array
+    {
+        $headers = $this->defaultHeaders($withAuth);
+
+        // Intento 1: Laravel Http Client (cURL)
+        try {
+            $client = Http::withHeaders($headers)
+                ->withoutVerifying()
+                ->timeout($this->timeout);
+
+            $response = (strtoupper($method) === 'POST')
+                ? $client->post($url, $data ?? [])
+                : $client->get($url);
+
+            // Si responde exitosamente o con 401 (token inválido legítimo), retornar de inmediato
+            if ($response->successful() || $response->status() === 401) {
+                return [
+                    'ok' => $response->successful(),
+                    'status' => $response->status(),
+                    'data' => $response->json() ?? [],
+                    'body' => $response->body(),
+                ];
+            }
+        } catch (\Throwable $e) {
+            // Continuar con fallback
+        }
+
+        // Intento 2: Fallback con PHP Native Streams (file_get_contents con contexto seguro)
+        try {
+            $streamHeaders = [];
+            foreach ($headers as $k => $v) {
+                $streamHeaders[] = "{$k}: {$v}";
+            }
+            if (strtoupper($method) === 'POST' && $data !== null) {
+                $streamHeaders[] = 'Content-Type: application/json';
+            }
+
+            $opts = [
+                'http' => [
+                    'method' => strtoupper($method),
+                    'header' => implode("\r\n", $streamHeaders) . "\r\n",
+                    'timeout' => $this->timeout,
+                    'ignore_errors' => true,
+                ],
+                'ssl' => [
+                    'verify_peer' => false,
+                    'verify_peer_name' => false,
+                ]
+            ];
+
+            if (strtoupper($method) === 'POST' && $data !== null) {
+                $opts['http']['content'] = json_encode($data);
+            }
+
+            $context = stream_context_create($opts);
+            $raw = @file_get_contents($url, false, $context);
+
+            $statusCode = 0;
+            if (isset($http_response_header) && is_array($http_response_header)) {
+                if (preg_match('#HTTP/\S+\s+(\d+)#i', $http_response_header[0], $matches)) {
+                    $statusCode = (int)$matches[1];
+                }
+            }
+
+            $jsonData = json_decode((string)$raw, true) ?? [];
+
+            return [
+                'ok' => ($statusCode >= 200 && $statusCode < 300),
+                'status' => $statusCode,
+                'data' => $jsonData,
+                'body' => (string)$raw,
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'ok' => false,
+                'status' => 0,
+                'data' => [],
+                'body' => $e->getMessage(),
+                'error' => $e->getMessage(),
+            ];
+        }
     }
 
     /**
@@ -54,29 +147,21 @@ class TransferenciaSyncService
 
         try {
             // Paso 1: verificar que el servidor esté en línea (endpoint público, sin token)
-            $response = Http::withHeaders([
-                'Accept' => 'application/json',
-                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-            ])->withoutVerifying()->timeout($this->timeout)
-              ->get($this->endpoint . '/?action=status');
+            $statusRes = $this->request('GET', $this->endpoint . '/?action=status', null, false);
 
-            if (!$response->successful()) {
-                return ['success' => false, 'error' => 'El servidor no está accesible (HTTP ' . $response->status() . '). Verifique la URL.'];
+            if (!$statusRes['ok']) {
+                $code = $statusRes['status'] ?: 'Sin respuesta';
+                return ['success' => false, 'error' => "El servidor no está accesible (HTTP {$code}). Verifique la URL o la conexión a internet."];
             }
 
             // Paso 2: verificar el token con una petición autenticada (action=pendientes)
-            $tokenCheck = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $this->apiToken,
-                'Accept' => 'application/json',
-                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-            ])->withoutVerifying()->timeout($this->timeout)
-              ->get($this->endpoint . '/?action=pendientes&sucursal=TEST');
+            $tokenRes = $this->request('GET', $this->endpoint . '/?action=pendientes&sucursal=TEST_PING', null, true);
 
-            if ($tokenCheck->status() === 401) {
+            if ($tokenRes['status'] === 401) {
                 return ['success' => false, 'error' => 'Token incorrecto (401 No Autorizado). Verifique que el API Token sea exactamente: IntelliCarnic_Sync_2026_Key'];
             }
 
-            $data = $response->json();
+            $data = $statusRes['data'];
             return [
                 'success' => true,
                 'message' => 'Conexión exitosa con el servidor cloud.',
@@ -100,13 +185,10 @@ class TransferenciaSyncService
 
         try {
             $payload = $transferencia->buildPayload();
+            $res = $this->request('POST', $this->endpoint . '/?action=enviar', $payload, true);
 
-            $response = Http::withHeaders($this->defaultHeaders())
-              ->withoutVerifying()->timeout($this->timeout)
-              ->post($this->endpoint . '/?action=enviar', $payload);
-
-            if ($response->successful()) {
-                $data = $response->json();
+            if ($res['ok']) {
+                $data = $res['data'];
 
                 // Actualizar transferencia con el tipo de sincronización
                 $transferencia->update([
@@ -123,14 +205,11 @@ class TransferenciaSyncService
                 ];
             }
 
-            $errorMsg = $response->json()['error'] ?? 'Error HTTP ' . $response->status();
+            $errorMsg = $res['data']['error'] ?? 'Error HTTP ' . ($res['status'] ?: 'Desconocido');
             Log::warning("Error al enviar transferencia {$transferencia->folio} a la nube: {$errorMsg}");
 
             return ['success' => false, 'error' => $errorMsg, 'offline' => false];
 
-        } catch (\Illuminate\Http\Client\ConnectionException $e) {
-            Log::warning("Sin conexión a internet al enviar transferencia {$transferencia->folio}: " . $e->getMessage());
-            return ['success' => false, 'error' => 'Sin conexión a internet.', 'offline' => true];
         } catch (\Exception $e) {
             Log::error("Excepción al enviar transferencia {$transferencia->folio}: " . $e->getMessage());
             return ['success' => false, 'error' => $e->getMessage(), 'offline' => false];
@@ -152,11 +231,10 @@ class TransferenciaSyncService
                 'sucursal' => $codigoSucursal,
             ]);
 
-            $response = Http::withHeaders($this->defaultHeaders())
-                ->withoutVerifying()->timeout($this->timeout)->get($url);
+            $res = $this->request('GET', $url, null, true);
 
-            if ($response->successful()) {
-                $data = $response->json();
+            if ($res['ok']) {
+                $data = $res['data'];
                 return [
                     'success' => true,
                     'count' => $data['count'] ?? 0,
@@ -164,7 +242,7 @@ class TransferenciaSyncService
                 ];
             }
 
-            return ['success' => false, 'error' => 'Error HTTP ' . $response->status(), 'transferencias' => []];
+            return ['success' => false, 'error' => $res['data']['error'] ?? ('Error HTTP ' . $res['status']), 'transferencias' => []];
 
         } catch (\Exception $e) {
             return ['success' => false, 'error' => $e->getMessage(), 'transferencias' => []];
@@ -181,18 +259,16 @@ class TransferenciaSyncService
         }
 
         try {
-            $response = Http::withHeaders($this->defaultHeaders())
-              ->withoutVerifying()->timeout($this->timeout)
-              ->post($this->endpoint . '/?action=marcar-recibida', [
-                  'folio' => $folio,
-                  'usuario_recepcion' => $usuarioRecepcion,
-              ]);
+            $res = $this->request('POST', $this->endpoint . '/?action=marcar-recibida', [
+                'folio' => $folio,
+                'usuario_recepcion' => $usuarioRecepcion,
+            ], true);
 
-            if ($response->successful()) {
+            if ($res['ok']) {
                 return ['success' => true, 'message' => 'Transferencia marcada como recibida en la nube.'];
             }
 
-            return ['success' => false, 'error' => $response->json()['error'] ?? 'Error HTTP ' . $response->status()];
+            return ['success' => false, 'error' => $res['data']['error'] ?? ('Error HTTP ' . $res['status'])];
 
         } catch (\Exception $e) {
             return ['success' => false, 'error' => $e->getMessage()];
@@ -209,17 +285,15 @@ class TransferenciaSyncService
         }
 
         try {
-            $response = Http::withHeaders($this->defaultHeaders())
-              ->withoutVerifying()->timeout($this->timeout)
-              ->post($this->endpoint . '/?action=cancelar', [
-                  'folio' => $folio,
-              ]);
+            $res = $this->request('POST', $this->endpoint . '/?action=cancelar', [
+                'folio' => $folio,
+            ], true);
 
-            if ($response->successful()) {
+            if ($res['ok']) {
                 return ['success' => true, 'message' => 'Transferencia cancelada en la nube.'];
             }
 
-            return ['success' => false, 'error' => $response->json()['error'] ?? 'Error'];
+            return ['success' => false, 'error' => $res['data']['error'] ?? ('Error HTTP ' . $res['status'])];
 
         } catch (\Exception $e) {
             return ['success' => false, 'error' => $e->getMessage()];
