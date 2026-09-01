@@ -460,6 +460,15 @@
                         <strong id="detalle-stock">24 unidades</strong>
                     </div>
 
+                    <div id="detalle-precios-adicionales-container" style="display: none; grid-column: 1 / -1; margin-top: 0.75rem; border-top: 1px dashed var(--border-color); padding-top: 0.75rem;">
+                        <h4 style="font-size: 0.9rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.4rem;">
+                            <i class="fa-solid fa-tags" style="color: #2563eb;"></i> Precios Especiales / Adicionales
+                        </h4>
+                        <div id="detalle-precios-adicionales-body" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.5rem;">
+                            <!-- Inyectado dinámicamente por JS -->
+                        </div>
+                    </div>
+
                     <div id="detalle-lotes-container" style="grid-column: 1 / -1; margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
                         <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.4rem;">
                             <i class="fa-solid fa-boxes-packing" style="color: var(--accent);"></i> Desglose de Lotes y Vencimientos Recibidos

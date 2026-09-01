@@ -133,6 +133,7 @@ class Transferencia extends Model
                     'precio_compra' => (float) ($art?->precio_compra ?: $d->costo_unitario),
                     'precio_sin_iva' => (float) ($art?->precio_sin_iva ?: ($art?->pvp ?: $d->costo_unitario)),
                     'pvp' => (float) ($art?->pvp ?: ($art?->precio_sin_iva ?: round($d->costo_unitario * 1.3, 2))),
+                    'precios_adicionales' => $art?->precios_adicionales ?? null,
                     'aplica_iva' => (bool) ($art?->aplica_iva ?? false),
                     'iva' => (float) ($art?->iva ?? 0),
                     'subtotal_costo' => (float) $d->subtotal_costo,

@@ -467,6 +467,7 @@ class TransferenciaController extends Controller
                             'aplica_iva' => (bool) ($item['aplica_iva'] ?? false),
                             'iva' => (float) ($item['iva'] ?? 0),
                             'pvp' => $pvp,
+                            'precios_adicionales' => $item['precios_adicionales'] ?? null,
                             'stock' => 0,
                             'stock_minimo' => 0,
                             'estado' => 'activo',
@@ -485,6 +486,10 @@ class TransferenciaController extends Controller
                         if ($pvp > 0 && ($localArticulo->pvp == 0 || $localArticulo->pvp == round($localArticulo->precio_compra * 1.3, 2))) {
                             $localArticulo->pvp = $pvp;
                             $localArticulo->precio_sin_iva = $precioSinIva;
+                            $dirty = true;
+                        }
+                        if (!empty($item['precios_adicionales'])) {
+                            $localArticulo->precios_adicionales = $item['precios_adicionales'];
                             $dirty = true;
                         }
                         if ($dirty) {
@@ -624,6 +629,7 @@ class TransferenciaController extends Controller
                             'aplica_iva' => (bool) ($itemMeta['aplica_iva'] ?? false),
                             'iva' => (float) ($itemMeta['iva'] ?? 0),
                             'pvp' => $pvpDet,
+                            'precios_adicionales' => $itemMeta['precios_adicionales'] ?? null,
                             'stock' => 0,
                             'stock_minimo' => 0,
                             'estado' => 'activo',
@@ -642,6 +648,10 @@ class TransferenciaController extends Controller
                         if ($pvpDet > 0 && ($articulo->pvp == 0 || $articulo->pvp == round($articulo->precio_compra * 1.3, 2))) {
                             $articulo->pvp = $pvpDet;
                             $articulo->precio_sin_iva = $precioSinIvaDet;
+                            $dirty = true;
+                        }
+                        if (!empty($itemMeta['precios_adicionales'])) {
+                            $articulo->precios_adicionales = $itemMeta['precios_adicionales'];
                             $dirty = true;
                         }
                         if ($dirty) {

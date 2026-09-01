@@ -724,6 +724,41 @@ document.addEventListener('DOMContentLoaded', () => {
                     detailImagenContainer.style.display = 'none';
                 }
 
+                // --- Renderizado de Precios Especiales / Adicionales ---
+                const preciosAdicionalesContainer = document.getElementById('detalle-precios-adicionales-container');
+                const preciosAdicionalesBody = document.getElementById('detalle-precios-adicionales-body');
+
+                let preciosArr = [];
+                if (Array.isArray(articulo.precios_adicionales)) {
+                    preciosArr = articulo.precios_adicionales.filter(p => p && p.nombre && (parseFloat(p.precio) > 0 || p.precio !== ''));
+                } else if (typeof articulo.precios_adicionales === 'string') {
+                    try {
+                        const parsed = JSON.parse(articulo.precios_adicionales);
+                        if (Array.isArray(parsed)) {
+                            preciosArr = parsed.filter(p => p && p.nombre && (parseFloat(p.precio) > 0 || p.precio !== ''));
+                        }
+                    } catch(e) {}
+                }
+
+                if (preciosAdicionalesContainer && preciosAdicionalesBody) {
+                    if (preciosArr.length > 0) {
+                        let htmlPrecios = '';
+                        preciosArr.forEach(p => {
+                            htmlPrecios += `
+                                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 0.45rem 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-size: 0.82rem; font-weight: 700; color: #166534;"><i class="fa-solid fa-tag" style="margin-right: 0.35rem; color: #15803d;"></i>${p.nombre}</span>
+                                    <strong style="font-size: 0.95rem; color: #14532d; font-weight: 800;">$${Number(p.precio || 0).toFixed(2)}</strong>
+                                </div>
+                            `;
+                        });
+                        preciosAdicionalesBody.innerHTML = htmlPrecios;
+                        preciosAdicionalesContainer.style.display = 'block';
+                    } else {
+                        preciosAdicionalesContainer.style.display = 'none';
+                        preciosAdicionalesBody.innerHTML = '';
+                    }
+                }
+
                 // --- Renderizado de Desglose por Lote y Vencimiento ---
                 const lotesContainerBox = document.getElementById('detalle-lotes-container');
                 const lotesContainer = document.getElementById('detalle-lotes-body');
