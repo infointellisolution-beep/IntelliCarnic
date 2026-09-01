@@ -100,11 +100,11 @@ class Transferencia extends Model
     }
 
     /**
-     * Construir el payload JSON completo para sincronización con la nube.
+     * Construir el payload JSON completo para sincronización con la nube / archivo .TRN.
      */
     public function buildPayload(): array
     {
-        $this->load(['detalles.compraDetalle', 'sucursalOrigen', 'sucursalDestino', 'usuario']);
+        $this->load(['detalles.compraDetalle', 'detalles.articulo.familia', 'sucursalOrigen', 'sucursalDestino', 'usuario']);
 
         return [
             'folio' => $this->folio,
@@ -116,21 +116,32 @@ class Transferencia extends Model
             'total_peso' => (float) $this->total_peso,
             'total_unidades' => (int) $this->total_unidades,
             'costo_total' => (float) $this->costo_total,
-            'payload' => $this->detalles->map(fn ($d) => [
-                'articulo_id' => $d->articulo_id,
-                'codigo' => $d->codigo,
-                'codigo_escaneado' => $d->compraDetalle?->codigo_escaneado ?: ($d->codigo ?: ''),
-                'descripcion' => $d->descripcion,
-                'tipo_articulo' => $d->tipo_articulo,
-                'cantidad_enviada' => (float) $d->cantidad_enviada,
-                'unidad_medida' => $d->unidad_medida,
-                'costo_unitario' => (float) $d->costo_unitario,
-                'subtotal_costo' => (float) $d->subtotal_costo,
-                'lote' => $d->lote,
-                'numero_lote' => $d->numero_lote,
-                'fecha_vencimiento_lote' => $d->fecha_vencimiento_lote?->format('Y-m-d'),
-                'compra_detalle_id' => $d->compra_detalle_id,
-            ])->toArray(),
+            'payload' => $this->detalles->map(function ($d) {
+                $art = $d->articulo;
+                return [
+                    'articulo_id' => $d->articulo_id,
+                    'codigo' => $d->codigo ?: ($art?->codigo ?? ''),
+                    'codigo_cliente' => (string) ($art?->codigo_cliente ?? ''),
+                    'item' => $art?->item ?? null,
+                    'familia_nombre' => $art?->familia?->nombre ?? null,
+                    'codigo_escaneado' => $d->compraDetalle?->codigo_escaneado ?: ($d->codigo ?: ''),
+                    'descripcion' => $d->descripcion ?: ($art?->descripcion ?? ''),
+                    'tipo_articulo' => $d->tipo_articulo ?: ($art?->tipo_articulo ?? 'pesable'),
+                    'cantidad_enviada' => (float) $d->cantidad_enviada,
+                    'unidad_medida' => $d->unidad_medida,
+                    'costo_unitario' => (float) $d->costo_unitario,
+                    'precio_compra' => (float) ($art?->precio_compra ?: $d->costo_unitario),
+                    'precio_sin_iva' => (float) ($art?->precio_sin_iva ?: ($art?->pvp ?: $d->costo_unitario)),
+                    'pvp' => (float) ($art?->pvp ?: ($art?->precio_sin_iva ?: round($d->costo_unitario * 1.3, 2))),
+                    'aplica_iva' => (bool) ($art?->aplica_iva ?? false),
+                    'iva' => (float) ($art?->iva ?? 0),
+                    'subtotal_costo' => (float) $d->subtotal_costo,
+                    'lote' => $d->lote,
+                    'numero_lote' => $d->numero_lote,
+                    'fecha_vencimiento_lote' => $d->fecha_vencimiento_lote?->format('Y-m-d'),
+                    'compra_detalle_id' => $d->compra_detalle_id,
+                ];
+            })->toArray(),
         ];
     }
 }

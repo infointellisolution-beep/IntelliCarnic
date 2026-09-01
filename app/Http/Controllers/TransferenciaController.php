@@ -419,11 +419,15 @@ class TransferenciaController extends Controller
 
                 foreach ($items as $item) {
                     $codigoItem = $item['codigo'] ?? null;
+                    $codigoClienteItem = !empty($item['codigo_cliente']) ? (string)$item['codigo_cliente'] : null;
                     $descripcionItem = $item['descripcion'] ?? 'Artículo transferido';
                     
-                    // Buscar artículo localmente por código, código cliente, descripción o ID
+                    // Buscar artículo localmente por código cliente, código, descripción o ID
                     $localArticulo = null;
-                    if ($codigoItem) {
+                    if ($codigoClienteItem) {
+                        $localArticulo = Articulo::where('codigo_cliente', $codigoClienteItem)->first();
+                    }
+                    if (!$localArticulo && $codigoItem) {
                         $localArticulo = Articulo::where('codigo', $codigoItem)
                             ->orWhere('codigo_cliente', $codigoItem)
                             ->first();
@@ -435,25 +439,57 @@ class TransferenciaController extends Controller
                         $localArticulo = Articulo::find($item['articulo_id']);
                     }
 
-                    // Si el artículo aún no existe en esta sucursal, crearlo automáticamente para no romper la llave foránea
-                    if (!$localArticulo) {
-                        $costo = (float) ($item['costo_unitario'] ?? ($item['costo'] ?? 0));
-                        $pvp = round($costo > 0 ? $costo * 1.3 : 1.0, 2);
+                    $costo = (float) ($item['precio_compra'] ?? ($item['costo_unitario'] ?? ($item['costo'] ?? 0)));
+                    $precioSinIva = isset($item['precio_sin_iva']) && (float)$item['precio_sin_iva'] > 0 
+                        ? (float)$item['precio_sin_iva'] 
+                        : (isset($item['pvp']) && (float)$item['pvp'] > 0 ? (float)$item['pvp'] : round($costo > 0 ? $costo * 1.3 : 1.0, 2));
+                    $pvp = isset($item['pvp']) && (float)$item['pvp'] > 0 
+                        ? (float)$item['pvp'] 
+                        : (isset($item['precio_venta']) && (float)$item['precio_venta'] > 0 ? (float)$item['precio_venta'] : $precioSinIva);
 
+                    $familiaId = null;
+                    if (!empty($item['familia_nombre'])) {
+                        $fam = \App\Models\Familia::firstOrCreate(['nombre' => $item['familia_nombre']]);
+                        $familiaId = $fam->id;
+                    }
+
+                    // Si el artículo aún no existe en esta sucursal, crearlo automáticamente con toda su ficha técnica
+                    if (!$localArticulo) {
                         $localArticulo = Articulo::create([
                             'codigo' => $codigoItem ?: ('ART-' . strtoupper(substr(uniqid(), -6))),
-                            'codigo_cliente' => $codigoItem,
+                            'codigo_cliente' => $codigoClienteItem ?: ($codigoItem ?: ''),
+                            'item' => $item['item'] ?? null,
+                            'familia_id' => $familiaId,
                             'descripcion' => $descripcionItem,
                             'tipo_articulo' => $item['tipo_articulo'] ?? 'pesable',
                             'precio_compra' => $costo,
-                            'precio_sin_iva' => $pvp,
-                            'aplica_iva' => false,
-                            'iva' => 0,
+                            'precio_sin_iva' => $precioSinIva,
+                            'aplica_iva' => (bool) ($item['aplica_iva'] ?? false),
+                            'iva' => (float) ($item['iva'] ?? 0),
                             'pvp' => $pvp,
                             'stock' => 0,
                             'stock_minimo' => 0,
                             'estado' => 'activo',
                         ]);
+                    } else {
+                        // Enriquecer artículo existente si venía con datos parciales
+                        $dirty = false;
+                        if ($codigoClienteItem && ($localArticulo->codigo_cliente === $localArticulo->codigo || empty($localArticulo->codigo_cliente))) {
+                            $localArticulo->codigo_cliente = $codigoClienteItem;
+                            $dirty = true;
+                        }
+                        if ($familiaId && !$localArticulo->familia_id) {
+                            $localArticulo->familia_id = $familiaId;
+                            $dirty = true;
+                        }
+                        if ($pvp > 0 && ($localArticulo->pvp == 0 || $localArticulo->pvp == round($localArticulo->precio_compra * 1.3, 2))) {
+                            $localArticulo->pvp = $pvp;
+                            $localArticulo->precio_sin_iva = $precioSinIva;
+                            $dirty = true;
+                        }
+                        if ($dirty) {
+                            $localArticulo->save();
+                        }
                     }
 
                     $fechaVenc = $item['fecha_vencimiento_lote'] ?? ($item['fecha_vencimiento'] ?? null);
@@ -531,37 +567,86 @@ class TransferenciaController extends Controller
                     // Actualizar cantidad recibida
                     $detalle->update(['cantidad_recibida' => $cantidadRecibida]);
 
-                    // Buscar el artículo local (por ID, código o descripción)
+                    // Extraer metadata del payload si está presente
+                    $itemMeta = null;
+                    if (!empty($transferencia->payload_json)) {
+                        $payloadObj = json_decode($transferencia->payload_json, true);
+                        $itemsList = $payloadObj['items'] ?? ($payloadObj['payload']['items'] ?? ($payloadObj['payload'] ?? []));
+                        if (is_array($itemsList)) {
+                            foreach ($itemsList as $it) {
+                                if (($it['codigo'] ?? '') == $detalle->codigo || ($it['descripcion'] ?? '') == $detalle->descripcion) {
+                                    $itemMeta = $it;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    // Buscar el artículo local (por ID, código cliente, código o descripción)
                     $articulo = Articulo::find($detalle->articulo_id);
 
+                    if (!$articulo && !empty($itemMeta['codigo_cliente'])) {
+                        $articulo = Articulo::where('codigo_cliente', $itemMeta['codigo_cliente'])->first();
+                    }
                     if (!$articulo && $detalle->codigo) {
                         $articulo = Articulo::where('codigo', $detalle->codigo)
                             ->orWhere('codigo_cliente', $detalle->codigo)
                             ->first();
                     }
-
                     if (!$articulo && $detalle->descripcion) {
                         $articulo = Articulo::where('descripcion', $detalle->descripcion)->first();
                     }
 
-                    if (!$articulo) {
-                        $costoDet = (float) ($detalle->costo_unitario ?? 0);
-                        $pvpDet = round($costoDet > 0 ? $costoDet * 1.3 : 1.0, 2);
+                    $costoDet = (float) ($itemMeta['precio_compra'] ?? ($detalle->costo_unitario ?? 0));
+                    $precioSinIvaDet = isset($itemMeta['precio_sin_iva']) && (float)$itemMeta['precio_sin_iva'] > 0 
+                        ? (float)$itemMeta['precio_sin_iva'] 
+                        : (isset($itemMeta['pvp']) && (float)$itemMeta['pvp'] > 0 ? (float)$itemMeta['pvp'] : round($costoDet > 0 ? $costoDet * 1.3 : 1.0, 2));
+                    $pvpDet = isset($itemMeta['pvp']) && (float)$itemMeta['pvp'] > 0 
+                        ? (float)$itemMeta['pvp'] 
+                        : (isset($itemMeta['precio_venta']) && (float)$itemMeta['precio_venta'] > 0 ? (float)$itemMeta['precio_venta'] : $precioSinIvaDet);
 
+                    $familiaIdDet = null;
+                    if (!empty($itemMeta['familia_nombre'])) {
+                        $fam = \App\Models\Familia::firstOrCreate(['nombre' => $itemMeta['familia_nombre']]);
+                        $familiaIdDet = $fam->id;
+                    }
+
+                    if (!$articulo) {
                         $articulo = Articulo::create([
                             'codigo' => $detalle->codigo ?: ('ART-' . strtoupper(substr(uniqid(), -6))),
-                            'codigo_cliente' => $detalle->codigo,
+                            'codigo_cliente' => !empty($itemMeta['codigo_cliente']) ? $itemMeta['codigo_cliente'] : ($detalle->codigo ?: ''),
+                            'item' => $itemMeta['item'] ?? null,
+                            'familia_id' => $familiaIdDet,
                             'descripcion' => $detalle->descripcion ?: 'Artículo transferido',
                             'tipo_articulo' => $detalle->tipo_articulo ?? 'pesable',
                             'precio_compra' => $costoDet,
-                            'precio_sin_iva' => $pvpDet,
-                            'aplica_iva' => false,
-                            'iva' => 0,
+                            'precio_sin_iva' => $precioSinIvaDet,
+                            'aplica_iva' => (bool) ($itemMeta['aplica_iva'] ?? false),
+                            'iva' => (float) ($itemMeta['iva'] ?? 0),
                             'pvp' => $pvpDet,
                             'stock' => 0,
                             'stock_minimo' => 0,
                             'estado' => 'activo',
                         ]);
+                    } else {
+                        // Enriquecer artículo si faltaban datos o tenía valores por defecto
+                        $dirty = false;
+                        if (!empty($itemMeta['codigo_cliente']) && ($articulo->codigo_cliente === $articulo->codigo || empty($articulo->codigo_cliente))) {
+                            $articulo->codigo_cliente = $itemMeta['codigo_cliente'];
+                            $dirty = true;
+                        }
+                        if ($familiaIdDet && !$articulo->familia_id) {
+                            $articulo->familia_id = $familiaIdDet;
+                            $dirty = true;
+                        }
+                        if ($pvpDet > 0 && ($articulo->pvp == 0 || $articulo->pvp == round($articulo->precio_compra * 1.3, 2))) {
+                            $articulo->pvp = $pvpDet;
+                            $articulo->precio_sin_iva = $precioSinIvaDet;
+                            $dirty = true;
+                        }
+                        if ($dirty) {
+                            $articulo->save();
+                        }
                     }
 
                     if ($articulo) {
