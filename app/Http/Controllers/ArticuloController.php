@@ -160,11 +160,37 @@ class ArticuloController extends Controller
 
     public function destroy(Articulo $articulo): RedirectResponse
     {
-        Articulo::destroy($articulo->getKey());
+        try {
+            $tieneTransferencias = \App\Models\TransferenciaDetalle::where('articulo_id', $articulo->id)->exists();
+            $tieneCompras = \App\Models\CompraDetalle::where('articulo_id', $articulo->id)->exists();
+            $tieneVentas = \App\Models\VentaDetalle::where('articulo_id', $articulo->id)->exists();
 
-        return redirect()
-            ->route('articulos.index')
-            ->with('status', 'Artículo eliminado correctamente.');
+            if ($tieneTransferencias || $tieneCompras || $tieneVentas) {
+                $articulo->update([
+                    'estado' => 'inactivo',
+                    'stock' => 0,
+                ]);
+
+                return redirect()
+                    ->route('articulos.index')
+                    ->with('warning', "El artículo '{$articulo->descripcion}' tiene movimientos registrados en transferencias o compras. Para proteger la trazabilidad contable, ha sido marcado como INACTIVO.");
+            }
+
+            $articulo->delete();
+
+            return redirect()
+                ->route('articulos.index')
+                ->with('status', 'Artículo eliminado correctamente.');
+        } catch (\Throwable $e) {
+            $articulo->update([
+                'estado' => 'inactivo',
+                'stock' => 0,
+            ]);
+
+            return redirect()
+                ->route('articulos.index')
+                ->with('warning', "El artículo '{$articulo->descripcion}' está vinculado a registros del sistema y fue cambiado a estado INACTIVO.");
+        }
     }
 
     public function adjustStock(Request $request): RedirectResponse
