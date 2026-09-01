@@ -422,13 +422,19 @@ class TransferenciaController extends Controller
 
                     // Si el artículo aún no existe en esta sucursal, crearlo automáticamente para no romper la llave foránea
                     if (!$localArticulo) {
+                        $costo = (float) ($item['costo_unitario'] ?? ($item['costo'] ?? 0));
+                        $pvp = round($costo > 0 ? $costo * 1.3 : 1.0, 2);
+
                         $localArticulo = Articulo::create([
                             'codigo' => $codigoItem ?: ('ART-' . strtoupper(substr(uniqid(), -6))),
+                            'codigo_cliente' => $codigoItem,
                             'descripcion' => $descripcionItem,
                             'tipo_articulo' => $item['tipo_articulo'] ?? 'pesable',
-                            'unidad_medida' => $item['unidad_medida'] ?? 'LB',
-                            'precio_compra' => (float) ($item['costo_unitario'] ?? ($item['costo'] ?? 0)),
-                            'precio_venta' => round(((float) ($item['costo_unitario'] ?? ($item['costo'] ?? 0))) * 1.3, 2),
+                            'precio_compra' => $costo,
+                            'precio_sin_iva' => $pvp,
+                            'aplica_iva' => false,
+                            'iva' => 0,
+                            'pvp' => $pvp,
                             'stock' => 0,
                             'stock_minimo' => 0,
                             'estado' => 'activo',
@@ -524,13 +530,19 @@ class TransferenciaController extends Controller
                     }
 
                     if (!$articulo) {
+                        $costoDet = (float) ($detalle->costo_unitario ?? 0);
+                        $pvpDet = round($costoDet > 0 ? $costoDet * 1.3 : 1.0, 2);
+
                         $articulo = Articulo::create([
                             'codigo' => $detalle->codigo ?: ('ART-' . strtoupper(substr(uniqid(), -6))),
+                            'codigo_cliente' => $detalle->codigo,
                             'descripcion' => $detalle->descripcion ?: 'Artículo transferido',
                             'tipo_articulo' => $detalle->tipo_articulo ?? 'pesable',
-                            'unidad_medida' => $detalle->unidad_medida ?? 'LB',
-                            'precio_compra' => $detalle->costo_unitario ?? 0,
-                            'precio_venta' => round(($detalle->costo_unitario ?? 0) * 1.3, 2),
+                            'precio_compra' => $costoDet,
+                            'precio_sin_iva' => $pvpDet,
+                            'aplica_iva' => false,
+                            'iva' => 0,
+                            'pvp' => $pvpDet,
                             'stock' => 0,
                             'stock_minimo' => 0,
                             'estado' => 'activo',
