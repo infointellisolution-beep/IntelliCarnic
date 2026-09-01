@@ -15,9 +15,24 @@ class TransferenciaSyncService
 
     public function __construct(?string $endpoint = null, ?string $apiToken = null)
     {
-        $this->endpoint = rtrim($endpoint ?: Setting::getValue('cloud_sync_endpoint', 'https://intellicarnicsync.intellisolution.net'), '/');
-        $this->apiToken = $apiToken ?: Setting::getValue('cloud_sync_token', 'IntelliCarnic_Sync_2026_Key');
+        $ep = $endpoint ?: Setting::getValue('cloud_sync_endpoint', 'https://intellicarnicsync.intellisolution.net');
+        $tk = $apiToken ?: Setting::getValue('cloud_sync_token', 'IntelliCarnic_Sync_2026_Key');
+
+        $this->endpoint = rtrim(trim((string)$ep), '/');
+        $this->apiToken = trim(trim((string)$tk), '"\'');
         $this->timeout = 10; // segundos
+    }
+
+    /**
+     * Cabeceras estándar para peticiones HTTP (incluye User-Agent para evitar bloqueos de ModSecurity).
+     */
+    protected function defaultHeaders(): array
+    {
+        return [
+            'Authorization' => 'Bearer ' . $this->apiToken,
+            'Accept' => 'application/json',
+            'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        ];
     }
 
     /**
@@ -38,11 +53,10 @@ class TransferenciaSyncService
         }
 
         try {
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $this->apiToken,
-                'Accept' => 'application/json',
-            ])->withoutVerifying()->timeout($this->timeout)
-              ->get($this->endpoint . '/?action=status');
+            $response = Http::withHeaders($this->defaultHeaders())
+                ->withoutVerifying()
+                ->timeout($this->timeout)
+                ->get($this->endpoint . '/?action=status');
 
             if ($response->successful()) {
                 $data = $response->json();
@@ -55,7 +69,7 @@ class TransferenciaSyncService
             }
 
             if ($response->status() === 403) {
-                return ['success' => false, 'error' => 'Código 403 (Acceso Denegado): El API Token ingresado es incorrecto o está vacío. Verifique el token con el icono del ojo 👁️.'];
+                return ['success' => false, 'error' => 'Código 403 (Acceso Denegado por Hostinger/ModSecurity). Verifique el token o que no haya bloqueo de firewall.'];
             }
 
             return ['success' => false, 'error' => 'El servidor respondió con código HTTP ' . $response->status()];
@@ -76,10 +90,8 @@ class TransferenciaSyncService
         try {
             $payload = $transferencia->buildPayload();
 
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $this->apiToken,
-                'Accept' => 'application/json',
-            ])->withoutVerifying()->timeout($this->timeout)
+            $response = Http::withHeaders($this->defaultHeaders())
+              ->withoutVerifying()->timeout($this->timeout)
               ->post($this->endpoint . '/?action=enviar', $payload);
 
             if ($response->successful()) {
@@ -129,10 +141,8 @@ class TransferenciaSyncService
                 'sucursal' => $codigoSucursal,
             ]);
 
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $this->apiToken,
-                'Accept' => 'application/json',
-            ])->withoutVerifying()->timeout($this->timeout)->get($url);
+            $response = Http::withHeaders($this->defaultHeaders())
+                ->withoutVerifying()->timeout($this->timeout)->get($url);
 
             if ($response->successful()) {
                 $data = $response->json();
@@ -160,10 +170,8 @@ class TransferenciaSyncService
         }
 
         try {
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $this->apiToken,
-                'Accept' => 'application/json',
-            ])->withoutVerifying()->timeout($this->timeout)
+            $response = Http::withHeaders($this->defaultHeaders())
+              ->withoutVerifying()->timeout($this->timeout)
               ->post($this->endpoint . '/?action=marcar-recibida', [
                   'folio' => $folio,
                   'usuario_recepcion' => $usuarioRecepcion,
@@ -190,10 +198,8 @@ class TransferenciaSyncService
         }
 
         try {
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $this->apiToken,
-                'Accept' => 'application/json',
-            ])->withoutVerifying()->timeout($this->timeout)
+            $response = Http::withHeaders($this->defaultHeaders())
+              ->withoutVerifying()->timeout($this->timeout)
               ->post($this->endpoint . '/?action=cancelar', [
                   'folio' => $folio,
               ]);
