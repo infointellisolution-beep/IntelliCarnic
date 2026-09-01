@@ -618,9 +618,12 @@ class TransferenciaController extends Controller
     // ─────────────────────────────────────────────────────────
     //  PROBAR CONEXIÓN CON HOSTINGER (AJAX)
     // ─────────────────────────────────────────────────────────
-    public function testConexionCloud(): JsonResponse
+    public function testConexionCloud(Request $request): JsonResponse
     {
-        $syncService = new TransferenciaSyncService();
+        $endpoint = $request->query('endpoint') ?: $request->input('endpoint');
+        $token = $request->query('token') ?: $request->input('token');
+
+        $syncService = new TransferenciaSyncService($endpoint, $token);
         return response()->json($syncService->testConexion());
     }
 

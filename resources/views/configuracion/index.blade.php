@@ -859,9 +859,14 @@
                     </div>
                     <div class="input-group">
                         <label>API Token de Seguridad</label>
-                        <input type="password" id="inputCloudToken" class="input-modern"
-                               placeholder="Clave secreta"
-                               value="{{ $settings['cloud_sync_token'] ?? 'IntelliCarnic_Sync_2026_Key' }}">
+                        <div style="position: relative; display: flex; align-items: center;">
+                            <input type="password" id="inputCloudToken" class="input-modern" style="padding-right: 42px;"
+                                   placeholder="Clave secreta"
+                                   value="{{ $settings['cloud_sync_token'] ?? 'IntelliCarnic_Sync_2026_Key' }}">
+                            <button type="button" onclick="togglePasswordVisibility('inputCloudToken', this)" style="position: absolute; right: 10px; background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; font-size: 0.95rem;" title="Mostrar / Ocultar Token">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1593,13 +1598,33 @@
         .catch(err => alert('Error: ' + err.message));
     }
 
+    function togglePasswordVisibility(inputId, btn) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+        const isPassword = input.type === 'password';
+        input.type = isPassword ? 'text' : 'password';
+        const icon = btn.querySelector('i');
+        if (icon) {
+            icon.className = isPassword ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
+        }
+    }
+
     function testConexionCloud() {
         const btn = document.getElementById('btnTestCloud');
         const div = document.getElementById('estadoCloud');
+        const endpoint = document.getElementById('inputCloudEndpoint')?.value.trim() || '';
+        const token = document.getElementById('inputCloudToken')?.value.trim() || '';
+
         btn.disabled = true;
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Probando...';
 
-        fetch('{{ route("transferencias.api.test-conexion") }}', {
+        const params = new URLSearchParams();
+        if (endpoint) params.append('endpoint', endpoint);
+        if (token) params.append('token', token);
+
+        const url = '{{ route("transferencias.api.test-conexion") }}' + (params.toString() ? '?' + params.toString() : '');
+
+        fetch(url, {
             headers: { 'Accept': 'application/json' }
         })
         .then(r => r.json())
@@ -1623,7 +1648,7 @@
             div.style.display = 'block';
             div.style.background = '#fee2e2';
             div.style.color = '#991b1b';
-            div.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Error: ' + err.message;
+            div.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Error de red: ' + err.message;
         });
     }
 </script>
