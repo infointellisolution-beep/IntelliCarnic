@@ -53,26 +53,37 @@ class TransferenciaSyncService
         }
 
         try {
-            $response = Http::withHeaders($this->defaultHeaders())
-                ->withoutVerifying()
-                ->timeout($this->timeout)
-                ->get($this->endpoint . '/?action=status');
+            // Paso 1: verificar que el servidor esté en línea (endpoint público, sin token)
+            $response = Http::withHeaders([
+                'Accept' => 'application/json',
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            ])->withoutVerifying()->timeout($this->timeout)
+              ->get($this->endpoint . '/?action=status');
 
-            if ($response->successful()) {
-                $data = $response->json();
-                return [
-                    'success' => true,
-                    'message' => 'Conexión exitosa con el servidor cloud.',
-                    'server_status' => $data['status'] ?? 'online',
-                    'timestamp' => $data['timestamp'] ?? date('Y-m-d H:i:s'),
-                ];
+            if (!$response->successful()) {
+                return ['success' => false, 'error' => 'El servidor no está accesible (HTTP ' . $response->status() . '). Verifique la URL.'];
             }
 
-            if ($response->status() === 403) {
-                return ['success' => false, 'error' => 'Código 403 (Acceso Denegado por Hostinger/ModSecurity). Verifique el token o que no haya bloqueo de firewall.'];
+            // Paso 2: verificar el token con una petición autenticada (action=pendientes)
+            $tokenCheck = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $this->apiToken,
+                'Accept' => 'application/json',
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            ])->withoutVerifying()->timeout($this->timeout)
+              ->get($this->endpoint . '/?action=pendientes&sucursal=TEST');
+
+            if ($tokenCheck->status() === 401) {
+                return ['success' => false, 'error' => 'Token incorrecto (401 No Autorizado). Verifique que el API Token sea exactamente: IntelliCarnic_Sync_2026_Key'];
             }
 
-            return ['success' => false, 'error' => 'El servidor respondió con código HTTP ' . $response->status()];
+            $data = $response->json();
+            return [
+                'success' => true,
+                'message' => 'Conexión exitosa con el servidor cloud.',
+                'server_status' => $data['status'] ?? 'online',
+                'timestamp' => $data['timestamp'] ?? date('Y-m-d H:i:s'),
+            ];
+
         } catch (\Exception $e) {
             return ['success' => false, 'error' => 'No se pudo conectar: ' . $e->getMessage()];
         }
