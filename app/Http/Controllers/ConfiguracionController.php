@@ -27,14 +27,30 @@ class ConfiguracionController extends Controller
         $users = User::query()->with('sucursal')->orderBy('name', 'asc')->get();
 
         // Información de Git para la vista
-        $gitRepoUrl   = $this->safeShellExec('git remote get-url origin 2>&1') ?? 'No detectado / No vinculado';
-        $gitRepoUrl   = trim($gitRepoUrl);
-        if (empty($gitRepoUrl) || str_contains(strtolower($gitRepoUrl), 'fatal') || str_contains(strtolower($gitRepoUrl), 'error')) {
+        $git = $this->getGitBinary();
+        $gitRepoUrl = 'No detectado / No vinculado';
+        $gitBranch = 'main';
+        $gitLastCommit = '';
+
+        if ($git) {
+            $rawRepo = trim($this->safeShellExec($git . ' remote get-url origin 2>&1') ?? '');
+            if (!empty($rawRepo) && !str_contains(strtolower($rawRepo), 'fatal') && !str_contains(strtolower($rawRepo), 'error') && !str_contains(strtolower($rawRepo), 'no se reconoce')) {
+                $gitRepoUrl = $rawRepo;
+            }
+            $rawBranch = trim($this->safeShellExec($git . ' branch --show-current 2>&1') ?? '');
+            if (!empty($rawBranch) && !str_contains(strtolower($rawBranch), 'fatal') && !str_contains(strtolower($rawBranch), 'no se reconoce')) {
+                $gitBranch = $rawBranch;
+            }
+            $rawCommit = trim($this->safeShellExec($git . ' log -1 --pretty=format:"%h|%s|%ar" 2>&1') ?? '');
+            if (!empty($rawCommit) && !str_contains(strtolower($rawCommit), 'fatal') && !str_contains(strtolower($rawCommit), 'no se reconoce')) {
+                $gitLastCommit = $rawCommit;
+            }
+        }
+
+        if ($gitRepoUrl === 'No detectado / No vinculado') {
             $gitRepoUrl = Setting::getValue('github_url', 'No detectado / No vinculado');
         }
-        $gitBranch    = trim($this->safeShellExec('git branch --show-current 2>&1') ?? 'main');
-        // Último commit: hash corto + mensaje + fecha
-        $gitLastCommit = trim($this->safeShellExec('git log -1 --pretty=format:"%h|%s|%ar" 2>&1') ?? '');
+
         $lanUrl = 'http://' . (request()->server('SERVER_ADDR') ?? '127.0.0.1') . '/' . basename(base_path()) . '/public';
 
         return view('configuracion.index', [
